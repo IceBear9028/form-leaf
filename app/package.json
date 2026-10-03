@@ -1,0 +1,36 @@
+{
+  "name": "resume-studio",
+  "productName": "Resume Studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first resume editor",
+  "main": "out/main/index.js",
+  "scripts": {
+    "postinstall": "install-electron",
+    "start": "electron .",
+    "app": "npm run build && npm start",
+    "dev": "electron-vite dev",
+    "build": "npm run typecheck && electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.4",
+    "electron": "^44.5.1",
+    "electron-vite": "^5.0.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "vite": "^7.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
+    "typescript": "^5.9.2"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true
+  }
+}

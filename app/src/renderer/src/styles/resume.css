@@ -1,0 +1,161 @@
+.resume-style-reference-v1 {
+  --resume-accent: #176bff;
+  --resume-text: #202124;
+  --resume-secondary: #4b4f55;
+  --resume-muted: #747a82;
+  --resume-rule: #d9d9d9;
+  --resume-rule-strong: #666b72;
+  --resume-font: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
+}
+
+.resume-page {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  padding: 23mm 17mm 17mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: var(--resume-text);
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(43, 53, 68, 0.13), 0 1px 3px rgba(43, 53, 68, 0.12);
+  font-family: var(--resume-font);
+  font-size: 7.6pt;
+  line-height: 1.58;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+}
+
+.resume-page + .resume-page { margin-top: 16mm; }
+.resume-page--overflow { outline: 2px solid #d46767; outline-offset: 3px; }
+
+.resume-page-body { height: 257mm; }
+
+.resume-page-number {
+  position: absolute;
+  left: 17mm;
+  right: 17mm;
+  bottom: 10.2mm;
+  display: flex;
+  align-items: center;
+  gap: 8mm;
+  color: #23262b;
+  font-size: 7pt;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.resume-page-number::before { content: ""; height: 0.3mm; flex: 1; background: var(--resume-rule-strong); }
+
+.layout-unit { break-inside: avoid; }
+.layout-unit--profile { padding-bottom: 6.5mm; }
+.layout-unit--heading { position: relative; padding: 6.3mm 0 5.2mm; }
+.layout-unit--heading.layout-unit--first { padding-top: 0; }
+.layout-unit--heading.layout-unit--separator:not(.layout-unit--first)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0.25mm;
+  background: var(--resume-rule);
+}
+.layout-unit--heading:not(.layout-unit--separator) { padding-top: 0; }
+.layout-unit--paragraph { padding-bottom: 4mm; color: #2f3237; font-size: 7.6pt; line-height: 1.72; }
+.layout-unit--item { padding-bottom: 4.8mm; }
+.layout-unit--project { padding-bottom: 3.4mm; }
+.layout-unit--block { padding-bottom: 3mm; }
+
+.resume-profile {
+  display: grid;
+  grid-template-columns: 20mm 1fr 66mm;
+  align-items: center;
+  min-height: 20mm;
+  column-gap: 6mm;
+}
+.profile-photo { width: 20mm; height: 20mm; border-radius: 50%; overflow: hidden; background: #eef1f4; }
+.profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+.profile-photo svg { width: 100%; height: 100%; padding: 4mm; fill: none; stroke: #b8c0c9; stroke-width: 1.6; }
+.profile-identity { min-width: 0; }
+.profile-role { margin: 0 0 1mm; color: var(--resume-accent); font-size: 8.2pt; line-height: 1.2; font-weight: 700; letter-spacing: -0.015em; }
+.profile-identity h1 { margin: 0; font-size: 14.5pt; line-height: 1.15; font-weight: 760; letter-spacing: -0.035em; }
+.preview-placeholder { color: #aeb5bf; }
+.profile-contacts { min-height: 20mm; padding-left: 5.5mm; border-left: 0.25mm solid var(--resume-rule); display: flex; flex-direction: column; justify-content: center; gap: 2.1mm; }
+.contact-row { display: grid; grid-template-columns: 14mm 1fr; gap: 2mm; min-width: 0; font-size: 5.8pt; line-height: 1.25; }
+.contact-row > span { color: #22262b; font-weight: 720; }
+.contact-row strong, .contact-row a { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: #343a43; font-weight: 590; text-decoration: none; white-space: nowrap; }
+.contact-row--links > div { display: flex; align-items: center; flex-wrap: wrap; gap: 1.6mm; min-width: 0; }
+.contact-row--links a { display: inline-flex; align-items: center; gap: 0.6mm; text-decoration: underline; text-underline-offset: 1px; }
+.contact-row--links svg { width: 2.8mm; height: 2.8mm; fill: none; stroke: #696e75; stroke-width: 1.2; }
+
+.resume-section-heading { display: flex; align-items: baseline; gap: 2.3mm; }
+.resume-section-heading h2 { flex: 0 0 auto; margin: 0; color: var(--resume-text); font-size: 14pt; line-height: 1.2; font-weight: 760; letter-spacing: -0.035em; }
+.resume-section-heading strong { color: #34383e; font-size: 7.2pt; font-weight: 730; }
+
+.resume-grid-row { display: grid; grid-template-columns: 31mm minmax(0, 1fr); column-gap: 6.5mm; }
+.resume-meta-column { min-height: 8mm; padding-top: 0.4mm; padding-right: 1mm; display: flex; flex-direction: column; align-items: flex-start; color: var(--resume-muted); font-size: 6.1pt; line-height: 1.48; }
+.meta-period { color: #4b535e; font-weight: 680; }
+.meta-duration { margin-top: 0.2mm; color: #2d3137; font-weight: 700; }
+.meta-organization { margin-top: 1.5mm; color: #5e6671; font-weight: 620; }
+.meta-link { margin-top: 1.1mm; color: var(--resume-accent); text-decoration: underline; text-underline-offset: 1.2px; }
+.resume-body-column { min-width: 0; padding-left: 8mm; border-left: 0.25mm solid var(--resume-rule); }
+.resume-grid-row--continuation .resume-meta-column { min-height: 0; }
+
+.timeline-body h3, .project-body h3 { margin: 0; font-size: 8.6pt; line-height: 1.42; font-weight: 740; letter-spacing: -0.02em; }
+.timeline-subtitle { margin: 1.2mm 0 0; color: #4d535b; font-size: 6.4pt; }
+.project-body h3 { color: var(--resume-accent); font-size: 9.4pt; }
+.project-summary { margin: 1.6mm 0 0; color: #34383e; font-size: 6.8pt; line-height: 1.58; }
+
+.education-item { display: flex; flex-direction: column; align-items: flex-start; }
+.education-period { color: #585e66; font-size: 6.2pt; line-height: 1.35; }
+.education-item h3 { margin: 1.1mm 0 0; color: #202328; font-size: 8.4pt; line-height: 1.45; font-weight: 730; }
+.education-item p { margin: 0.7mm 0 0; color: #6a7078; font-size: 6.2pt; }
+
+.content-paragraph { margin: 0; color: #373c43; font-size: 6.8pt; line-height: 1.62; }
+.content-bullets { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1.2mm; }
+.content-bullets li { position: relative; padding-left: 3.5mm; color: #343940; font-size: 6.7pt; line-height: 1.58; }
+.content-bullets li::before { content: ""; position: absolute; top: 0.66em; left: 0; width: 1.15mm; height: 1.15mm; background: #6c7178; }
+
+.detail-block h4 { position: relative; margin: 0 0 1.6mm; padding-left: 3.5mm; color: #252a31; font-size: 6.9pt; line-height: 1.5; font-weight: 730; }
+.square-bullet { position: absolute; left: 0; top: 0.55em; width: 1.15mm; height: 1.15mm; background: #666b72; }
+.detail-content { margin-left: 2.2mm; padding-left: 3.4mm; border-left: 0.4mm solid #858a91; color: #41464d; font-size: 6.4pt; line-height: 1.62; }
+.detail-content p { margin: 0 0 1.3mm; }
+.detail-content p:last-child { margin-bottom: 0; }
+.detail-action { display: grid; grid-template-columns: 3.5mm 1fr; }
+.detail-action > span:first-child { color: var(--resume-accent); font-weight: 720; }
+.detail-result { color: #303740; }
+
+.resume-link-list { display: flex; flex-wrap: wrap; gap: 2mm 5mm; }
+.resume-link-list a { color: #666b72; font-size: 6.3pt; font-weight: 620; text-decoration: underline; text-underline-offset: 1.3px; }
+.tech-stack { display: flex; align-items: center; gap: 2mm; color: #30353b; font-size: 6.4pt; }
+.tech-icon { width: 3.2mm; height: 3.2mm; fill: #676c73; flex: 0 0 auto; }
+.tech-stack strong { font-weight: 680; }
+
+.resume-page a { color: inherit; }
+.resume-page u { text-decoration-thickness: 0.8px; text-underline-offset: 1.5px; }
+.empty-resume-hint { margin-top: 55mm; text-align: center; color: #adb4bd; font-size: 9pt; }
+
+.measurement-root {
+  position: fixed;
+  z-index: -1;
+  top: 0;
+  left: -10000px;
+  visibility: hidden;
+  pointer-events: none;
+}
+.measurement-page { height: auto; min-height: 297mm; overflow: visible; box-shadow: none; }
+.measurement-body { height: 257mm; overflow: visible; }
+
+@page { size: A4; margin: 0; }
+
+@media print {
+  html, body, #root, .app-shell, .workspace { width: auto; height: auto; overflow: visible; background: #fff; }
+  .app-toolbar, .editor-panel, .export-success, .measurement-root { display: none !important; }
+  .workspace { display: block; }
+  .preview-panel { display: block; overflow: visible; padding: 0; background: #fff; }
+  .preview-stack { width: auto; margin: 0; zoom: 1 !important; }
+  .resume-page { margin: 0; box-shadow: none; outline: 0; break-after: page; page-break-after: always; }
+  .resume-page + .resume-page { margin-top: 0; }
+  .resume-page:last-child { break-after: auto; page-break-after: auto; }
+  .empty-resume-hint { display: none; }
+  .preview-placeholder { visibility: hidden; }
+}
