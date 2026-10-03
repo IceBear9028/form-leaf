@@ -26,6 +26,17 @@ type Props = {
   onChange: (document: ResumeDocument) => void;
 };
 
+const fieldGridClass = "mb-3 grid grid-cols-2 gap-[11px]";
+const itemListClass = "my-3 flex flex-col gap-[9px]";
+const editorCardClass = "rounded-[9px] border border-[#e1e5eb] bg-[#fbfcfd] p-3";
+const collapsibleCardClass = "overflow-hidden rounded-[9px] border border-[#e1e5eb] bg-[#fbfcfd]";
+const cardSummaryClass = "flex cursor-pointer list-none justify-between gap-3 px-3 py-[11px] text-xs font-[680] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#3178ff] [&::-webkit-details-marker]:hidden [&>span:first-child]:min-w-0 [&>span:first-child]:overflow-hidden [&>span:first-child]:text-ellipsis [&>span:first-child]:whitespace-nowrap [&>span:last-child]:whitespace-nowrap [&>span:last-child]:text-[10px] [&>span:last-child]:font-medium [&>span:last-child]:text-[#929aa6]";
+const cardBodyClass = "border-t border-[#edf0f3] px-3 pb-3.5 pt-0 [&>.item-actions]:mt-[9px]";
+const checkFieldClass = "mb-[11px] flex items-center gap-1.5 text-[11px] text-[#626e7e] [&_input]:accent-[#1768e5]";
+const textButtonClass = "cursor-pointer border-0 bg-transparent p-1 text-[11px] font-[650] text-[#1768e5] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3178ff]";
+const iconButtonClass = "h-[25px] min-w-[25px] cursor-pointer rounded-md border border-[#dde2e8] bg-white p-0 text-[15px] text-[#697486] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3178ff]";
+const smallInputClass = "h-8 w-full rounded-[7px] border border-[#dce1e7] bg-white px-2.5 text-xs text-[#1d2735] placeholder:text-[#b3bac4] focus:border-[#73a4ec] focus:outline-2 focus:outline-[rgba(49,120,255,0.12)]";
+
 const move = <T,>(items: T[], from: number, to: number): T[] => {
   if (to < 0 || to >= items.length) return items;
   const next = [...items];
@@ -88,8 +99,8 @@ export function EditorPanel({ document, onChange }: Props) {
   };
 
   return (
-    <aside className="editor-panel" aria-label="이력서 편집">
-      <div className="document-name-field">
+    <aside className="editor-panel overflow-y-auto overscroll-contain border-r border-[#dbe0e7] bg-[#f8f9fb] px-[18px] pb-[60px] pt-5" aria-label="이력서 편집">
+      <div className="px-1 pb-[18px] [&_input]:text-[15px] [&_input]:font-bold">
         <Field
           label="문서 이름"
           value={document.name}
@@ -130,14 +141,14 @@ function ProfileEditor({ section, onChange }: { section: ProfileSection; onChang
       onVisibleChange={(visible) => onChange({ ...section, visible })}
       defaultOpen
     >
-      <div className="photo-field">
-        <div className="photo-thumbnail">
-          {section.photoDataUrl ? <img src={section.photoDataUrl} alt="프로필 미리보기" /> : <span>사진</span>}
+      <div className="mb-3.5 flex items-center gap-[9px]">
+        <div className="grid h-12 w-12 flex-none place-items-center overflow-hidden rounded-full border border-[#e0e4e9] bg-[#eff2f5] text-[10px] text-[#a1a9b4]">
+          {section.photoDataUrl ? <img className="h-full w-full object-cover" src={section.photoDataUrl} alt="프로필 미리보기" /> : <span>사진</span>}
         </div>
-        <label className="secondary-button">
+        <label className="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-lg border border-[#d8dee7] bg-white px-2.5 py-[7px] text-xs font-[650] text-[#344154] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#3178ff]">
           사진 선택
           <input
-            className="visually-hidden"
+            className="sr-only"
             type="file"
             accept="image/png,image/jpeg,image/webp"
             onChange={(event) => {
@@ -150,12 +161,12 @@ function ProfileEditor({ section, onChange }: { section: ProfileSection; onChang
           />
         </label>
         {section.photoDataUrl && (
-          <button type="button" className="text-button" onClick={() => onChange({ ...section, photoDataUrl: undefined })}>
+          <button type="button" className={textButtonClass} onClick={() => onChange({ ...section, photoDataUrl: undefined })}>
             사진 제거
           </button>
         )}
       </div>
-      <div className="field-grid">
+      <div className={fieldGridClass}>
         <Field label="직무명" value={section.role} onChange={(role) => onChange({ ...section, role })} />
         <Field label="이름" value={section.name} onChange={(name) => onChange({ ...section, name })} />
         <Field label="전화번호" type="tel" value={section.phone} onChange={(phone) => onChange({ ...section, phone })} />
@@ -175,9 +186,9 @@ function IntroductionEditor({ section, onChange }: { section: IntroductionSectio
       onVisibleChange={(visible) => onChange({ ...section, visible })}
     >
       <Field label="섹션 제목" value={section.title} onChange={(title) => onChange({ ...section, title })} />
-      <div className="item-list">
+      <div className={itemListClass}>
         {section.paragraphs.map((paragraph, index) => (
-          <div className="editor-card" key={paragraph.id}>
+          <div className={editorCardClass} key={paragraph.id}>
             <ItemActions
               onUp={index ? () => onChange({ ...section, paragraphs: move(section.paragraphs, index, index - 1) }) : undefined}
               onDown={index < section.paragraphs.length - 1 ? () => onChange({ ...section, paragraphs: move(section.paragraphs, index, index + 1) }) : undefined}
@@ -211,30 +222,30 @@ function TimelineEditor({ section, onChange }: { section: TimelineSection; onCha
       visible={section.visible}
       onVisibleChange={(visible) => onChange({ ...section, visible })}
     >
-      <div className="field-grid">
+      <div className={fieldGridClass}>
         <Field label="섹션 제목" value={section.title} onChange={(title) => onChange({ ...section, title })} />
         <Field label="제목 옆 보조 문구" value={section.annotation ?? ""} placeholder="선택 입력" onChange={(annotation) => onChange({ ...section, annotation })} />
       </div>
-      <div className="item-list">
+      <div className={itemListClass}>
         {section.items.map((item, index) => (
-          <details className="editor-card collapsible-card" key={item.id} open>
-            <summary>
+          <details className={collapsibleCardClass} key={item.id} open>
+            <summary className={cardSummaryClass}>
               <span>{plainText(item.title) || item.organization || `항목 ${index + 1}`}</span>
               <span>{item.visible ? "표시" : "숨김"}</span>
             </summary>
-            <div className="editor-card-body">
+            <div className={cardBodyClass}>
               <ItemActions
                 onUp={index ? () => onChange({ ...section, items: move(section.items, index, index - 1) }) : undefined}
                 onDown={index < section.items.length - 1 ? () => onChange({ ...section, items: move(section.items, index, index + 1) }) : undefined}
                 onDelete={() => onChange({ ...section, items: section.items.filter((entry) => entry.id !== item.id) })}
               />
-              <label className="check-field">
+              <label className={checkFieldClass}>
                 <input type="checkbox" checked={item.visible} onChange={(event) => updateTimelineItem(section, item.id, { visible: event.target.checked }, onChange)} />
                 미리보기에 표시
               </label>
               <DateRangeEditor item={item} onChange={(period) => updateTimelineItem(section, item.id, { period }, onChange)} />
               <Field label={labels.organization} value={item.organization} onChange={(organization) => updateTimelineItem(section, item.id, { organization }, onChange)} />
-              <RichTextEditor label={labels.title} multiline={false} value={item.title} onChange={(title) => updateTimelineItem(section, item.id, { title }, onChange)} />
+              <RichTextEditor className="mt-[11px]" label={labels.title} multiline={false} value={item.title} onChange={(title) => updateTimelineItem(section, item.id, { title }, onChange)} />
               <LinksEditor links={item.links} onChange={(links) => updateTimelineItem(section, item.id, { links }, onChange)} />
               <BlocksEditor blocks={item.blocks} onChange={(blocks) => updateTimelineItem(section, item.id, { blocks }, onChange)} />
             </div>
@@ -273,27 +284,27 @@ function ProjectGroupEditor({ section, onChange }: { section: ProjectGroupSectio
       onVisibleChange={(visible) => onChange({ ...section, visible })}
     >
       <Field label="섹션 제목" value={section.title} onChange={(title) => onChange({ ...section, title })} />
-      <div className="item-list">
+      <div className={itemListClass}>
         {section.items.map((item, index) => (
-          <details className="editor-card collapsible-card" key={item.id} open>
-            <summary>
+          <details className={collapsibleCardClass} key={item.id} open>
+            <summary className={cardSummaryClass}>
               <span>{plainText(item.title) || `프로젝트 ${index + 1}`}</span>
               <span>{item.visible ? `${item.blocks.length}개 블록` : "숨김"}</span>
             </summary>
-            <div className="editor-card-body">
+            <div className={cardBodyClass}>
               <ItemActions
                 onUp={index ? () => onChange({ ...section, items: move(section.items, index, index - 1).map((entry, order) => ({ ...entry, order })) }) : undefined}
                 onDown={index < section.items.length - 1 ? () => onChange({ ...section, items: move(section.items, index, index + 1).map((entry, order) => ({ ...entry, order })) }) : undefined}
                 onDelete={() => onChange({ ...section, items: section.items.filter((entry) => entry.id !== item.id) })}
               />
-              <label className="check-field">
+              <label className={checkFieldClass}>
                 <input type="checkbox" checked={item.visible} onChange={(event) => updateItem(item.id, { visible: event.target.checked })} />
                 미리보기에 표시
               </label>
               <DateRangeEditor item={item} onChange={(period) => updateItem(item.id, { period })} />
               <Field label="소속" value={item.organization} onChange={(organization) => updateItem(item.id, { organization })} />
-              <RichTextEditor label="프로젝트명" multiline={false} value={item.title} onChange={(title) => updateItem(item.id, { title })} />
-              <RichTextEditor label="프로젝트 소개" value={item.summary} onChange={(summary) => updateItem(item.id, { summary })} />
+              <RichTextEditor className="mt-[11px]" label="프로젝트명" multiline={false} value={item.title} onChange={(title) => updateItem(item.id, { title })} />
+              <RichTextEditor className="mt-[11px]" label="프로젝트 소개" value={item.summary} onChange={(summary) => updateItem(item.id, { summary })} />
               <LinksEditor links={item.links} onChange={(links) => updateItem(item.id, { links })} />
               <BlocksEditor blocks={item.blocks} onChange={(blocks) => updateItem(item.id, { blocks })} />
             </div>
@@ -323,7 +334,7 @@ function FreeTextEditor({ section, onChange }: { section: FreeTextSection; onCha
 
 function DateRangeEditor({ item, onChange }: { item: { period: { start: string; end: string; label?: string } }; onChange: (period: { start: string; end: string; label?: string }) => void }) {
   return (
-    <div className="field-grid field-grid--three">
+    <div className={`${fieldGridClass} grid-cols-3`}>
       <Field label="시작" value={item.period.start} placeholder="2023. 01" onChange={(start) => onChange({ ...item.period, start })} />
       <Field label="종료" value={item.period.end} placeholder="현재" onChange={(end) => onChange({ ...item.period, end })} />
       <Field label="기간 표기" value={item.period.label ?? ""} placeholder="1년 2개월" onChange={(label) => onChange({ ...item.period, label })} />
@@ -333,16 +344,16 @@ function DateRangeEditor({ item, onChange }: { item: { period: { start: string; 
 
 function LinksEditor({ links, onChange }: { links: ResumeLink[]; onChange: (links: ResumeLink[]) => void }) {
   return (
-    <div className="sub-editor">
-      <div className="sub-editor-header">
+    <div className="mt-[13px]">
+      <div className="flex min-h-[25px] items-center justify-between text-[11px] font-[680] text-[#687384]">
         <span>링크</span>
-        <button type="button" className="text-button" onClick={() => onChange([...links, createLink()])}>＋ 추가</button>
+        <button type="button" className={textButtonClass} onClick={() => onChange([...links, createLink()])}>＋ 추가</button>
       </div>
       {links.map((link) => (
-        <div className="link-editor-row" key={link.id}>
-          <input aria-label="링크 이름" value={link.label} placeholder="링크 이름" onChange={(event) => onChange(links.map((entry) => entry.id === link.id ? { ...entry, label: event.target.value } : entry))} />
-          <input aria-label="링크 URL" type="url" value={link.href} placeholder="https://" onChange={(event) => onChange(links.map((entry) => entry.id === link.id ? { ...entry, href: event.target.value } : entry))} />
-          <button type="button" className="icon-button" aria-label="링크 삭제" onClick={() => onChange(links.filter((entry) => entry.id !== link.id))}>×</button>
+        <div className="mt-1.5 grid grid-cols-[0.7fr_1.3fr_28px] gap-1.5" key={link.id}>
+          <input className={smallInputClass} aria-label="링크 이름" value={link.label} placeholder="링크 이름" onChange={(event) => onChange(links.map((entry) => entry.id === link.id ? { ...entry, label: event.target.value } : entry))} />
+          <input className={smallInputClass} aria-label="링크 URL" type="url" value={link.href} placeholder="https://" onChange={(event) => onChange(links.map((entry) => entry.id === link.id ? { ...entry, href: event.target.value } : entry))} />
+          <button type="button" className={iconButtonClass} aria-label="링크 삭제" onClick={() => onChange(links.filter((entry) => entry.id !== link.id))}>×</button>
         </div>
       ))}
     </div>
@@ -351,11 +362,11 @@ function LinksEditor({ links, onChange }: { links: ResumeLink[]; onChange: (link
 
 function BlocksEditor({ blocks, onChange }: { blocks: ContentBlock[]; onChange: (blocks: ContentBlock[]) => void }) {
   return (
-    <div className="blocks-editor">
-      <div className="sub-editor-header"><span>콘텐츠 블록</span></div>
+    <div className="mt-[13px]">
+      <div className="flex min-h-[25px] items-center justify-between text-[11px] font-[680] text-[#687384]"><span>콘텐츠 블록</span></div>
       {blocks.map((block, index) => (
-        <div className="block-card" key={block.id}>
-          <div className="block-card-header">
+        <div className="mt-2 rounded-lg border border-[#e3e7ec] bg-[#fdfdfd] p-2.5" key={block.id}>
+          <div className="mb-[9px] flex items-center justify-between text-[11px] font-bold text-[#4f5a6a] [&_.item-actions]:mb-0">
             <span>{blockLabel(block.type)}</span>
             <ItemActions
               onUp={index ? () => onChange(move(blocks, index, index - 1)) : undefined}
@@ -366,9 +377,9 @@ function BlocksEditor({ blocks, onChange }: { blocks: ContentBlock[]; onChange: 
           <BlockFields block={block} onChange={(next) => onChange(blocks.map((entry) => entry.id === block.id ? next : entry))} />
         </div>
       ))}
-      <div className="block-add-row">
+      <div className="mt-[9px] flex flex-wrap gap-[5px]">
         {(["paragraph", "bullet-list", "detail", "link-list", "tech-stack"] as const).map((type) => (
-          <button key={type} type="button" onClick={() => onChange([...blocks, createBlock(type)])}>＋ {blockLabel(type)}</button>
+          <button className="cursor-pointer rounded-md border border-[#dce2e9] bg-white px-2 py-1.5 text-[10px] text-[#5d6a7c] hover:border-[#9ebdea] hover:text-[#1768e5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3178ff]" key={type} type="button" onClick={() => onChange([...blocks, createBlock(type)])}>＋ {blockLabel(type)}</button>
         ))}
       </div>
     </div>
@@ -381,29 +392,29 @@ function BlockFields({ block, onChange }: { block: ContentBlock; onChange: (bloc
   }
   if (block.type === "bullet-list") {
     return (
-      <div className="repeated-fields">
+      <div>
         {block.items.map((item, index) => (
-          <div className="repeat-row" key={index}>
+          <div className="mb-2 grid grid-cols-[1fr_27px] items-start gap-1.5" key={index}>
             <RichTextEditor label={`항목 ${index + 1}`} value={item} onChange={(content) => onChange({ ...block, items: block.items.map((entry, itemIndex) => itemIndex === index ? content : entry) })} />
-            <button type="button" className="icon-button" aria-label="항목 삭제" onClick={() => onChange({ ...block, items: block.items.filter((_, itemIndex) => itemIndex !== index) })}>×</button>
+            <button type="button" className={`${iconButtonClass} mt-[29px]`} aria-label="항목 삭제" onClick={() => onChange({ ...block, items: block.items.filter((_, itemIndex) => itemIndex !== index) })}>×</button>
           </div>
         ))}
-        <button type="button" className="text-button" onClick={() => onChange({ ...block, items: [...block.items, emptyText()] })}>＋ bullet 추가</button>
+        <button type="button" className={textButtonClass} onClick={() => onChange({ ...block, items: [...block.items, emptyText()] })}>＋ bullet 추가</button>
       </div>
     );
   }
   if (block.type === "detail") {
     return (
-      <div className="stack-fields">
+      <div className="flex flex-col gap-[9px]">
         <RichTextEditor label="성과 제목" multiline={false} value={block.title} onChange={(title) => onChange({ ...block, title })} />
         <RichTextEditor label="문제·배경" value={block.context} onChange={(context) => onChange({ ...block, context })} />
         {block.actions.map((action, index) => (
-          <div className="repeat-row" key={index}>
+          <div className="grid grid-cols-[1fr_27px] items-start gap-1.5" key={index}>
             <RichTextEditor label={`해결 과정 ${index + 1}`} value={action} onChange={(content) => onChange({ ...block, actions: block.actions.map((entry, actionIndex) => actionIndex === index ? content : entry) })} />
-            <button type="button" className="icon-button" aria-label="해결 과정 삭제" onClick={() => onChange({ ...block, actions: block.actions.filter((_, actionIndex) => actionIndex !== index) })}>×</button>
+            <button type="button" className={`${iconButtonClass} mt-[29px]`} aria-label="해결 과정 삭제" onClick={() => onChange({ ...block, actions: block.actions.filter((_, actionIndex) => actionIndex !== index) })}>×</button>
           </div>
         ))}
-        <button type="button" className="text-button" onClick={() => onChange({ ...block, actions: [...block.actions, emptyText()] })}>＋ 해결 과정 추가</button>
+        <button type="button" className={textButtonClass} onClick={() => onChange({ ...block, actions: [...block.actions, emptyText()] })}>＋ 해결 과정 추가</button>
         <RichTextEditor label="결과" value={block.result} onChange={(result) => onChange({ ...block, result })} />
       </div>
     );

@@ -23,9 +23,11 @@
     "vite": "^7.1.7"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.5.2",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.2"
   },
   "allowScripts": {

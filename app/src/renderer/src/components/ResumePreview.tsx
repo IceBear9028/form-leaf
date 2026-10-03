@@ -64,7 +64,7 @@ export function ResumePreview({ document, zoom }: { document: ResumeDocument; zo
   const visiblePages = pages.length ? pages : [{ id: "page-1", units: [], overflow: false }];
 
   return (
-    <main className="preview-panel" aria-label="A4 미리보기">
+    <main className="preview-panel min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 pb-[100px] pt-[34px] max-[1180px]:px-6" aria-label="A4 미리보기">
       <div className="measurement-root" aria-hidden="true">
         <div className={`resume-page measurement-page ${styleSheet.className}`}>
           <div className="resume-page-body measurement-body" ref={capacityRef}>
@@ -74,7 +74,7 @@ export function ResumePreview({ document, zoom }: { document: ResumeDocument; zo
           </div>
         </div>
       </div>
-      <div className="preview-stack" style={{ "--preview-zoom": zoom } as React.CSSProperties}>
+      <div className="preview-stack mx-auto w-max [zoom:var(--preview-zoom)]" style={{ "--preview-zoom": zoom } as React.CSSProperties}>
         {visiblePages.map((page, pageIndex) => (
           <article className={`resume-page ${styleSheet.className}${page.overflow ? " resume-page--overflow" : ""}`} key={page.id}>
             <div className="resume-page-body">
