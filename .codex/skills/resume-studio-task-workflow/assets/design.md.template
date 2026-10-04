@@ -1,0 +1,41 @@
+# {{TASK_TITLE}} 기술 설계
+
+## 현재 구조
+
+{{CURRENT_ARCHITECTURE}}
+
+## 변경 구조
+
+{{TARGET_ARCHITECTURE}}
+
+## 데이터 흐름
+
+{{DATA_FLOW}}
+
+## 사용자 흐름
+
+{{USER_FLOW}}
+
+## 영향받는 코드
+
+| 영역 | 파일 또는 모듈 | 변경 책임 |
+|---|---|---|
+| {{AREA_1}} | `{{PATH_1}}` | {{RESPONSIBILITY_1}} |
+
+## 저장과 복구
+
+{{PERSISTENCE_AND_RECOVERY}}
+
+## 오류와 경계 조건
+
+- {{EDGE_CASE_1}}
+
+## 결정과 근거
+
+| 결정 | 근거 | 대안 |
+|---|---|---|
+| {{DECISION_1}} | {{RATIONALE_1}} | {{ALTERNATIVE_1}} |
+
+## 검증 전략
+
+{{VALIDATION_STRATEGY}}

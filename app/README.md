@@ -4,6 +4,21 @@
 
 ## 실행
 
+`resume-studio` 프로젝트 루트에서 실행할 때는 `app`의 `package.json`을 명시한다.
+
+```bash
+cd /Users/isang-yun/code/resume-studio
+npm --prefix app run app
+```
+
+개발 모드는 다음과 같이 실행한다.
+
+```bash
+npm --prefix app run dev
+```
+
+또는 `app` 디렉터리로 이동한 뒤 일반 npm 명령을 사용할 수 있다.
+
 ```bash
 cd /Users/isang-yun/code/resume-studio/app
 npm install
@@ -15,6 +30,8 @@ npm run dev
 ```bash
 npm run app
 ```
+
+프로젝트 루트에는 `package.json`이 없으므로 루트에서 `npm run app`만 실행하면 동작하지 않는다.
 
 ## 구현 구조
 

@@ -1,0 +1,35 @@
+# {{TASK_ID}}. {{TASK_TITLE}}
+
+## 상태
+
+계획 중
+
+## 문제
+
+{{PROBLEM}}
+
+## 사용자 경험
+
+{{USER_EXPERIENCE}}
+
+## 목표
+
+- {{GOAL_1}}
+
+## 포함 범위
+
+- {{IN_SCOPE_1}}
+
+## 제외 범위
+
+- {{OUT_OF_SCOPE_1}}
+
+## 완료 조건
+
+- [ ] {{ACCEPTANCE_CRITERION_1}}
+
+## 관련 문서
+
+- [구현 계획](plan.md)
+- [기술 설계](design.md)
+- [세션 인수인계](handoff.md)
