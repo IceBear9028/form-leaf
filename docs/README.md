@@ -18,5 +18,6 @@
 |---|---|---|---|
 | 00 | 첨부 PDF 재현 및 PDF 내보내기 | 완료 | [00-reference-pdf](00-reference-pdf/README.md) |
 | 01 | 이력서 편집 기능 및 데이터 구조 단순화 | 검증 중 | [01-resume-feature-improvement](01-resume-feature-improvement/README.md) |
+| 02 | 미리보기 Markdown 직접 편집 | 1차 구현 완료·사용자 검증 중 | [02-preview-markdown-editing](02-preview-markdown-editing/README.md) |
 
-현재 활성 작업은 `01`이다. 다음 작업 단위는 `01`이 완료되고 실제 다음 목표가 정해진 뒤 생성한다.
+현재 기능 개발 대상은 `02`다. `01`에는 손상 백업 복구와 실제 PDF 비교 검증만 남아 있으며, 해당 회귀 검증 결과는 기존 문서에 계속 기록한다.

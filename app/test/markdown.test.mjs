@@ -2,14 +2,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   contentBlocksToMarkdown,
+  markdownTextSegments,
+  markdownEditableBlankLineOffsets,
   parseMarkdownInline,
   parseResumeMarkdown,
   parseResumeMarkdownTree,
   textContentToMarkdown,
 } from "../src/shared/markdown.ts";
+import {
+  replaceMarkdownRange,
+  replaceMarkdownText,
+  toggleMarkdownInlineFormat,
+  toggleMarkdownLink,
+} from "../src/shared/markdownEdits.ts";
 
 test("본문을 페이지네이션 가능한 Markdown 블록으로 분리한다", () => {
-  const blocks = parseResumeMarkdown(`첫 문단입니다.
+  const source = `첫 문단입니다.
 같은 문단의 다음 줄입니다.
 
 ### 검색 **성능** 개선
@@ -18,7 +26,8 @@ test("본문을 페이지네이션 가능한 Markdown 블록으로 분리한다"
 - 캐시를 적용했습니다.
   같은 목록 항목의 다음 줄입니다.
 
-# 이제 지원하는 큰 제목입니다.`);
+# 이제 지원하는 큰 제목입니다.`;
+  const blocks = parseResumeMarkdown(source);
 
   assert.deepEqual(blocks.map((block) => block.node.type), [
     "paragraph",
@@ -28,6 +37,12 @@ test("본문을 페이지네이션 가능한 Markdown 블록으로 분리한다"
   ]);
   assert.deepEqual(blocks[0].node.children.map((node) => node.type), ["text", "break", "text"]);
   assert.equal(blocks[0].node.children[0].value, "첫 문단입니다.");
+  assert.deepEqual(
+    blocks[0].node.children.map((node) =>
+      source.slice(node.position.start.offset, node.position.end.offset),
+    ),
+    ["첫 문단입니다.", "\n", "같은 문단의 다음 줄입니다."],
+  );
   assert.equal(blocks[1].node.depth, 3);
   assert.deepEqual(blocks[1].node.children.map((node) => node.type), ["text", "strong", "text"]);
   assert.equal(blocks[2].node.ordered, false);
@@ -37,6 +52,18 @@ test("본문을 페이지네이션 가능한 Markdown 블록으로 분리한다"
     "text",
   ]);
   assert.equal(blocks[3].node.depth, 1);
+});
+
+test("인라인 강제 줄바꿈은 제목을 나누지 않고 같은 Markdown 블록에 유지한다", () => {
+  const source = "### 첫 줄<br>둘째 줄";
+  const blocks = parseResumeMarkdown(source);
+
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].node.type, "heading");
+  assert.deepEqual(blocks[0].node.children.map((node) => node.type), ["text", "html", "text"]);
+  assert.equal(blocks[0].node.children[1].value, "<br>");
+  assert.equal(blocks[0].node.children[1].position.start.offset, source.indexOf("<br>"));
+  assert.equal(blocks[0].node.children[1].position.end.offset, source.indexOf("<br>") + 4);
 });
 
 test("문단 사이에 추가로 입력한 빈 줄 수를 보존한다", () => {
@@ -52,6 +79,65 @@ test("문단 사이에 추가로 입력한 빈 줄 수를 보존한다", () => {
 ### 제목`);
 
   assert.deepEqual(blocks.map((block) => block.extraBlankLinesBefore), [0, 0, 1, 2]);
+});
+
+test("공백이 섞인 문단 사이 빈 줄도 편집 가능한 source offset으로 계산한다", () => {
+  const source = "첫 문단\n\n\n   \n\n두 번째 문단";
+  const secondStart = source.indexOf("두 번째");
+
+  assert.deepEqual(
+    markdownEditableBlankLineOffsets(source, "첫 문단".length, secondStart, 2),
+    [5, 6, 7],
+  );
+});
+
+test("화면 텍스트를 이스케이프와 밑줄 marker를 제외한 원문 범위에 연결한다", () => {
+  const source = "문자 \\*표시\\*와 ++밑줄++";
+  const tree = parseResumeMarkdownTree(source);
+  const node = tree.children[0].children[0];
+  const segments = markdownTextSegments(
+    source,
+    node.position.start.offset,
+    node.position.end.offset,
+    node.value,
+  );
+
+  assert.deepEqual(segments.map(({ text, underline }) => ({ text, underline })), [
+    { text: "문자 *표시*와 ", underline: false },
+    { text: "밑줄", underline: true },
+  ]);
+  assert.equal(source.slice(segments[0].sourceStart, segments[0].sourceEnd), "문자 \\*표시\\*와 ");
+  assert.equal(source.slice(segments[1].sourceStart, segments[1].sourceEnd), "밑줄");
+});
+
+test("Markdown 원문 편집과 인라인 서식을 source range 트랜잭션으로 처리한다", () => {
+  assert.deepEqual(replaceMarkdownRange("앞 내용 뒤", { start: 2, end: 4 }, "수정"), {
+    source: "앞 수정 뒤",
+    selection: { start: 4, end: 4 },
+  });
+  assert.deepEqual(replaceMarkdownText("본문", { start: 0, end: 2 }, "새 *본문*", { start: 2, end: 6 }), {
+    source: "새 \\*본문\\*",
+    selection: { start: 2, end: 8 },
+  });
+
+  const strong = toggleMarkdownInlineFormat("빠른 검색", { start: 0, end: 5 }, "strong");
+  assert.equal(strong.source, "**빠른 검색**");
+  assert.deepEqual(strong.selection, { start: 2, end: 7 });
+  assert.deepEqual(toggleMarkdownInlineFormat(strong.source, strong.selection, "strong"), {
+    source: "빠른 검색",
+    selection: { start: 0, end: 5 },
+  });
+
+  const link = toggleMarkdownLink("문서 보기", { start: 0, end: 2 }, "https://example.com/a(b)");
+  assert.equal(link.source, "[문서](https://example.com/a\\(b\\)) 보기");
+  assert.deepEqual(toggleMarkdownLink(link.source, link.selection, "mailto:resume@example.com"), {
+    source: "[문서](mailto:resume@example.com) 보기",
+    selection: { start: 1, end: 3 },
+  });
+  assert.deepEqual(toggleMarkdownLink(link.source, link.selection), {
+    source: "문서 보기",
+    selection: { start: 0, end: 2 },
+  });
 });
 
 test("CommonMark와 GFM의 기본 블록을 mdast 의미 구조로 보존한다", () => {

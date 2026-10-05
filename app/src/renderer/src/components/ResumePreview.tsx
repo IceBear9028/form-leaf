@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
   ProfileSection,
   ProjectItem,
@@ -10,14 +10,29 @@ import type {
 } from "../../../shared/resume";
 import { plainText } from "../../../shared/resume";
 import { parseResumeMarkdown, type ResumeMarkdownBlock } from "../../../shared/markdown";
+import {
+  replaceMarkdownRange,
+  replaceMarkdownText,
+  toggleMarkdownInlineFormat,
+  toggleMarkdownLink,
+  type MarkdownInlineFormat,
+  type MarkdownSourceRange,
+} from "../../../shared/markdownEdits";
 import { getResumeStyleSheet } from "../styles/resumeStyleSheets";
 import {
   MarkdownBlockContent,
   MarkdownFootnotesContent,
   type MarkdownContext,
 } from "./MarkdownContent";
+import { MarkdownSelectionToolbar } from "./MarkdownSelectionToolbar";
 
 type MarkdownOwner = "introduction" | "project" | "career" | "education" | "activity" | "free-text";
+
+type MarkdownSourceTarget = {
+  sourceId: string;
+  sectionId: string;
+  itemId?: string;
+};
 
 type MarkdownLayoutUnit = {
   id: string;
@@ -27,6 +42,8 @@ type MarkdownLayoutUnit = {
   context: MarkdownContext;
   owner: MarkdownOwner;
   sourceId: string;
+  source: string;
+  sourceTarget: MarkdownSourceTarget;
   lead?: boolean;
   keepWithNext?: boolean;
   lineSegment?: boolean;
@@ -44,12 +61,47 @@ type LayoutUnit =
 
 type Page = { id: string; units: LayoutUnit[]; overflow: boolean };
 
-export function ResumePreview({ document, zoom }: { document: ResumeDocument; zoom: number }) {
+type PreviewMarkdownSelection = {
+  sourceId: string;
+  groupId: string;
+  range: MarkdownSourceRange;
+  rect: DOMRect;
+};
+
+type MarkdownDomSelection = PreviewMarkdownSelection;
+
+type MarkdownHistoryEntry = {
+  target: MarkdownSourceTarget;
+  before: string;
+  after: string;
+  selectionBefore: MarkdownSourceRange;
+  selectionAfter: MarkdownSourceRange;
+  reason: "typing" | "format" | "link";
+  at: number;
+};
+
+export function ResumePreview({ document, zoom, onChange }: {
+  document: ResumeDocument;
+  zoom: number;
+  onChange: (change: ResumeDocument | ((current: ResumeDocument) => ResumeDocument)) => void;
+}) {
   const styleSheet = getResumeStyleSheet(document.styleSheetId);
   const units = useMemo(() => buildUnits(document), [document]);
   const [pages, setPages] = useState<Page[]>(() => [{ id: "page-1", units, overflow: false }]);
   const measureRef = useRef<HTMLDivElement>(null);
   const capacityRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLElement>(null);
+  const pendingSelectionRef = useRef<{ sourceId: string; range: MarkdownSourceRange } | undefined>(undefined);
+  const sourceCacheRef = useRef(new Map<string, string>());
+  const undoRef = useRef<MarkdownHistoryEntry[]>([]);
+  const redoRef = useRef<MarkdownHistoryEntry[]>([]);
+  const [markdownSelection, setMarkdownSelection] = useState<PreviewMarkdownSelection>();
+
+  units.forEach((unit) => {
+    if (unit.type === "markdown-block" || unit.type === "markdown-footnotes") {
+      sourceCacheRef.current.set(unit.sourceId, unit.source);
+    }
+  });
 
   useLayoutEffect(() => {
     let frame = requestAnimationFrame(() => {
@@ -81,10 +133,258 @@ export function ResumePreview({ document, zoom }: { document: ResumeDocument; zo
     return () => cancelAnimationFrame(frame);
   }, [units]);
 
-  const visiblePages = pages.length ? pages : [{ id: "page-1", units: [], overflow: false }];
+  useEffect(() => {
+    const updateSelection = () => {
+      const root = previewRef.current;
+      setMarkdownSelection(root ? readMarkdownSelection(root) : undefined);
+    };
+    globalThis.document.addEventListener("selectionchange", updateSelection);
+    window.addEventListener("resize", updateSelection);
+    return () => {
+      globalThis.document.removeEventListener("selectionchange", updateSelection);
+      window.removeEventListener("resize", updateSelection);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const pending = pendingSelectionRef.current;
+    const root = previewRef.current;
+    const visibleUnit = pending ? findMarkdownUnit(units, pending.sourceId) : undefined;
+    if (
+      !pending ||
+      !root ||
+      !visibleUnit ||
+      visibleUnit.source !== sourceCacheRef.current.get(pending.sourceId) ||
+      !restoreMarkdownSelection(root, pending.sourceId, pending.range)
+    ) return;
+    pendingSelectionRef.current = undefined;
+    setMarkdownSelection(readMarkdownSelection(root));
+  }, [pages, document, units]);
+
+  const updateSource = (
+    target: MarkdownSourceTarget,
+    edit: (source: string) => { source: string; selection: MarkdownSourceRange },
+    options?: {
+      reason?: MarkdownHistoryEntry["reason"];
+      selectionBefore?: MarkdownSourceRange;
+      recordHistory?: boolean;
+    },
+  ) => {
+    const currentSource = sourceCacheRef.current.get(target.sourceId) ?? "";
+    const result = edit(currentSource);
+    if (result.source === currentSource) return result;
+    const reason = options?.reason ?? "typing";
+    if (options?.recordHistory !== false) {
+      recordMarkdownHistory(undoRef.current, {
+        target,
+        before: currentSource,
+        after: result.source,
+        selectionBefore: options?.selectionBefore ?? result.selection,
+        selectionAfter: result.selection,
+        reason,
+        at: Date.now(),
+      });
+      redoRef.current = [];
+    }
+    sourceCacheRef.current.set(target.sourceId, result.source);
+    pendingSelectionRef.current = { sourceId: target.sourceId, range: result.selection };
+    onChange((current) => replaceMarkdownSource(current, target, result.source));
+    return result;
+  };
+
+  const editText = (
+    unit: MarkdownLayoutUnit,
+    range: MarkdownSourceRange,
+    visibleText: string,
+    visibleSelection: MarkdownSourceRange,
+  ): void => {
+    updateSource(
+      unit.sourceTarget,
+      (source) => replaceMarkdownText(source, range, visibleText, visibleSelection),
+      { reason: "typing", selectionBefore: range },
+    );
+  };
+
+  const editFromInput = (
+    unit: MarkdownLayoutUnit,
+    root: HTMLElement,
+    inputType: string,
+    data?: string,
+  ) => {
+    const selection = readMarkdownSourceSelection(root, true);
+    if (!selection || selection.sourceId !== unit.sourceId) return;
+    let range = selection.range;
+
+    if (inputType.startsWith("delete")) {
+      if (range.start === range.end) {
+        const direction = /Backward$/.test(inputType) ? "backward" : "forward";
+        const source = sourceCacheRef.current.get(unit.sourceId) ?? unit.source;
+        const granularity = /Word/.test(inputType)
+          ? "word"
+          : /Line/.test(inputType)
+            ? "line"
+            : "grapheme";
+        const domSelection = window.getSelection();
+        const anchorElement = domSelection?.anchorNode instanceof HTMLElement
+          ? domSelection.anchorNode
+          : domSelection?.anchorNode?.parentElement;
+        const atEmptyBlock = Boolean(
+          anchorElement?.closest(".markdown-empty-block") &&
+          root.contains(anchorElement),
+        );
+        const backwardBreak = direction === "backward"
+          ? source.slice(0, range.start).match(/<br\s*\/?>$/i)?.[0]
+          : undefined;
+        const forwardBreak = direction === "forward"
+          ? source.slice(range.start).match(/^<br\s*\/?>/i)?.[0]
+          : undefined;
+        const adjacent = direction === "backward" && atEmptyBlock &&
+          source.slice(range.start - 2, range.start) === "\n\n"
+          ? { start: range.start - 2, end: range.start }
+          : backwardBreak
+          ? { start: range.start - backwardBreak.length, end: range.start }
+          : forwardBreak
+            ? { start: range.start, end: range.start + forwardBreak.length }
+            : direction === "backward" && source[range.start - 1] === "\n"
+              ? { start: range.start - 1, end: range.start }
+              : direction === "forward" && source[range.start] === "\n"
+                ? { start: range.start, end: range.start + 1 }
+                : adjacentDeletionRange(root, selection, direction, granularity);
+        if (!adjacent) return;
+        range = adjacent;
+      }
+      updateSource(
+        unit.sourceTarget,
+        (source) => replaceMarkdownRange(source, range, ""),
+        { reason: "typing", selectionBefore: selection.range },
+      );
+      return;
+    }
+
+    const isParagraphBreak = inputType === "insertParagraph";
+    const isLineBreak = inputType === "insertLineBreak";
+    const insertedText = isParagraphBreak
+      ? "\n\n"
+      : isLineBreak
+        ? "<br>"
+        : data;
+    if (insertedText === undefined) return;
+    if (isParagraphBreak && range.start === range.end) {
+      const source = sourceCacheRef.current.get(unit.sourceId) ?? unit.source;
+      let start = range.start;
+      let end = range.end;
+      while (start > 0 && /[ \t]/.test(source[start - 1] ?? "")) start -= 1;
+      while (end < source.length && /[ \t]/.test(source[end] ?? "")) end += 1;
+      range = { start, end };
+    }
+    if (/^[ \t]+$/.test(insertedText) && range.start === range.end) {
+      const source = sourceCacheRef.current.get(unit.sourceId) ?? unit.source;
+      const outsideFormat = whitespaceOffsetOutsideInlineFormat(root, range.start, source);
+      if (outsideFormat !== undefined) {
+        range = { start: outsideFormat, end: outsideFormat };
+      }
+    }
+    if (
+      (isParagraphBreak || isLineBreak) &&
+      range.start === range.end &&
+      unit.block?.node.position?.end.offset !== undefined
+    ) {
+      const mappedOffsets = Array.from(root.querySelectorAll<HTMLElement>("[data-markdown-source-map]"))
+        .flatMap((element) => parseSourceMap(element.dataset.markdownSourceMap));
+      const lastVisibleOffset = Math.max(...mappedOffsets);
+      if (range.start === lastVisibleOffset && unit.block.node.position.end.offset > range.start) {
+        range = {
+          start: unit.block.node.position.end.offset,
+          end: unit.block.node.position.end.offset,
+        };
+      }
+    }
+    updateSource(unit.sourceTarget, (source) =>
+      isLineBreak
+        ? replaceMarkdownRange(source, range, insertedText)
+        : replaceMarkdownText(
+            source,
+            range,
+            insertedText,
+            { start: insertedText.length, end: insertedText.length },
+          ),
+      { reason: "typing", selectionBefore: selection.range },
+    );
+  };
+
+  const applyFormat = (format: MarkdownInlineFormat) => {
+    if (!markdownSelection) return;
+    const unit = findMarkdownUnit(units, markdownSelection.sourceId);
+    if (!unit) return;
+    updateSource(
+      unit.sourceTarget,
+      (source) => toggleMarkdownInlineFormat(source, markdownSelection.range, format),
+      { reason: "format", selectionBefore: markdownSelection.range },
+    );
+  };
+
+  const applyLink = () => {
+    if (!markdownSelection) return;
+    const unit = findMarkdownUnit(units, markdownSelection.sourceId);
+    if (!unit) return;
+    const href = window.prompt("링크 URL을 입력하세요. 비워두면 링크가 제거됩니다.", "https://");
+    if (href === null) return;
+    updateSource(
+      unit.sourceTarget,
+      (source) => toggleMarkdownLink(source, markdownSelection.range, href.trim() || undefined),
+      { reason: "link", selectionBefore: markdownSelection.range },
+    );
+  };
+
+  const applyHistory = (direction: "undo" | "redo") => {
+    const sourceStack = direction === "undo" ? undoRef.current : redoRef.current;
+    const destinationStack = direction === "undo" ? redoRef.current : undoRef.current;
+    const entry = sourceStack.pop();
+    if (!entry) return;
+    const expected = direction === "undo" ? entry.after : entry.before;
+    const replacement = direction === "undo" ? entry.before : entry.after;
+    const selection = direction === "undo" ? entry.selectionBefore : entry.selectionAfter;
+    if (sourceCacheRef.current.get(entry.target.sourceId) !== expected) {
+      sourceStack.length = 0;
+      destinationStack.length = 0;
+      return;
+    }
+    destinationStack.push(entry);
+    sourceCacheRef.current.set(entry.target.sourceId, replacement);
+    pendingSelectionRef.current = { sourceId: entry.target.sourceId, range: selection };
+    onChange((current) => replaceMarkdownSource(current, entry.target, replacement));
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const modifier = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      const previewHasFocus = previewRef.current?.contains(globalThis.document.activeElement);
+      if (modifier && previewHasFocus && (key === "z" || key === "y")) {
+        event.preventDefault();
+        applyHistory(key === "y" || event.shiftKey ? "redo" : "undo");
+        return;
+      }
+      if (!markdownSelection || !modifier) return;
+      const format: MarkdownInlineFormat | undefined = key === "b"
+        ? "strong"
+        : key === "i"
+          ? "emphasis"
+          : key === "u"
+            ? "underline"
+            : undefined;
+      if (!format) return;
+      event.preventDefault();
+      applyFormat(format);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
+  const visiblePages = reconcileVisiblePages(pages, units);
 
   return (
-    <main className="preview-panel min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 pb-[100px] pt-[34px] max-[1180px]:px-6" aria-label="A4 미리보기">
+    <main ref={previewRef} className="preview-panel min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 pb-[100px] pt-[34px] max-[1180px]:px-6" aria-label="A4 미리보기">
       <div className="measurement-root" aria-hidden="true">
         <div className={`resume-page measurement-page ${styleSheet.className}`} style={styleSheet.variables}>
           <div className="resume-page-body measurement-body" ref={capacityRef}>
@@ -98,7 +398,15 @@ export function ResumePreview({ document, zoom }: { document: ResumeDocument; zo
         {visiblePages.map((page, pageIndex) => (
           <article className={`resume-page ${styleSheet.className}${page.overflow ? " resume-page--overflow" : ""}`} style={styleSheet.variables} key={page.id}>
             <div className="resume-page-body">
-              {page.units.map((unit, unitIndex) => <LayoutUnitView key={unit.id} unit={unit} firstOnPage={unitIndex === 0} />)}
+              {page.units.map((unit, unitIndex) => (
+                <LayoutUnitView
+                  key={unit.id}
+                  unit={unit}
+                  firstOnPage={unitIndex === 0}
+                  onTextEdit={editText}
+                  onEditIntent={editFromInput}
+                />
+              ))}
               {!page.units.length && pageIndex === 0 && (
                 <div className="empty-resume-hint">왼쪽 편집기에서 이력서 내용을 입력하세요.</div>
               )}
@@ -107,12 +415,46 @@ export function ResumePreview({ document, zoom }: { document: ResumeDocument; zo
           </article>
         ))}
       </div>
+      {markdownSelection && (
+        <MarkdownSelectionToolbar
+          rect={markdownSelection.rect}
+          onFormat={applyFormat}
+          onLink={applyLink}
+        />
+      )}
     </main>
   );
 }
 
 function documentFontsReady(): Promise<FontFaceSet> {
   return document.fonts.ready;
+}
+
+function reconcileVisiblePages(pages: Page[], units: LayoutUnit[]): Page[] {
+  if (!units.length) return [{ id: "page-1", units: [], overflow: false }];
+  if (!pages.length) return [{ id: "page-1", units, overflow: false }];
+  const pageStarts = new Map(
+    pages.slice(1).flatMap((page, index) =>
+      page.units[0] ? [[page.units[0].id, index + 1] as const] : [],
+    ),
+  );
+  const result: Page[] = [{
+    id: pages[0].id,
+    units: [],
+    overflow: pages[0].overflow,
+  }];
+  units.forEach((unit) => {
+    const pageIndex = pageStarts.get(unit.id);
+    if (pageIndex !== undefined && result.at(-1)?.units.length) {
+      result.push({
+        id: pages[pageIndex]?.id ?? `page-${result.length + 1}`,
+        units: [],
+        overflow: pages[pageIndex]?.overflow ?? false,
+      });
+    }
+    result.at(-1)!.units.push(unit);
+  });
+  return result;
 }
 
 function paginate(units: LayoutUnit[], heights: Map<string, number>, capacity: number): Page[] {
@@ -169,7 +511,7 @@ function buildUnits(document: ResumeDocument): LayoutUnit[] {
     if (section.type === "introduction") {
       const bodyUnits = markdownUnits({
         source: section.bodyMarkdown,
-        sourceId: section.id,
+        sourceTarget: markdownSourceTarget(section.id),
         context: "introduction",
         owner: "introduction",
       });
@@ -195,7 +537,7 @@ function buildUnits(document: ResumeDocument): LayoutUnit[] {
         const usesDivider = section.timelineKind !== "education";
         const bodyUnits = markdownUnits({
           source: item.bodyMarkdown,
-          sourceId: item.id,
+          sourceTarget: markdownSourceTarget(section.id, item.id),
           context: section.timelineKind,
           owner: section.timelineKind,
           lineSegment: usesDivider,
@@ -221,7 +563,7 @@ function buildUnits(document: ResumeDocument): LayoutUnit[] {
       items.forEach((item) => {
         const bodyUnits = markdownUnits({
           source: item.bodyMarkdown,
-          sourceId: item.id,
+          sourceTarget: markdownSourceTarget(section.id, item.id),
           context: section.groupKind,
           owner: "project",
           lineSegment: true,
@@ -242,7 +584,7 @@ function buildUnits(document: ResumeDocument): LayoutUnit[] {
     }
     const bodyUnits = markdownUnits({
       source: section.bodyMarkdown,
-      sourceId: section.id,
+      sourceTarget: markdownSourceTarget(section.id),
       context: "free-text",
       owner: "free-text",
       lineSegment: true,
@@ -257,7 +599,7 @@ function buildUnits(document: ResumeDocument): LayoutUnit[] {
 
 function markdownUnits({
   source,
-  sourceId,
+  sourceTarget,
   context,
   owner,
   lineSegment = false,
@@ -265,7 +607,7 @@ function markdownUnits({
   leadFirstParagraph = false,
 }: {
   source: string;
-  sourceId: string;
+  sourceTarget: MarkdownSourceTarget;
   context: MarkdownContext;
   owner: MarkdownOwner;
   lineSegment?: boolean;
@@ -273,19 +615,22 @@ function markdownUnits({
   leadFirstParagraph?: boolean;
 }): MarkdownLayoutUnit[] {
   if (!source.trim()) return [];
+  const { sourceId } = sourceTarget;
   const documentBlocks = parseResumeMarkdown(source);
   const visibleBlocks = documentBlocks.filter(({ node }) =>
     node.type !== "definition" && node.type !== "footnoteDefinition",
   );
   const firstParagraphId = visibleBlocks.find(({ node }) => node.type === "paragraph")?.id;
   const result: MarkdownLayoutUnit[] = visibleBlocks.map((block, index) => ({
-    id: `${sourceId}-${block.id}`,
+    id: `${sourceId}-block-${index}`,
     type: "markdown-block",
     block,
     documentBlocks,
     context,
     owner,
     sourceId,
+    source,
+    sourceTarget,
     lead: leadFirstParagraph && block.id === firstParagraphId,
     keepWithNext: block.node.type === "heading",
     lineSegment,
@@ -299,6 +644,8 @@ function markdownUnits({
       context,
       owner,
       sourceId,
+      source,
+      sourceTarget,
       lineSegment,
       lineStart: lineSegment && lineStart && result.length === 0,
     });
@@ -307,7 +654,409 @@ function markdownUnits({
   return result;
 }
 
-function LayoutUnitView({ unit, measure = false, firstOnPage = false }: { unit: LayoutUnit; measure?: boolean; firstOnPage?: boolean }) {
+function markdownSourceTarget(sectionId: string, itemId?: string): MarkdownSourceTarget {
+  return {
+    sourceId: itemId ? `section:${sectionId}/item:${itemId}` : `section:${sectionId}`,
+    sectionId,
+    itemId,
+  };
+}
+
+function recordMarkdownHistory(
+  history: MarkdownHistoryEntry[],
+  entry: MarkdownHistoryEntry,
+): void {
+  const previous = history.at(-1);
+  const canMerge = previous &&
+    previous.reason === "typing" &&
+    entry.reason === "typing" &&
+    previous.target.sourceId === entry.target.sourceId &&
+    previous.after === entry.before &&
+    entry.at - previous.at < 900;
+  if (canMerge) {
+    previous.after = entry.after;
+    previous.selectionAfter = entry.selectionAfter;
+    previous.at = entry.at;
+    if (previous.before === previous.after) history.pop();
+    return;
+  }
+  history.push(entry);
+  if (history.length > 100) history.shift();
+}
+
+function replaceMarkdownSource(
+  document: ResumeDocument,
+  target: MarkdownSourceTarget,
+  bodyMarkdown: string,
+): ResumeDocument {
+  return {
+    ...document,
+    sections: document.sections.map((section) => {
+      if (section.id !== target.sectionId) return section;
+      if (!target.itemId) {
+        return section.type === "introduction" || section.type === "free-text"
+          ? { ...section, bodyMarkdown }
+          : section;
+      }
+      if (section.type === "timeline") {
+        return {
+          ...section,
+          items: section.items.map((item) =>
+            item.id === target.itemId ? { ...item, bodyMarkdown } : item,
+          ),
+        };
+      }
+      if (section.type === "project-group") {
+        return {
+          ...section,
+          items: section.items.map((item) =>
+            item.id === target.itemId ? { ...item, bodyMarkdown } : item,
+          ),
+        };
+      }
+      return section;
+    }),
+  };
+}
+
+function findMarkdownUnit(
+  units: LayoutUnit[],
+  sourceId: string,
+): MarkdownLayoutUnit | undefined {
+  return units.find((unit): unit is MarkdownLayoutUnit =>
+    (unit.type === "markdown-block" || unit.type === "markdown-footnotes") &&
+    unit.sourceId === sourceId,
+  );
+}
+
+function readMarkdownSelection(root: HTMLElement): PreviewMarkdownSelection | undefined {
+  const selection = readMarkdownSourceSelection(root, false);
+  return selection?.range.start === selection?.range.end ? undefined : selection;
+}
+
+function readMarkdownSourceSelection(
+  root: HTMLElement,
+  allowCollapsed: boolean,
+): MarkdownDomSelection | undefined {
+  const selection = window.getSelection();
+  if (!selection || (!allowCollapsed && selection.isCollapsed) || !selection.rangeCount) return undefined;
+  const range = selection.getRangeAt(0);
+  if (!root.contains(range.commonAncestorContainer)) return undefined;
+  const start = markdownSourcePoint(
+    range.startContainer,
+    range.startOffset,
+    range.collapsed ? "caret" : "start",
+  );
+  const end = range.collapsed
+    ? start
+    : markdownSourcePoint(range.endContainer, range.endOffset, "end");
+  if (!start || !end || start.sourceId !== end.sourceId || start.groupId !== end.groupId) {
+    return undefined;
+  }
+  const sourceRange = {
+    start: Math.min(start.offset, end.offset),
+    end: Math.max(start.offset, end.offset),
+  };
+  if (!allowCollapsed && sourceRange.start === sourceRange.end) return undefined;
+  const rect = range.getBoundingClientRect();
+  return {
+    sourceId: start.sourceId,
+    groupId: start.groupId,
+    range: sourceRange,
+    rect,
+  };
+}
+
+function markdownSourcePoint(
+  node: Node,
+  offset: number,
+  mode: "start" | "end" | "caret",
+): { sourceId: string; groupId: string; offset: number } | undefined {
+  const directSegment = node.nodeType === Node.TEXT_NODE
+    ? node.parentElement?.closest<HTMLElement>("[data-markdown-source-map]") ?? undefined
+    : node instanceof HTMLElement && node.dataset.markdownSourceMap
+      ? node
+      : undefined;
+  if (directSegment) {
+    return sourcePointFromSegment(
+      directSegment,
+      textOffsetWithin(directSegment, node, offset, mode === "end"),
+    );
+  }
+
+  if (node instanceof HTMLElement) {
+    const previousNode = offset > 0 ? node.childNodes[offset - 1] : undefined;
+    const nextNode = offset < node.childNodes.length ? node.childNodes[offset] : undefined;
+    const previous = sourceBoundaryFromNode(previousNode, "end");
+    const next = sourceBoundaryFromNode(nextNode, "start");
+    if (mode === "start") return next ?? previous;
+    return previous ?? next;
+  }
+
+  const segment = sourceSegmentFromNode(node, mode === "end");
+  if (!segment) return undefined;
+  const boundaries = parseSourceMap(segment.dataset.markdownSourceMap);
+  return sourcePointFromSegment(segment, mode === "end" ? boundaries.length - 1 : 0);
+}
+
+function sourceBoundaryFromNode(
+  node: Node | undefined,
+  boundary: "start" | "end",
+): { sourceId: string; groupId: string; offset: number } | undefined {
+  if (!node) return undefined;
+  const element = node instanceof HTMLElement ? node : node.parentElement;
+  const outerValue = element?.dataset[
+    boundary === "start" ? "markdownSourceOuterStart" : "markdownSourceOuterEnd"
+  ];
+  const segment = sourceSegmentFromNode(node, boundary === "end");
+  if (!segment) return undefined;
+  const point = sourcePointFromSegment(
+    segment,
+    boundary === "end" ? parseSourceMap(segment.dataset.markdownSourceMap).length - 1 : 0,
+  );
+  if (!point) return undefined;
+  const outerOffset = outerValue === undefined ? undefined : Number(outerValue);
+  return Number.isFinite(outerOffset) ? { ...point, offset: outerOffset! } : point;
+}
+
+function sourceSegmentFromNode(node: Node, preferEnd: boolean): HTMLElement | undefined {
+  const element = node instanceof HTMLElement ? node : node.parentElement;
+  if (!element) return undefined;
+  if (element.dataset.markdownSourceMap) return element;
+  const segments = element.querySelectorAll<HTMLElement>("[data-markdown-source-map]");
+  if (!segments.length) return undefined;
+  return preferEnd ? segments.item(segments.length - 1) : segments.item(0);
+}
+
+function sourcePointFromSegment(
+  segment: HTMLElement,
+  localOffset: number,
+): { sourceId: string; groupId: string; offset: number } | undefined {
+  const sourceId = segment.dataset.markdownSourceId;
+  const groupId = segment.closest<HTMLElement>("[data-markdown-edit-group]")?.dataset.markdownEditGroup;
+  const boundaries = parseSourceMap(segment.dataset.markdownSourceMap);
+  if (!sourceId || !groupId || !boundaries.length) return undefined;
+  return {
+    sourceId,
+    groupId,
+    offset: boundaries[Math.max(0, Math.min(boundaries.length - 1, localOffset))],
+  };
+}
+
+function textOffsetWithin(
+  segment: HTMLElement,
+  node: Node,
+  offset: number,
+  preferEnd: boolean,
+): number {
+  if (!segment.contains(node) && segment !== node) {
+    return preferEnd ? segment.textContent?.length ?? 0 : 0;
+  }
+  const range = globalThis.document.createRange();
+  range.selectNodeContents(segment);
+  try {
+    range.setEnd(node, offset);
+    return range.toString().length;
+  } catch {
+    return preferEnd ? segment.textContent?.length ?? 0 : 0;
+  }
+}
+
+function parseSourceMap(value?: string): number[] {
+  return value?.split(",").map(Number).filter(Number.isFinite) ?? [];
+}
+
+function whitespaceOffsetOutsideInlineFormat(
+  root: HTMLElement,
+  sourceOffset: number,
+  source: string,
+): number | undefined {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) return undefined;
+  const range = selection.getRangeAt(0);
+  if (!range.collapsed || !root.contains(range.startContainer)) return undefined;
+  let element = range.startContainer instanceof HTMLElement
+    ? range.startContainer
+    : range.startContainer.parentElement;
+  let offset = sourceOffset;
+  while (element && element !== root) {
+    const tag = element.tagName;
+    if (tag === "U" && source.slice(offset, offset + 2) === "++") {
+      offset += 2;
+    } else if (["STRONG", "EM", "DEL", "A"].includes(tag)) {
+      const outerEnd = Number(element.dataset.markdownSourceOuterEnd);
+      if (Number.isFinite(outerEnd) && outerEnd > offset) offset = outerEnd;
+    }
+    element = element.parentElement;
+  }
+  return offset > sourceOffset ? offset : undefined;
+}
+
+function adjacentDeletionRange(
+  root: HTMLElement,
+  selection: MarkdownDomSelection,
+  direction: "backward" | "forward",
+  granularity: "grapheme" | "word" | "line",
+): MarkdownSourceRange | undefined {
+  const graphemeRanges: Array<MarkdownSourceRange & { text: string }> = [];
+  const segments = Array.from(root.querySelectorAll<HTMLElement>("[data-markdown-source-id]"))
+    .filter((element) =>
+      element.dataset.markdownSourceId === selection.sourceId &&
+      element.closest<HTMLElement>("[data-markdown-edit-group]")?.dataset.markdownEditGroup === selection.groupId,
+    );
+
+  for (const element of segments) {
+    const boundaries = parseSourceMap(element.dataset.markdownSourceMap);
+    const text = element.textContent ?? "";
+    const graphemes = new Intl.Segmenter("ko", { granularity: "grapheme" }).segment(text);
+    for (const grapheme of graphemes) {
+      const endIndex = grapheme.index + grapheme.segment.length;
+      const start = boundaries[grapheme.index];
+      const end = boundaries[endIndex];
+      if (start !== undefined && end !== undefined && start !== end) {
+        graphemeRanges.push({ start, end, text: grapheme.segment });
+      }
+    }
+  }
+
+  const caret = selection.range.start;
+  if (direction === "backward") {
+    const candidates = graphemeRanges.filter((range) => range.end <= caret);
+    if (granularity === "grapheme") return candidates.at(-1);
+    if (granularity === "line") {
+      const first = candidates.at(0);
+      const last = candidates.at(-1);
+      return first && last ? { start: first.start, end: last.end } : undefined;
+    }
+    let index = candidates.length - 1;
+    while (index >= 0 && /\s/u.test(candidates[index].text)) index -= 1;
+    while (index > 0 && !/\s/u.test(candidates[index - 1].text)) index -= 1;
+    const first = candidates[index];
+    const last = candidates.at(-1);
+    return first && last ? { start: first.start, end: last.end } : undefined;
+  }
+  const candidates = graphemeRanges.filter((range) => range.start >= caret);
+  if (granularity === "grapheme") return candidates[0];
+  if (granularity === "line") {
+    const first = candidates[0];
+    const last = candidates.at(-1);
+    return first && last ? { start: first.start, end: last.end } : undefined;
+  }
+  let index = 0;
+  while (index < candidates.length && /\s/u.test(candidates[index].text)) index += 1;
+  let endIndex = index;
+  while (endIndex + 1 < candidates.length && !/\s/u.test(candidates[endIndex + 1].text)) endIndex += 1;
+  const first = candidates[0];
+  const last = candidates[endIndex];
+  return first && last ? { start: first.start, end: last.end } : undefined;
+}
+
+function restoreMarkdownSelection(
+  root: HTMLElement,
+  sourceId: string,
+  sourceRange: MarkdownSourceRange,
+): boolean {
+  const segments = Array.from(root.querySelectorAll<HTMLElement>("[data-markdown-source-id]"))
+    .filter((segment) => segment.dataset.markdownSourceId === sourceId);
+  if (sourceRange.start === sourceRange.end) {
+    const caret = sourceCaretLocation(segments, sourceRange.start);
+    if (!caret) return false;
+    caret.element.closest<HTMLElement>("[data-markdown-editable-block]")?.focus({ preventScroll: true });
+    const range = globalThis.document.createRange();
+    range.setStart(caret.node, caret.offset);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    return true;
+  }
+  const start = sourceLocation(segments, sourceRange.start, false);
+  const end = sourceLocation(segments, sourceRange.end, true);
+  if (!start || !end) return false;
+  const range = globalThis.document.createRange();
+  range.setStart(start.node, start.offset);
+  range.setEnd(end.node, end.offset);
+  end.element.closest<HTMLElement>("[data-markdown-editable-block]")?.focus({ preventScroll: true });
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  return true;
+}
+
+function sourceCaretLocation(
+  segments: HTMLElement[],
+  sourceOffset: number,
+): { element: HTMLElement; node: Node; offset: number } | undefined {
+  const locations = segments.flatMap((element) => {
+    const boundaries = parseSourceMap(element.dataset.markdownSourceMap);
+    return boundaries.flatMap((offset, localOffset) => {
+      const node = element.firstChild ?? element;
+      return [{
+        element,
+        node,
+        sourceOffset: offset,
+        offset: Math.min(localOffset, node.textContent?.length ?? 0),
+        atStart: localOffset === 0,
+        isAnchor: element.classList.contains("markdown-caret-anchor"),
+      }];
+    });
+  });
+  const exactLocations = locations.filter((location) => location.sourceOffset === sourceOffset);
+  const location = exactLocations.find(({ isAnchor }) => isAnchor)
+    ?? exactLocations.find(({ atStart }) => atStart)
+    ?? exactLocations.at(-1)
+    ?? locations
+      .filter((candidate) => candidate.sourceOffset < sourceOffset)
+      .sort((left, right) => right.sourceOffset - left.sourceOffset)[0]
+    ?? locations
+      .filter((candidate) => candidate.sourceOffset > sourceOffset)
+      .sort((left, right) => left.sourceOffset - right.sourceOffset)[0];
+  return location && {
+    element: location.element,
+    node: location.node,
+    offset: location.offset,
+  };
+}
+
+function sourceLocation(
+  segments: HTMLElement[],
+  sourceOffset: number,
+  preferEnd: boolean,
+): { element: HTMLElement; node: Node; offset: number } | undefined {
+  const candidates = preferEnd ? [...segments].reverse() : segments;
+  for (const element of candidates) {
+    const boundaries = parseSourceMap(element.dataset.markdownSourceMap);
+    const exact = preferEnd ? boundaries.lastIndexOf(sourceOffset) : boundaries.indexOf(sourceOffset);
+    if (exact < 0) continue;
+    const node = element.firstChild ?? element;
+    return { element, node, offset: Math.min(exact, node.textContent?.length ?? 0) };
+  }
+  return undefined;
+}
+
+function LayoutUnitView({
+  unit,
+  measure = false,
+  firstOnPage = false,
+  onTextEdit,
+  onEditIntent,
+}: {
+  unit: LayoutUnit;
+  measure?: boolean;
+  firstOnPage?: boolean;
+  onTextEdit?: (
+    unit: MarkdownLayoutUnit,
+    range: MarkdownSourceRange,
+    visibleText: string,
+    visibleSelection: MarkdownSourceRange,
+  ) => void;
+  onEditIntent?: (
+    unit: MarkdownLayoutUnit,
+    root: HTMLElement,
+    inputType: string,
+    data?: string,
+  ) => void;
+}) {
   const attributes = measure ? { "data-measure-id": unit.id } : {};
   const lineClasses = "lineSegment" in unit && unit.lineSegment
     ? ` layout-unit--line-segment${unit.lineStart ? " layout-unit--line-start" : ""}${unit.lineEnd ? " layout-unit--line-end" : ""}`
@@ -346,6 +1095,14 @@ function LayoutUnitView({ unit, measure = false, firstOnPage = false }: { unit: 
           context={unit.context}
           idPrefix={`markdown-${unit.sourceId}`}
           lead={unit.lead}
+          editing={!measure && onTextEdit && onEditIntent ? {
+            source: unit.source,
+            sourceId: unit.sourceId,
+            onTextEdit: (range, visibleText, visibleSelection) =>
+              onTextEdit(unit, range, visibleText, visibleSelection),
+            onEditIntent: (root, inputType, data) =>
+              onEditIntent(unit, root, inputType, data),
+          } : undefined}
         />
       )
     : (

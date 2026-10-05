@@ -52,7 +52,12 @@ export function App() {
     }
   }, []);
 
-  const updateDocument = (next: ResumeDocument) => {
+  const updateDocument = (
+    change: ResumeDocument | ((current: ResumeDocument) => ResumeDocument),
+  ) => {
+    const current = documentRef.current;
+    if (!current) return;
+    const next = typeof change === "function" ? change(current) : change;
     documentRef.current = next;
     setDocument(next);
     setExportedPath(null);
@@ -136,7 +141,7 @@ export function App() {
       )}
       <div className="workspace grid min-h-0 flex-1 [grid-template-columns:minmax(420px,500px)_minmax(0,1fr)] max-[1180px]:[grid-template-columns:420px_minmax(0,1fr)]">
         <EditorPanel document={document} onChange={updateDocument} />
-        <ResumePreview document={document} zoom={zoom} />
+        <ResumePreview document={document} zoom={zoom} onChange={updateDocument} />
       </div>
     </div>
   );

@@ -128,3 +128,4 @@ CommonMark 기본 문법과 GFM 확장 문법을 지원한다.
 - [기술 설계](design.md)
 - [Markdown 문법과 스타일 규칙](markdown-spec.md)
 - [세션 인수인계](handoff.md)
+- [후속 작업: 미리보기 Markdown 직접 편집](../02-preview-markdown-editing/README.md)
