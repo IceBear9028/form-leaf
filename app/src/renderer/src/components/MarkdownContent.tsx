@@ -507,6 +507,20 @@ function MarkdownList({
         />
       )}
       <div className="markdown-list-item-content">
+        {item.children.length === 0 && renderContext.editing &&
+          item.position?.start.offset !== undefined &&
+          item.position.end.offset !== undefined && (
+          <p
+            className="markdown-block markdown-paragraph markdown-paragraph--compact markdown-empty-list-item"
+            data-markdown-block="paragraph"
+            data-markdown-edit-group={`${renderContext.editing.sourceId}:${item.position.start.offset}`}
+          >
+            <MarkdownCaretAnchor
+              offset={item.position.end.offset}
+              editing={renderContext.editing}
+            />
+          </p>
+        )}
         {item.children.map((child, childIndex) => (
           <MarkdownNodeView
             key={childIndex}
@@ -1027,6 +1041,9 @@ function hasEditableMarkdownText(node: RootContent | PhrasingContent): boolean {
 function isEditableMarkdownBlock(node: RootContent, source: string): boolean {
   if (hasEditableMarkdownText(node)) return true;
   if (node.type === "heading") return true;
+  if (node.type === "list" && node.children.some((item) => item.children.length === 0)) {
+    return true;
+  }
   return node.type === "thematicBreak" && emptyBlockFormat(node, source) !== undefined;
 }
 

@@ -51,6 +51,8 @@
 - `MarkdownContent.tsx`: 빈 제목·굵게·밑줄·취소선 marker를 편집 가능한 빈 서식 anchor로 표시
 - `MarkdownContent.tsx`: parser가 생략한 문장 끝 공백을 실제 폭과 source boundary를 가진 편집 segment로 표시
 - `ResumePreview.tsx`: 서식 마지막에서 입력한 공백을 닫는 marker 바깥 source offset에 삽입
+- `shared/markdownEdits.ts`: 줄 시작의 `# `~`###### `, `- `, 숫자+`. ` 입력을 블록 Markdown 문법으로 전환
+- `MarkdownContent.tsx`: 빈 불릿·순서 목록에도 source-mapped caret anchor를 표시해 전환 직후 입력 지속
 - `MarkdownSelectionToolbar.tsx`: 굵게·기울임·밑줄·취소선·코드·링크 도구와 단축키 연결
 - `resume.css`: 편집 focus와 toolbar UI, 인쇄 제외 규칙
 
@@ -85,6 +87,7 @@
 - 신규 빈 블록에서 Backspace 시 `\n\n` 쌍이 제거되어 원문이 byte 단위로 복원되고 caret이 직전 H3 끝으로 돌아가는 것 확인
 - Enter 전후 `document.activeElement`가 서로 다른 편집 host이고, 신규 host가 기존 host의 자식이 아닌 DOM 형제이며 연속 Enter마다 새 host로 포커스가 이동하는 것 확인
 - Cmd+Backspace에서 브라우저 `lineboundary`로 source range를 계산해 Shift+Enter 줄의 60자와 자동 줄바꿈된 마지막 줄의 5자만 각각 삭제되고 나머지 블록·문서·포커스가 유지되는 것 확인
+- 실제 preview 빈 블록에서 `## `, `- `, `2. `의 Space 입력 직후 각각 빈 H2·불릿·순서 목록 스타일과 caret anchor가 표시되고, 같은 편집 host에서 `제목`, `불릿`, `순서`를 이어 쓴 원문이 정확히 저장되는 것 확인
 
 ## 후속 확인 사항
 

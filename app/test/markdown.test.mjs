@@ -12,9 +12,51 @@ import {
 import {
   replaceMarkdownRange,
   replaceMarkdownText,
+  replaceMarkdownTextWithBlockShortcut,
   toggleMarkdownInlineFormat,
   toggleMarkdownLink,
 } from "../src/shared/markdownEdits.ts";
+
+test("줄 시작 Markdown 접두어 뒤 Space를 블록 문법으로 전환한다", () => {
+  const cases = [
+    ["\\#", "# "],
+    ["\\#\\#", "## "],
+    ["\\#\\#\\#\\#\\#\\#", "###### "],
+    ["\\-", "- "],
+    ["1.", "1. "],
+    ["23.", "23. "],
+    ["앞 문단\n\n\\#", "앞 문단\n\n# "],
+  ];
+
+  for (const [source, expected] of cases) {
+    const result = replaceMarkdownTextWithBlockShortcut(
+      source,
+      { start: source.length, end: source.length },
+      " ",
+      { start: 1, end: 1 },
+    );
+    assert.equal(result.source, expected);
+    assert.deepEqual(result.selection, { start: expected.length, end: expected.length });
+  }
+});
+
+test("문장 중간과 지원하지 않는 접두어는 일반 문자로 유지한다", () => {
+  const middle = replaceMarkdownTextWithBlockShortcut(
+    "내용 \\#",
+    { start: 5, end: 5 },
+    " ",
+    { start: 1, end: 1 },
+  );
+  const unsupported = replaceMarkdownTextWithBlockShortcut(
+    "\\#\\#\\#\\#\\#\\#\\#",
+    { start: 14, end: 14 },
+    " ",
+    { start: 1, end: 1 },
+  );
+
+  assert.equal(middle.source, "내용 \\# ");
+  assert.equal(unsupported.source, "\\#\\#\\#\\#\\#\\#\\# ");
+});
 
 test("본문을 페이지네이션 가능한 Markdown 블록으로 분리한다", () => {
   const source = `첫 문단입니다.

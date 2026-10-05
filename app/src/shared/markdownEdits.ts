@@ -56,6 +56,27 @@ export function replaceMarkdownText(
   });
 }
 
+export function replaceMarkdownTextWithBlockShortcut(
+  source: string,
+  range: MarkdownSourceRange,
+  visibleText: string,
+  visibleSelection: MarkdownSourceRange,
+): MarkdownEditResult {
+  const normalized = normalizeRange(source, range);
+  const shortcut = normalized.start === normalized.end && visibleText === " "
+    ? markdownBlockShortcutBefore(source, normalized.start)
+    : undefined;
+  if (!shortcut) {
+    return replaceMarkdownText(source, normalized, visibleText, visibleSelection);
+  }
+  const replacement = `${shortcut.marker} `;
+  return replaceMarkdownRange(
+    source,
+    { start: shortcut.start, end: normalized.end },
+    replacement,
+  );
+}
+
 export function toggleMarkdownInlineFormat(
   source: string,
   range: MarkdownSourceRange,
@@ -129,6 +150,21 @@ export function toggleMarkdownLink(
 
 function escapeLinkDestination(value: string): string {
   return value.trim().replace(/[\\()]/g, "\\$&");
+}
+
+function markdownBlockShortcutBefore(
+  source: string,
+  caret: number,
+): { start: number; marker: string } | undefined {
+  const lineStart = source.lastIndexOf("\n", caret - 1) + 1;
+  const prefix = source.slice(lineStart, caret);
+  const heading = prefix.match(/^(?:\\#){1,6}$/)?.[0];
+  if (heading) {
+    return { start: lineStart, marker: heading.replaceAll("\\", "") };
+  }
+  if (prefix === "\\-") return { start: lineStart, marker: "-" };
+  if (/^[0-9]{1,9}\.$/.test(prefix)) return { start: lineStart, marker: prefix };
+  return undefined;
 }
 
 function findLinkSuffixLength(source: string, selectionEnd: number): number {

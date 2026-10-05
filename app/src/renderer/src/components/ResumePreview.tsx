@@ -13,6 +13,7 @@ import { parseResumeMarkdown, type ResumeMarkdownBlock } from "../../../shared/m
 import {
   replaceMarkdownRange,
   replaceMarkdownText,
+  replaceMarkdownTextWithBlockShortcut,
   toggleMarkdownInlineFormat,
   toggleMarkdownLink,
   type MarkdownInlineFormat,
@@ -305,7 +306,7 @@ export function ResumePreview({ document, zoom, onChange }: {
     updateSource(unit.sourceTarget, (source) =>
       isLineBreak
         ? replaceMarkdownRange(source, range, insertedText)
-        : replaceMarkdownText(
+        : replaceMarkdownTextWithBlockShortcut(
             source,
             range,
             insertedText,
