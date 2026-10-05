@@ -6,8 +6,10 @@ import { IPC } from "../shared/ipc";
 import {
   createDefaultDocument,
   isResumeDocument,
+  isV1ResumeDocument,
   type ResumeDocument,
 } from "../shared/resume";
+import { migrateResumeDocumentV1 } from "../shared/resumeMigration";
 
 app.setName("Resume Studio");
 
@@ -29,18 +31,24 @@ async function loadDocument(): Promise<ResumeDocument> {
   try {
     const raw = await readFile(path, "utf8");
     const document: unknown = JSON.parse(raw);
-    if (!isResumeDocument(document)) {
-      throw new Error("저장된 이력서의 데이터 형식이 올바르지 않습니다.");
-    }
-    return document;
+    return normalizeStoredDocument(document);
   } catch (error) {
     const backupPath = `${path}.backup`;
     if (!existsSync(backupPath)) throw error;
     const raw = await readFile(backupPath, "utf8");
     const backup: unknown = JSON.parse(raw);
-    if (!isResumeDocument(backup)) throw error;
-    return backup;
+    try {
+      return normalizeStoredDocument(backup);
+    } catch {
+      throw error;
+    }
   }
+}
+
+function normalizeStoredDocument(value: unknown): ResumeDocument {
+  if (isResumeDocument(value)) return value;
+  if (isV1ResumeDocument(value)) return migrateResumeDocumentV1(value);
+  throw new Error("저장된 이력서의 데이터 형식이 올바르지 않습니다.");
 }
 
 async function saveDocument(document: ResumeDocument): Promise<{ savedAt: string }> {
@@ -58,7 +66,12 @@ async function saveDocument(document: ResumeDocument): Promise<{ savedAt: string
   if (existsSync(path)) {
     try {
       const current: unknown = JSON.parse(await readFile(path, "utf8"));
-      if (isResumeDocument(current)) await copyFile(path, `${path}.backup`);
+      if (isResumeDocument(current)) {
+        await copyFile(path, `${path}.backup`);
+      } else if (isV1ResumeDocument(current)) {
+        const v1BackupPath = `${path}.v1.backup`;
+        if (!existsSync(v1BackupPath)) await copyFile(path, v1BackupPath);
+      }
     } catch {
       // 손상된 현재 파일로 직전 정상 백업을 덮어쓰지 않는다.
     }

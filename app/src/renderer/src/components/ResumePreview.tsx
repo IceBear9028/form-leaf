@@ -1,8 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
-  ContentBlock,
-  FreeTextSection,
-  IntroductionSection,
   ProfileSection,
   ProjectItem,
   ResumeDocument,
@@ -12,15 +9,38 @@ import type {
   TimelineKind,
 } from "../../../shared/resume";
 import { plainText } from "../../../shared/resume";
+import { parseResumeMarkdown, type ResumeMarkdownBlock } from "../../../shared/markdown";
 import { getResumeStyleSheet } from "../styles/resumeStyleSheets";
+import {
+  MarkdownBlockContent,
+  MarkdownFootnotesContent,
+  type MarkdownContext,
+} from "./MarkdownContent";
+
+type MarkdownOwner = "introduction" | "project" | "career" | "education" | "activity" | "free-text";
+
+type MarkdownLayoutUnit = {
+  id: string;
+  type: "markdown-block" | "markdown-footnotes";
+  block?: ResumeMarkdownBlock;
+  documentBlocks: ResumeMarkdownBlock[];
+  context: MarkdownContext;
+  owner: MarkdownOwner;
+  sourceId: string;
+  lead?: boolean;
+  keepWithNext?: boolean;
+  lineSegment?: boolean;
+  lineStart?: boolean;
+  lineEnd?: boolean;
+};
 
 type LayoutUnit =
   | { id: string; type: "profile"; section: ProfileSection; keepWithNext?: boolean }
   | { id: string; type: "section-heading"; title: string; annotation?: string; sectionKind: "introduction" | TimelineKind | "project" | "side-project" | "free-text"; separator: boolean; keepWithNext: true; forceNewPage?: boolean }
-  | { id: string; type: "introduction"; content: TextContent }
   | { id: string; type: "timeline"; item: TimelineItem; timelineKind: TimelineKind; keepWithNext?: boolean; lineSegment?: boolean; lineStart?: boolean; lineEnd?: boolean }
   | { id: string; type: "project-header"; item: ProjectItem; keepWithNext?: boolean; lineSegment: true; lineStart: true; lineEnd?: boolean }
-  | { id: string; type: "content-block"; block: ContentBlock; owner: "project" | "timeline" | "education" | "activity" | "free-text"; lineSegment?: boolean; lineStart?: boolean; lineEnd?: boolean };
+  | { id: string; type: "tech-stack"; items: string[]; lineSegment: true; lineStart?: boolean; lineEnd: boolean }
+  | MarkdownLayoutUnit;
 
 type Page = { id: string; units: LayoutUnit[]; overflow: boolean };
 
@@ -66,7 +86,7 @@ export function ResumePreview({ document, zoom }: { document: ResumeDocument; zo
   return (
     <main className="preview-panel min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 pb-[100px] pt-[34px] max-[1180px]:px-6" aria-label="A4 미리보기">
       <div className="measurement-root" aria-hidden="true">
-        <div className={`resume-page measurement-page ${styleSheet.className}`}>
+        <div className={`resume-page measurement-page ${styleSheet.className}`} style={styleSheet.variables}>
           <div className="resume-page-body measurement-body" ref={capacityRef}>
             <div ref={measureRef}>
               {units.map((unit) => <LayoutUnitView key={unit.id} unit={unit} measure />)}
@@ -76,7 +96,7 @@ export function ResumePreview({ document, zoom }: { document: ResumeDocument; zo
       </div>
       <div className="preview-stack mx-auto w-max [zoom:var(--preview-zoom)]" style={{ "--preview-zoom": zoom } as React.CSSProperties}>
         {visiblePages.map((page, pageIndex) => (
-          <article className={`resume-page ${styleSheet.className}${page.overflow ? " resume-page--overflow" : ""}`} key={page.id}>
+          <article className={`resume-page ${styleSheet.className}${page.overflow ? " resume-page--overflow" : ""}`} style={styleSheet.variables} key={page.id}>
             <div className="resume-page-body">
               {page.units.map((unit, unitIndex) => <LayoutUnitView key={unit.id} unit={unit} firstOnPage={unitIndex === 0} />)}
               {!page.units.length && pageIndex === 0 && (
@@ -138,16 +158,6 @@ function safeHref(value: string): string | undefined {
   return /^(https?:|mailto:)/i.test(trimmed) ? trimmed : undefined;
 }
 
-function blockHasContent(block: ContentBlock): boolean {
-  if (block.type === "paragraph") return hasText(block.content);
-  if (block.type === "bullet-list") return block.items.some(hasText);
-  if (block.type === "detail") {
-    return hasText(block.title) || hasText(block.context) || block.actions.some(hasText) || hasText(block.result);
-  }
-  if (block.type === "link-list") return block.links.some((link) => link.label || link.href);
-  return block.items.length > 0;
-}
-
 function buildUnits(document: ResumeDocument): LayoutUnit[] {
   const units: LayoutUnit[] = [];
   document.sections.forEach((section) => {
@@ -157,10 +167,15 @@ function buildUnits(document: ResumeDocument): LayoutUnit[] {
       return;
     }
     if (section.type === "introduction") {
-      const paragraphs = section.paragraphs.filter((paragraph) => hasText(paragraph.content));
-      if (!paragraphs.length) return;
+      const bodyUnits = markdownUnits({
+        source: section.bodyMarkdown,
+        sourceId: section.id,
+        context: "introduction",
+        owner: "introduction",
+      });
+      if (!bodyUnits.length) return;
       units.push({ id: `${section.id}-heading`, type: "section-heading", title: section.title, sectionKind: "introduction", separator: false, keepWithNext: true });
-      paragraphs.forEach((paragraph) => units.push({ id: paragraph.id, type: "introduction", content: paragraph.content }));
+      units.push(...bodyUnits);
       return;
     }
     if (section.type === "timeline") {
@@ -177,28 +192,25 @@ function buildUnits(document: ResumeDocument): LayoutUnit[] {
         forceNewPage: section.timelineKind === "activity",
       });
       items.forEach((item) => {
-        const visibleBlocks = item.blocks.filter(blockHasContent);
         const usesDivider = section.timelineKind !== "education";
+        const bodyUnits = markdownUnits({
+          source: item.bodyMarkdown,
+          sourceId: item.id,
+          context: section.timelineKind,
+          owner: section.timelineKind,
+          lineSegment: usesDivider,
+        });
         units.push({
           id: item.id,
           type: "timeline",
           item,
           timelineKind: section.timelineKind,
-          keepWithNext: visibleBlocks.length > 0,
+          keepWithNext: bodyUnits.length > 0,
           lineSegment: usesDivider,
           lineStart: usesDivider,
-          lineEnd: usesDivider && visibleBlocks.length === 0,
+          lineEnd: usesDivider && bodyUnits.length === 0,
         });
-        visibleBlocks.forEach((block, blockIndex) => {
-          units.push({
-            id: `${item.id}-${block.id}`,
-            type: "content-block",
-            block,
-            owner: section.timelineKind === "education" ? "education" : section.timelineKind === "activity" ? "activity" : "timeline",
-            lineSegment: usesDivider,
-            lineEnd: usesDivider && blockIndex === visibleBlocks.length - 1,
-          });
-        });
+        units.push(...bodyUnits);
       });
       return;
     }
@@ -207,34 +219,92 @@ function buildUnits(document: ResumeDocument): LayoutUnit[] {
       if (!items.length) return;
       units.push({ id: `${section.id}-heading`, type: "section-heading", title: section.title, sectionKind: section.groupKind, separator: true, keepWithNext: true });
       items.forEach((item) => {
-        const visibleBlocks = item.blocks.filter(blockHasContent);
-        units.push({ id: item.id, type: "project-header", item, keepWithNext: visibleBlocks.length > 0, lineSegment: true, lineStart: true, lineEnd: visibleBlocks.length === 0 });
-        visibleBlocks.forEach((block, blockIndex) => units.push({
-          id: `${item.id}-${block.id}`,
-          type: "content-block",
-          block,
+        const bodyUnits = markdownUnits({
+          source: item.bodyMarkdown,
+          sourceId: item.id,
+          context: section.groupKind,
           owner: "project",
           lineSegment: true,
-          lineEnd: blockIndex === visibleBlocks.length - 1,
-        }));
+          leadFirstParagraph: true,
+        });
+        const techStack = item.techStack.map((value) => value.trim()).filter(Boolean);
+        const hasFollowingContent = bodyUnits.length > 0 || techStack.length > 0;
+        if (techStack.length && bodyUnits.length) {
+          bodyUnits[bodyUnits.length - 1].lineEnd = false;
+        }
+        units.push({ id: item.id, type: "project-header", item, keepWithNext: hasFollowingContent, lineSegment: true, lineStart: true, lineEnd: !hasFollowingContent });
+        units.push(...bodyUnits);
+        if (techStack.length) {
+          units.push({ id: `${item.id}-tech-stack`, type: "tech-stack", items: techStack, lineSegment: true, lineEnd: true });
+        }
       });
       return;
     }
-    const freeText = section as FreeTextSection;
-    const blocks = freeText.blocks.filter(blockHasContent);
-    if (!blocks.length) return;
-    units.push({ id: `${section.id}-heading`, type: "section-heading", title: section.title, sectionKind: "free-text", separator: true, keepWithNext: true });
-    blocks.forEach((block, blockIndex) => units.push({
-      id: `${section.id}-${block.id}`,
-      type: "content-block",
-      block,
+    const bodyUnits = markdownUnits({
+      source: section.bodyMarkdown,
+      sourceId: section.id,
+      context: "free-text",
       owner: "free-text",
       lineSegment: true,
-      lineStart: blockIndex === 0,
-      lineEnd: blockIndex === blocks.length - 1,
-    }));
+      lineStart: true,
+    });
+    if (!bodyUnits.length) return;
+    units.push({ id: `${section.id}-heading`, type: "section-heading", title: section.title, sectionKind: "free-text", separator: true, keepWithNext: true });
+    units.push(...bodyUnits);
   });
   return units;
+}
+
+function markdownUnits({
+  source,
+  sourceId,
+  context,
+  owner,
+  lineSegment = false,
+  lineStart = false,
+  leadFirstParagraph = false,
+}: {
+  source: string;
+  sourceId: string;
+  context: MarkdownContext;
+  owner: MarkdownOwner;
+  lineSegment?: boolean;
+  lineStart?: boolean;
+  leadFirstParagraph?: boolean;
+}): MarkdownLayoutUnit[] {
+  if (!source.trim()) return [];
+  const documentBlocks = parseResumeMarkdown(source);
+  const visibleBlocks = documentBlocks.filter(({ node }) =>
+    node.type !== "definition" && node.type !== "footnoteDefinition",
+  );
+  const firstParagraphId = visibleBlocks.find(({ node }) => node.type === "paragraph")?.id;
+  const result: MarkdownLayoutUnit[] = visibleBlocks.map((block, index) => ({
+    id: `${sourceId}-${block.id}`,
+    type: "markdown-block",
+    block,
+    documentBlocks,
+    context,
+    owner,
+    sourceId,
+    lead: leadFirstParagraph && block.id === firstParagraphId,
+    keepWithNext: block.node.type === "heading",
+    lineSegment,
+    lineStart: lineSegment && lineStart && index === 0,
+  }));
+  if (documentBlocks.some(({ node }) => node.type === "footnoteDefinition")) {
+    result.push({
+      id: `${sourceId}-footnotes`,
+      type: "markdown-footnotes",
+      documentBlocks,
+      context,
+      owner,
+      sourceId,
+      lineSegment,
+      lineStart: lineSegment && lineStart && result.length === 0,
+    });
+  }
+  if (lineSegment && result.length) result[result.length - 1].lineEnd = true;
+  return result;
 }
 
 function LayoutUnitView({ unit, measure = false, firstOnPage = false }: { unit: LayoutUnit; measure?: boolean; firstOnPage?: boolean }) {
@@ -252,24 +322,50 @@ function LayoutUnitView({ unit, measure = false, firstOnPage = false }: { unit: 
       </div>
     );
   }
-  if (unit.type === "introduction") {
-    return <div className="layout-unit layout-unit--paragraph" {...attributes}><RichText content={unit.content} /></div>;
-  }
   if (unit.type === "timeline") {
     return <div className={`layout-unit layout-unit--item layout-unit--item-${unit.timelineKind}${unit.keepWithNext ? " layout-unit--has-blocks" : ""}${lineClasses}`} {...attributes}><TimelineView item={unit.item} kind={unit.timelineKind} /></div>;
   }
   if (unit.type === "project-header") {
     return <div className={`layout-unit layout-unit--project${unit.keepWithNext ? " layout-unit--has-blocks" : ""}${lineClasses}`} {...attributes}><ProjectHeader item={unit.item} /></div>;
   }
-  if (unit.owner === "education") {
-    return <div className="layout-unit layout-unit--block education-block" {...attributes}><ContentBlockView block={unit.block} /></div>;
+  if (unit.type === "tech-stack") {
+    return (
+      <div className={`layout-unit layout-unit--block${lineClasses}`} {...attributes}>
+        <div className="resume-grid-row resume-grid-row--continuation resume-grid-row--project">
+          <div className="resume-meta-column" />
+          <div className="resume-body-column"><div className="tech-stack"><ToolIcon /><strong>{unit.items.join(", ")}</strong></div></div>
+        </div>
+      </div>
+    );
   }
-  const continuationDetail = unit.block.type === "detail" && !hasText(unit.block.title);
+  const markdownContent = unit.type === "markdown-block" && unit.block
+    ? (
+        <MarkdownBlockContent
+          block={unit.block}
+          documentBlocks={unit.documentBlocks}
+          context={unit.context}
+          idPrefix={`markdown-${unit.sourceId}`}
+          lead={unit.lead}
+        />
+      )
+    : (
+        <MarkdownFootnotesContent
+          documentBlocks={unit.documentBlocks}
+          context={unit.context}
+          idPrefix={`markdown-${unit.sourceId}`}
+        />
+      );
+  if (unit.owner === "introduction") {
+    return <div className="layout-unit layout-unit--paragraph layout-unit--markdown" {...attributes}>{markdownContent}</div>;
+  }
+  if (unit.owner === "education") {
+    return <div className="layout-unit layout-unit--block layout-unit--markdown education-block" {...attributes}>{markdownContent}</div>;
+  }
   return (
-    <div className={`layout-unit layout-unit--block${continuationDetail ? " layout-unit--continuation-detail" : ""}${lineClasses}`} {...attributes}>
+    <div className={`layout-unit layout-unit--block layout-unit--markdown${lineClasses}`} {...attributes}>
       <div className={`resume-grid-row resume-grid-row--continuation resume-grid-row--${unit.owner}`}>
         <div className="resume-meta-column" />
-        <div className="resume-body-column"><ContentBlockView block={unit.block} /></div>
+        <div className="resume-body-column">{markdownContent}</div>
       </div>
     </div>
   );
@@ -341,13 +437,11 @@ function TimelineView({ item, kind }: { item: TimelineItem; kind: TimelineKind }
 }
 
 function ProjectHeader({ item }: { item: ProjectItem }) {
-  const summaryStartsWithStatus = plainText(item.summary).trimStart().startsWith("[");
   return (
     <div className="resume-grid-row">
       <MetaColumn period={item.period} organization={item.organization} links={item.links} />
       <div className="resume-body-column project-body">
         <h3><RichText content={item.title} /></h3>
-        {hasText(item.summary) && <p className={`project-summary${summaryStartsWithStatus ? " project-summary--status" : ""}`}><RichText content={item.summary} /></p>}
       </div>
     </div>
   );
@@ -365,31 +459,6 @@ function MetaColumn({ period, organization, links }: { period: { start: string; 
       ))}
     </div>
   );
-}
-
-function ContentBlockView({ block }: { block: ContentBlock }) {
-  if (block.type === "paragraph") {
-    return <p className="content-paragraph"><RichText content={block.content} /></p>;
-  }
-  if (block.type === "bullet-list") {
-    return <ul className="content-bullets">{block.items.filter(hasText).map((item, index) => <li key={index}><RichText content={item} /></li>)}</ul>;
-  }
-  if (block.type === "detail") {
-    return (
-      <div className="detail-block">
-        {hasText(block.title) && <h4><span className="square-bullet" /><RichText content={block.title} /></h4>}
-        <div className="detail-content">
-          {hasText(block.context) && <p><RichText content={block.context} /></p>}
-          {block.actions.filter(hasText).map((action, index) => <p className="detail-action" key={index}><span>→</span><RichText content={action} /></p>)}
-          {hasText(block.result) && <p className="detail-action detail-result"><span>→</span><RichText content={block.result} /></p>}
-        </div>
-      </div>
-    );
-  }
-  if (block.type === "link-list") {
-    return <div className="resume-link-list">{block.links.filter((link) => link.label || link.href).map((link) => <a href={safeHref(link.href)} key={link.id}>↗ {link.label || link.href}</a>)}</div>;
-  }
-  return <div className="tech-stack"><ToolIcon /><strong>{block.items.join(", ")}</strong></div>;
 }
 
 function LinkGlyph({ label, href }: { label: string; href: string }) {

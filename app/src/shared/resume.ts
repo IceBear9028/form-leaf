@@ -56,6 +56,7 @@ export type TechStackBlock = {
   items: string[];
 };
 
+/** schemaVersion 1에서만 사용하는 레거시 본문 블록이다. */
 export type ContentBlock =
   | ParagraphBlock
   | BulletListBlock
@@ -80,7 +81,7 @@ export type IntroductionSection = {
   type: "introduction";
   title: string;
   visible: boolean;
-  paragraphs: Array<{ id: string; content: TextContent }>;
+  bodyMarkdown: string;
 };
 
 export type TimelineKind = "career" | "education" | "activity";
@@ -92,7 +93,7 @@ export type TimelineItem = {
   organization: string;
   title: TextContent;
   links: ResumeLink[];
-  blocks: ContentBlock[];
+  bodyMarkdown: string;
 };
 
 export type TimelineSection = {
@@ -112,9 +113,9 @@ export type ProjectItem = {
   period: DateRange;
   organization: string;
   title: TextContent;
-  summary: TextContent;
   links: ResumeLink[];
-  blocks: ContentBlock[];
+  techStack: string[];
+  bodyMarkdown: string;
 };
 
 export type ProjectGroupSection = {
@@ -131,7 +132,7 @@ export type FreeTextSection = {
   type: "free-text";
   title: string;
   visible: boolean;
-  blocks: ContentBlock[];
+  bodyMarkdown: string;
 };
 
 export type ResumeSection =
@@ -142,13 +143,51 @@ export type ResumeSection =
   | FreeTextSection;
 
 export type ResumeDocument = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   documentId: string;
   name: string;
-  styleSheetId: "reference-resume-v1";
+  styleSheetId: string;
   pagination: { mode: "multi-page" };
   sections: ResumeSection[];
   updatedAt: string;
+};
+
+export type V1IntroductionSection = Omit<IntroductionSection, "bodyMarkdown"> & {
+  paragraphs: Array<{ id: string; content: TextContent }>;
+};
+
+export type V1TimelineItem = Omit<TimelineItem, "bodyMarkdown"> & {
+  blocks: ContentBlock[];
+};
+
+export type V1TimelineSection = Omit<TimelineSection, "items"> & {
+  items: V1TimelineItem[];
+};
+
+export type V1ProjectItem = Omit<ProjectItem, "bodyMarkdown" | "techStack"> & {
+  summary: TextContent;
+  blocks: ContentBlock[];
+};
+
+export type V1ProjectGroupSection = Omit<ProjectGroupSection, "items"> & {
+  items: V1ProjectItem[];
+};
+
+export type V1FreeTextSection = Omit<FreeTextSection, "bodyMarkdown"> & {
+  blocks: ContentBlock[];
+};
+
+export type V1ResumeSection =
+  | ProfileSection
+  | V1IntroductionSection
+  | V1TimelineSection
+  | V1ProjectGroupSection
+  | V1FreeTextSection;
+
+export type V1ResumeDocument = Omit<ResumeDocument, "schemaVersion" | "sections"> & {
+  schemaVersion: 1;
+  styleSheetId: "reference-resume-v1";
+  sections: V1ResumeSection[];
 };
 
 export type PdfExportResult =
@@ -182,7 +221,7 @@ export function createParagraphBlock(): ParagraphBlock {
 export function createDefaultDocument(): ResumeDocument {
   const now = new Date().toISOString();
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     documentId: createId("resume"),
     name: "새 이력서",
     styleSheetId: "reference-resume-v1",
@@ -204,7 +243,7 @@ export function createDefaultDocument(): ResumeDocument {
         type: "introduction",
         title: "소개",
         visible: true,
-        paragraphs: [],
+        bodyMarkdown: "",
       },
       {
         id: createId("career"),
@@ -251,7 +290,7 @@ export function createDefaultDocument(): ResumeDocument {
         type: "free-text",
         title: "추가 내용",
         visible: true,
-        blocks: [],
+        bodyMarkdown: "",
       },
     ],
   };
@@ -259,17 +298,33 @@ export function createDefaultDocument(): ResumeDocument {
 
 export function isResumeDocument(value: unknown): value is ResumeDocument {
   if (!isRecord(value)) return false;
-  const candidate = value as Partial<ResumeDocument>;
   return (
-    candidate.schemaVersion === 1 &&
-    typeof candidate.documentId === "string" &&
-    typeof candidate.name === "string" &&
-    candidate.styleSheetId === "reference-resume-v1" &&
-    isRecord(candidate.pagination) &&
-    candidate.pagination.mode === "multi-page" &&
-    typeof candidate.updatedAt === "string" &&
-    Array.isArray(candidate.sections) &&
-    candidate.sections.every(isResumeSection)
+    value.schemaVersion === 2 &&
+    isDocumentBase(value) &&
+    Array.isArray(value.sections) &&
+    value.sections.every(isResumeSection)
+  );
+}
+
+export function isV1ResumeDocument(value: unknown): value is V1ResumeDocument {
+  if (!isRecord(value)) return false;
+  return (
+    value.schemaVersion === 1 &&
+    value.styleSheetId === "reference-resume-v1" &&
+    isDocumentBase(value) &&
+    Array.isArray(value.sections) &&
+    value.sections.every(isV1ResumeSection)
+  );
+}
+
+function isDocumentBase(value: Record<string, unknown>): boolean {
+  return (
+    isString(value.documentId) &&
+    isString(value.name) &&
+    isNonEmptyString(value.styleSheetId) &&
+    isRecord(value.pagination) &&
+    value.pagination.mode === "multi-page" &&
+    isString(value.updatedAt)
   );
 }
 
@@ -279,6 +334,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isString(value: unknown): value is string {
   return typeof value === "string";
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return isString(value) && value.trim().length > 0;
 }
 
 function isOptionalString(value: unknown): value is string | undefined {
@@ -318,6 +377,122 @@ function isDateRange(value: unknown): value is DateRange {
   );
 }
 
+function isProfileSection(value: unknown): value is ProfileSection {
+  return (
+    isRecord(value) &&
+    hasSectionBase(value) &&
+    value.type === "profile" &&
+    isString(value.role) &&
+    isString(value.name) &&
+    isString(value.phone) &&
+    isString(value.email) &&
+    isOptionalString(value.photoDataUrl) &&
+    isLinkArray(value.links)
+  );
+}
+
+function isTimelineItem(value: unknown): value is TimelineItem {
+  return (
+    isTimelineItemBase(value) &&
+    isString(value.bodyMarkdown)
+  );
+}
+
+function isProjectItem(value: unknown): value is ProjectItem {
+  return (
+    isProjectItemBase(value) &&
+    isStringArray(value.techStack) &&
+    isString(value.bodyMarkdown)
+  );
+}
+
+function isResumeSection(value: unknown): value is ResumeSection {
+  if (isProfileSection(value)) return true;
+  if (!isRecord(value) || !hasSectionBase(value) || !isString(value.type)) return false;
+  if (value.type === "introduction") {
+    return isString(value.title) && isString(value.bodyMarkdown);
+  }
+  if (value.type === "timeline") {
+    return isTimelineSectionBase(value) && value.items.every(isTimelineItem);
+  }
+  if (value.type === "project-group") {
+    return isProjectSectionBase(value) && value.items.every(isProjectItem);
+  }
+  if (value.type === "free-text") {
+    return isString(value.title) && isString(value.bodyMarkdown);
+  }
+  return false;
+}
+
+function isV1ResumeSection(value: unknown): value is V1ResumeSection {
+  if (isProfileSection(value)) return true;
+  if (!isRecord(value) || !hasSectionBase(value) || !isString(value.type)) return false;
+  if (value.type === "introduction") {
+    return (
+      isString(value.title) &&
+      Array.isArray(value.paragraphs) &&
+      value.paragraphs.every((paragraph) =>
+        isRecord(paragraph) && isString(paragraph.id) && isTextContent(paragraph.content),
+      )
+    );
+  }
+  if (value.type === "timeline") {
+    return isTimelineSectionBase(value) && value.items.every((item) =>
+      isTimelineItemBase(item) && isBlockArray(item.blocks),
+    );
+  }
+  if (value.type === "project-group") {
+    return isProjectSectionBase(value) && value.items.every((item) =>
+      isProjectItemBase(item) && isTextContent(item.summary) && isBlockArray(item.blocks),
+    );
+  }
+  if (value.type === "free-text") {
+    return isString(value.title) && isBlockArray(value.blocks);
+  }
+  return false;
+}
+
+function isTimelineItemBase(value: unknown): value is Record<string, unknown> & Omit<TimelineItem, "bodyMarkdown"> {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    typeof value.visible === "boolean" &&
+    isDateRange(value.period) &&
+    isString(value.organization) &&
+    isTextContent(value.title) &&
+    isLinkArray(value.links)
+  );
+}
+
+function isProjectItemBase(value: unknown): value is Record<string, unknown> & Omit<ProjectItem, "bodyMarkdown" | "techStack"> {
+  return (
+    isTimelineItemBase(value) &&
+    typeof value.order === "number" &&
+    Number.isFinite(value.order)
+  );
+}
+
+function isTimelineSectionBase(value: Record<string, unknown>): value is Record<string, unknown> & Omit<TimelineSection, "items"> & { items: unknown[] } {
+  return (
+    (value.timelineKind === "career" || value.timelineKind === "education" || value.timelineKind === "activity") &&
+    isString(value.title) &&
+    isOptionalString(value.annotation) &&
+    Array.isArray(value.items)
+  );
+}
+
+function isProjectSectionBase(value: Record<string, unknown>): value is Record<string, unknown> & Omit<ProjectGroupSection, "items"> & { items: unknown[] } {
+  return (
+    (value.groupKind === "project" || value.groupKind === "side-project") &&
+    isString(value.title) &&
+    Array.isArray(value.items)
+  );
+}
+
+function hasSectionBase(value: Record<string, unknown>): boolean {
+  return isString(value.id) && typeof value.visible === "boolean";
+}
+
 function isContentBlock(value: unknown): value is ContentBlock {
   if (!isRecord(value) || !isString(value.id) || !isString(value.type)) return false;
   if (value.type === "paragraph") {
@@ -345,81 +520,4 @@ function isContentBlock(value: unknown): value is ContentBlock {
 
 function isBlockArray(value: unknown): value is ContentBlock[] {
   return Array.isArray(value) && value.every(isContentBlock);
-}
-
-function hasSectionBase(value: Record<string, unknown>): boolean {
-  return isString(value.id) && typeof value.visible === "boolean";
-}
-
-function isTimelineItem(value: unknown): value is TimelineItem {
-  return (
-    isRecord(value) &&
-    isString(value.id) &&
-    typeof value.visible === "boolean" &&
-    isDateRange(value.period) &&
-    isString(value.organization) &&
-    isTextContent(value.title) &&
-    isLinkArray(value.links) &&
-    isBlockArray(value.blocks)
-  );
-}
-
-function isProjectItem(value: unknown): value is ProjectItem {
-  return (
-    isRecord(value) &&
-    isString(value.id) &&
-    typeof value.visible === "boolean" &&
-    typeof value.order === "number" &&
-    Number.isFinite(value.order) &&
-    isDateRange(value.period) &&
-    isString(value.organization) &&
-    isTextContent(value.title) &&
-    isTextContent(value.summary) &&
-    isLinkArray(value.links) &&
-    isBlockArray(value.blocks)
-  );
-}
-
-function isResumeSection(value: unknown): value is ResumeSection {
-  if (!isRecord(value) || !hasSectionBase(value) || !isString(value.type)) return false;
-  if (value.type === "profile") {
-    return (
-      isString(value.role) &&
-      isString(value.name) &&
-      isString(value.phone) &&
-      isString(value.email) &&
-      isOptionalString(value.photoDataUrl) &&
-      isLinkArray(value.links)
-    );
-  }
-  if (value.type === "introduction") {
-    return (
-      isString(value.title) &&
-      Array.isArray(value.paragraphs) &&
-      value.paragraphs.every((paragraph) =>
-        isRecord(paragraph) && isString(paragraph.id) && isTextContent(paragraph.content),
-      )
-    );
-  }
-  if (value.type === "timeline") {
-    return (
-      (value.timelineKind === "career" || value.timelineKind === "education" || value.timelineKind === "activity") &&
-      isString(value.title) &&
-      isOptionalString(value.annotation) &&
-      Array.isArray(value.items) &&
-      value.items.every(isTimelineItem)
-    );
-  }
-  if (value.type === "project-group") {
-    return (
-      (value.groupKind === "project" || value.groupKind === "side-project") &&
-      isString(value.title) &&
-      Array.isArray(value.items) &&
-      value.items.every(isProjectItem)
-    );
-  }
-  if (value.type === "free-text") {
-    return isString(value.title) && isBlockArray(value.blocks);
-  }
-  return false;
 }

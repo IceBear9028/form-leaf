@@ -16,6 +16,7 @@
 
 | ID | 작업 | 상태 | 문서 |
 |---|---|---|---|
-| 00 | 첨부 PDF 재현 및 PDF 내보내기 | 설계 중 | [00-reference-pdf](00-reference-pdf/README.md) |
+| 00 | 첨부 PDF 재현 및 PDF 내보내기 | 완료 | [00-reference-pdf](00-reference-pdf/README.md) |
+| 01 | 이력서 편집 기능 및 데이터 구조 단순화 | 검증 중 | [01-resume-feature-improvement](01-resume-feature-improvement/README.md) |
 
-다음 작업 단위는 `00`이 완료되고 실제 다음 목표가 정해진 뒤 생성한다.
+현재 활성 작업은 `01`이다. 다음 작업 단위는 `01`이 완료되고 실제 다음 목표가 정해진 뒤 생성한다.
