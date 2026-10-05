@@ -59,6 +59,9 @@ app/
 - 고정 `reference-resume-v1` 스타일의 A4 다중 페이지 미리보기
 - 프로젝트 콘텐츠의 페이지 간 연결
 - 앱 전용 데이터 디렉터리의 JSON 자동 저장과 직전 저장본 백업
+- 최근 수정 순 이력서 목록과 여러 문서 생성·열기·이름 변경
+- 삭제 확인, 휴지통 목록, 동일 ID 기반 개별 복원과 확인형 영구 삭제
+- 기존 단일 이력서 파일의 원본 보존 자동 이전
 - Chromium `printToPDF()`를 사용하는 PDF 파일 내보내기
 
 색상, 글꼴, 간격과 레이아웃을 사용자가 바꾸는 기능은 포함하지 않는다.
@@ -67,11 +70,14 @@ app/
 
 ## 로컬 데이터
 
-활성 문서는 Electron의 운영체제별 앱 데이터 디렉터리 아래에 저장된다.
+이력서 목록과 문서는 Electron의 운영체제별 앱 데이터 디렉터리 아래에 저장된다.
 
 ```text
-Resume Studio/workspaces/default.resume.json
-Resume Studio/workspaces/default.resume.json.backup
+Resume Studio/workspaces/library.json
+Resume Studio/workspaces/library.json.backup
+Resume Studio/workspaces/resumes/<documentId>.resume.json
+Resume Studio/workspaces/resumes/<documentId>.resume.json.backup
+Resume Studio/workspaces/trash/<documentId>.resume.json
 ```
 
-renderer는 파일 시스템에 직접 접근하지 않고 preload가 공개한 저장 및 PDF API만 사용한다.
+기존 `default.resume.json`과 백업은 최초 이전 후에도 원본으로 보존한다. renderer는 파일 시스템에 직접 접근하지 않고 preload가 공개한 ID 기반 CRUD 및 PDF API만 사용한다.

@@ -1,84 +1,16 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
-import { copyFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { IPC } from "../shared/ipc";
-import {
-  createDefaultDocument,
-  isResumeDocument,
-  isV1ResumeDocument,
-  type ResumeDocument,
-} from "../shared/resume";
-import { migrateResumeDocumentV1 } from "../shared/resumeMigration";
+import type { ResumeDocument } from "../shared/resume";
+import { ResumeRepository } from "./resumeRepository";
 
 app.setName("Resume Studio");
 
 let mainWindow: BrowserWindow | null = null;
-let saveQueue: Promise<{ savedAt: string }> = Promise.resolve({ savedAt: "" });
 
 function workspaceDirectory(): string {
   return join(app.getPath("userData"), "workspaces");
-}
-
-function documentPath(): string {
-  return join(workspaceDirectory(), "default.resume.json");
-}
-
-async function loadDocument(): Promise<ResumeDocument> {
-  const path = documentPath();
-  if (!existsSync(path)) return createDefaultDocument();
-
-  try {
-    const raw = await readFile(path, "utf8");
-    const document: unknown = JSON.parse(raw);
-    return normalizeStoredDocument(document);
-  } catch (error) {
-    const backupPath = `${path}.backup`;
-    if (!existsSync(backupPath)) throw error;
-    const raw = await readFile(backupPath, "utf8");
-    const backup: unknown = JSON.parse(raw);
-    try {
-      return normalizeStoredDocument(backup);
-    } catch {
-      throw error;
-    }
-  }
-}
-
-function normalizeStoredDocument(value: unknown): ResumeDocument {
-  if (isResumeDocument(value)) return value;
-  if (isV1ResumeDocument(value)) return migrateResumeDocumentV1(value);
-  throw new Error("저장된 이력서의 데이터 형식이 올바르지 않습니다.");
-}
-
-async function saveDocument(document: ResumeDocument): Promise<{ savedAt: string }> {
-  if (!isResumeDocument(document)) {
-    throw new Error("저장할 이력서의 데이터 형식이 올바르지 않습니다.");
-  }
-
-  const directory = workspaceDirectory();
-  const path = documentPath();
-  const temporaryPath = `${path}.tmp`;
-  const savedAt = new Date().toISOString();
-  const nextDocument = { ...document, updatedAt: savedAt };
-
-  await mkdir(directory, { recursive: true });
-  if (existsSync(path)) {
-    try {
-      const current: unknown = JSON.parse(await readFile(path, "utf8"));
-      if (isResumeDocument(current)) {
-        await copyFile(path, `${path}.backup`);
-      } else if (isV1ResumeDocument(current)) {
-        const v1BackupPath = `${path}.v1.backup`;
-        if (!existsSync(v1BackupPath)) await copyFile(path, v1BackupPath);
-      }
-    } catch {
-      // 손상된 현재 파일로 직전 정상 백업을 덮어쓰지 않는다.
-    }
-  }
-  await writeFile(temporaryPath, `${JSON.stringify(nextDocument, null, 2)}\n`, "utf8");
-  await rename(temporaryPath, path);
-  return { savedAt };
 }
 
 function safePdfName(name: string): string {
@@ -112,15 +44,19 @@ async function exportPdf(sender: Electron.WebContents, name: string) {
   return { canceled: false as const, filePath: result.filePath };
 }
 
-function registerIpcHandlers(): void {
-  ipcMain.handle(IPC.loadDocument, () => loadDocument());
-  ipcMain.handle(IPC.saveDocument, (_event, document: ResumeDocument) => {
-    saveQueue = saveQueue.then(
-      () => saveDocument(document),
-      () => saveDocument(document),
-    );
-    return saveQueue;
-  });
+function registerIpcHandlers(repository: ResumeRepository): void {
+  ipcMain.handle(IPC.listResumes, () => repository.list());
+  ipcMain.handle(IPC.listDeletedResumes, () => repository.listTrash());
+  ipcMain.handle(IPC.createResume, () => repository.create());
+  ipcMain.handle(IPC.loadResume, (_event, id: string) => repository.load(id));
+  ipcMain.handle(IPC.saveResume, (_event, id: string, document: ResumeDocument) =>
+    repository.save(id, document));
+  ipcMain.handle(IPC.renameResume, (_event, id: string, title: string) =>
+    repository.rename(id, title));
+  ipcMain.handle(IPC.deleteResume, (_event, id: string) => repository.remove(id));
+  ipcMain.handle(IPC.restoreResume, (_event, id: string) => repository.restore(id));
+  ipcMain.handle(IPC.permanentlyDeleteResume, (_event, id: string) =>
+    repository.permanentlyDelete(id));
   ipcMain.handle(IPC.exportPdf, (event, name: string) =>
     exportPdf(event.sender, name),
   );
@@ -169,7 +105,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  registerIpcHandlers();
+  registerIpcHandlers(new ResumeRepository(workspaceDirectory()));
   createWindow();
 
   app.on("activate", () => {

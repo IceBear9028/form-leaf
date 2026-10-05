@@ -194,13 +194,6 @@ export type PdfExportResult =
   | { canceled: true }
   | { canceled: false; filePath: string };
 
-export type ResumeStudioApi = {
-  loadDocument: () => Promise<ResumeDocument>;
-  saveDocument: (document: ResumeDocument) => Promise<{ savedAt: string }>;
-  exportPdf: (suggestedName: string) => Promise<PdfExportResult>;
-  showInFolder: (filePath: string) => Promise<void>;
-};
-
 export const emptyText = (): TextContent => ({ runs: [{ text: "" }] });
 
 export const plainText = (content: TextContent): string =>

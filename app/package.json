@@ -13,10 +13,11 @@
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:markdown && npm run test:migration && npm run test:styles",
+    "test": "npm run test:markdown && npm run test:migration && npm run test:styles && npm run test:library",
     "test:markdown": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/markdown.test.mjs",
     "test:migration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/resume-migration.test.mjs",
-    "test:styles": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/resume-style-sheets.test.mjs"
+    "test:styles": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/resume-style-sheets.test.mjs",
+    "test:library": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/resume-library.test.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.4",
