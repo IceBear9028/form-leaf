@@ -224,6 +224,9 @@ export function ResumePreview({ document, zoom, onChange }: {
           : /Line/.test(inputType)
             ? "line"
             : "grapheme";
+        const lineBoundary = granularity === "line"
+          ? visualLineDeletionRange(root, direction)
+          : undefined;
         const domSelection = window.getSelection();
         const anchorElement = domSelection?.anchorNode instanceof HTMLElement
           ? domSelection.anchorNode
@@ -238,7 +241,7 @@ export function ResumePreview({ document, zoom, onChange }: {
         const forwardBreak = direction === "forward"
           ? source.slice(range.start).match(/^<br\s*\/?>/i)?.[0]
           : undefined;
-        const adjacent = direction === "backward" && atEmptyBlock &&
+        const adjacent = lineBoundary ?? (direction === "backward" && atEmptyBlock &&
           source.slice(range.start - 2, range.start) === "\n\n"
           ? { start: range.start - 2, end: range.start }
           : backwardBreak
@@ -249,7 +252,7 @@ export function ResumePreview({ document, zoom, onChange }: {
               ? { start: range.start - 1, end: range.start }
               : direction === "forward" && source[range.start] === "\n"
                 ? { start: range.start, end: range.start + 1 }
-                : adjacentDeletionRange(root, selection, direction, granularity);
+                : adjacentDeletionRange(root, selection, direction, granularity));
         if (!adjacent) return;
         range = adjacent;
       }
@@ -866,6 +869,22 @@ function parseSourceMap(value?: string): number[] {
   return value?.split(",").map(Number).filter(Number.isFinite) ?? [];
 }
 
+function visualLineDeletionRange(
+  root: HTMLElement,
+  direction: "backward" | "forward",
+): MarkdownSourceRange | undefined {
+  const domSelection = window.getSelection();
+  if (!domSelection?.rangeCount || !domSelection.isCollapsed) return undefined;
+  const original = domSelection.getRangeAt(0).cloneRange();
+  domSelection.modify("extend", direction, "lineboundary");
+  const lineSelection = readMarkdownSourceSelection(root, true)?.range;
+  domSelection.removeAllRanges();
+  domSelection.addRange(original);
+  return lineSelection && lineSelection.start !== lineSelection.end
+    ? lineSelection
+    : undefined;
+}
+
 function whitespaceOffsetOutsideInlineFormat(
   root: HTMLElement,
   sourceOffset: number,
@@ -923,11 +942,7 @@ function adjacentDeletionRange(
   if (direction === "backward") {
     const candidates = graphemeRanges.filter((range) => range.end <= caret);
     if (granularity === "grapheme") return candidates.at(-1);
-    if (granularity === "line") {
-      const first = candidates.at(0);
-      const last = candidates.at(-1);
-      return first && last ? { start: first.start, end: last.end } : undefined;
-    }
+    if (granularity === "line") return candidates.at(-1);
     let index = candidates.length - 1;
     while (index >= 0 && /\s/u.test(candidates[index].text)) index -= 1;
     while (index > 0 && !/\s/u.test(candidates[index - 1].text)) index -= 1;
@@ -937,11 +952,7 @@ function adjacentDeletionRange(
   }
   const candidates = graphemeRanges.filter((range) => range.start >= caret);
   if (granularity === "grapheme") return candidates[0];
-  if (granularity === "line") {
-    const first = candidates[0];
-    const last = candidates.at(-1);
-    return first && last ? { start: first.start, end: last.end } : undefined;
-  }
+  if (granularity === "line") return candidates[0];
   let index = 0;
   while (index < candidates.length && /\s/u.test(candidates[index].text)) index += 1;
   let endIndex = index;

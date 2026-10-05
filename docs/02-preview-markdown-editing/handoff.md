@@ -84,6 +84,7 @@
 - H3 마지막에서 Enter 직후 글자 입력 전부터 선택이 독립 `.markdown-empty-block`에 놓이고, 연속 Enter마다 서로 다른 빈 블록과 source `\n\n` 쌍이 하나씩 증가하는 것 확인
 - 신규 빈 블록에서 Backspace 시 `\n\n` 쌍이 제거되어 원문이 byte 단위로 복원되고 caret이 직전 H3 끝으로 돌아가는 것 확인
 - Enter 전후 `document.activeElement`가 서로 다른 편집 host이고, 신규 host가 기존 host의 자식이 아닌 DOM 형제이며 연속 Enter마다 새 host로 포커스가 이동하는 것 확인
+- Cmd+Backspace에서 브라우저 `lineboundary`로 source range를 계산해 Shift+Enter 줄의 60자와 자동 줄바꿈된 마지막 줄의 5자만 각각 삭제되고 나머지 블록·문서·포커스가 유지되는 것 확인
 
 ## 후속 확인 사항
 
