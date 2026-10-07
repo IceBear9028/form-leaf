@@ -20,5 +20,6 @@
 | 01 | 이력서 편집 기능 및 데이터 구조 단순화 | 검증 중 | [01-resume-feature-improvement](01-resume-feature-improvement/README.md) |
 | 02 | 미리보기 Markdown 직접 편집 | 1차 구현 완료·사용자 검증 중 | [02-preview-markdown-editing](02-preview-markdown-editing/README.md) |
 | 03 | 여러 이력서 보관함과 CRUD | 1차 구현·검증 완료 | [03-resume-library](03-resume-library/README.md) |
+| 04 | 레이어 경계와 테스트 단위 리팩터링 | 구조안 승인·12단계 구현 진행 | [04-layered-architecture-refactor](04-layered-architecture-refactor/README.md) |
 
-현재 기능 개발 대상은 `03`이다. `01`과 `02`의 남은 검증 사항은 새 기능 구현 중 회귀 항목으로 함께 확인한다.
+현재 작업 대상은 `04`다. 승인된 12단계 계획을 단계별 검증과 커밋으로 진행한다.
