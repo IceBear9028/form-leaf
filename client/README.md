@@ -40,8 +40,8 @@ client/
 └─ src/
    ├─ main/       Electron main process
    ├─ preload/    renderer에 노출할 최소 권한 API
-   ├─ renderer/   React 기반 편집 UI와 A4 미리보기
-   └─ shared/     ResumeWorkspace, ResumeDocument, IPC 계약, 오류 타입
+   ├─ renderer/   React 기반 편집 UI, Markdown parser와 A4 미리보기
+   └─ foundation/ 실행 환경이 공유하는 문서 모델, IPC 계약과 직렬화 규칙
 ```
 
 ## 경계
@@ -49,7 +49,7 @@ client/
 - `main`: 파일 시스템, 앱 창, 최근 문서와 PDF 내보내기를 소유한다.
 - `preload`: `contextBridge`로 허용된 기능만 renderer에 노출한다.
 - `renderer`: Node.js와 파일 시스템에 직접 접근하지 않는다.
-- `shared`: 프로세스 양쪽이 함께 사용하는 타입과 검증 규칙만 둔다.
+- `foundation`: 둘 이상의 실행 환경이 함께 사용하는 환경 독립 타입과 규칙만 둔다.
 
 ## 현재 구현
 

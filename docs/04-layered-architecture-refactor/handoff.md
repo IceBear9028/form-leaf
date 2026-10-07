@@ -3,7 +3,7 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1단계 기준 검증과 2단계 디렉터리 이름 변경을 완료했다.
+- 12단계 실행 계획을 승인했고 1~3단계를 완료했다.
 - 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
@@ -15,13 +15,13 @@
 - FSD나 반복적인 `domain/application/adapter/ui` 폴더는 현재 구조안에서 제외했다.
 - 각 단계는 검증 후 별도 커밋으로 완료한다.
 
-## 공용 소스 조사 결과
+## 공용 소스 적용 결과
 
 - `resume.ts`는 공통 `document.ts`와 이력서 전용 `content/resume.ts`로 분리한다.
 - `resumeLibrary.ts`는 `documentLibrary.ts`로 변경한다.
-- `ipc.ts`, `markdownSerialization.ts`는 `foundation`에 유지한다.
-- renderer 이동 후보: `markdown.ts`, `markdownEdits.ts`
-- main 이동 및 이름 변경 후보: `resumeMigration.ts` → `document/documentMigration.ts`
+- `ipc.ts`, `markdownSerialization.ts`, `resume.ts`, `resumeLibrary.ts`를 `foundation`으로 이동했다.
+- renderer 전용 `markdown.ts`, `markdownEdits.ts`를 `renderer/src/markdown`으로 이동했다.
+- main 전용 `resumeMigration.ts`를 `main`으로 이동했다. 이름과 세부 경로는 4~5단계에서 정리한다.
 - `foundation`은 연결 계층이 아니다. 실제 renderer→main 연결은 preload와 IPC가 담당한다.
 - `foundation`에는 둘 이상의 실행 환경이 사용하는 환경 독립 기반 코드만 둔다.
 
@@ -41,8 +41,8 @@ shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과
 
 ## 다음 작업
 
-3단계에서 `client/src/shared`의 파일을 실제 사용 환경에 따라 `foundation`, `main`, `renderer`로 이동한다. 이 단계에서는 public API와 저장 schema의 이름을 바꾸지 않으며, `document` 명칭 변경은 4단계에서 별도로 진행한다.
+4단계에서 공통 저장·CRUD·IPC의 `resume` 명칭을 `document`로 바꾼다. 저장 schema와 이력서 content·미리보기·출력의 `resume` 명칭은 유지한다.
 
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 
-1단계 기준선은 자동 테스트 27개와 production build 통과다. 2단계도 새 `client` 경로에서 같은 테스트와 production build를 통과했다.
+1단계 기준선은 자동 테스트 27개와 production build 통과다. 2단계와 3단계도 같은 테스트와 production build를 통과했다.

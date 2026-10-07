@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import type { MarkdownInlineFormat } from "../../../shared/markdownEdits";
+import type { MarkdownInlineFormat } from "../markdown/markdownEdits";
 
 export function MarkdownSelectionToolbar({
   rect,

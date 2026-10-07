@@ -1,8 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { IPC } from "../shared/ipc";
-import type { ResumeDocument } from "../shared/resume";
+import { IPC } from "../foundation/ipc";
+import type { ResumeDocument } from "../foundation/resume";
 import { ResumeRepository } from "./resumeRepository";
 
 app.setName("Resume Studio");

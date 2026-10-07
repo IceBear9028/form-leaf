@@ -8,8 +8,8 @@
 |---|---|---|
 | 1 | 기준 상태 검증 및 구조 설계 문서 커밋 | 완료 |
 | 2 | 루트 `app` 디렉터리를 `client`로 변경 | 완료 |
-| 3 | `main/preload/renderer/foundation` 실행 환경 경계 정리 | 진행 중 |
-| 4 | 공통 저장·CRUD·IPC 명칭을 `document`로 변경 | 대기 |
+| 3 | `main/preload/renderer/foundation` 실행 환경 경계 정리 | 완료 |
+| 4 | 공통 저장·CRUD·IPC 명칭을 `document`로 변경 | 진행 중 |
 | 5 | main process 저장소·migration·파일 I/O 책임 분리 | 대기 |
 | 6 | Renderer를 `app/pages/shared` 구조로 이동 | 대기 |
 | 7 | `App.tsx`의 목록·휴지통·문서 세션 상태 분리 | 대기 |
@@ -22,7 +22,7 @@
 ## 현재 확정된 이동 후보
 
 - `app` 디렉터리 이름을 `client`로 변경 완료
-- `shared`의 프로세스 공용 파일을 `foundation`으로 이동
+- `shared`의 프로세스 공용 파일을 `foundation`으로 이동 완료
 - `resumeRepository.ts`를 `documentRepository.ts`로 변경
 - `resumeLibrary.ts`와 공통 CRUD 타입을 `documentLibrary.ts`와 `Document*`로 변경
 - preload API 타입과 진입점을 `ResumeStudioApi`·`window.resumeStudio`에서 `DocumentApi`·`window.documents`로 변경
@@ -33,7 +33,7 @@
 - `ipc.ts`, `markdownSerialization.ts`는 `foundation`에 유지
 - `ResumeEditor`, `ResumePreview`, `ResumeContent`처럼 이력서 구조에 종속된 이름은 유지
 
-이 목록은 구조안이며 아직 실제 파일을 이동하지 않았다.
+목표 경로까지 한 번에 이동하지 않는다. 3단계에서는 실행 환경 소유권만 분리했고, 이름과 세부 폴더는 이후 단계에서 변경한다.
 
 ## 마지막 UI 교체 단계
 

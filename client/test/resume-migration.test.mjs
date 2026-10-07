@@ -4,8 +4,8 @@ import {
   createDefaultDocument,
   isResumeDocument,
   isV1ResumeDocument,
-} from "../src/shared/resume.ts";
-import { migrateResumeDocumentV1 } from "../src/shared/resumeMigration.ts";
+} from "../src/foundation/resume.ts";
+import { migrateResumeDocumentV1 } from "../src/main/resumeMigration.ts";
 
 const text = (value, marks, href) => ({
   runs: [{ text: value, ...(marks ? { marks } : {}), ...(href ? { href } : {}) }],

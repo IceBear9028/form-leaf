@@ -9,8 +9,8 @@ import type {
   ResumeSection,
   TimelineItem,
   TimelineSection,
-} from "../../../shared/resume";
-import { createId, emptyText, plainText } from "../../../shared/resume";
+} from "../../../foundation/resume";
+import { createId, emptyText, plainText } from "../../../foundation/resume";
 import { Accordion, AddButton, Field, ItemActions } from "./EditorPrimitives";
 import { RichTextEditor } from "./RichTextEditor";
 import { listResumeStyleSheets } from "../styles/resumeStyleSheets";

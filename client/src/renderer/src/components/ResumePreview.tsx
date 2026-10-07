@@ -7,9 +7,9 @@ import type {
   TextContent,
   TimelineItem,
   TimelineKind,
-} from "../../../shared/resume";
-import { plainText } from "../../../shared/resume";
-import { parseResumeMarkdown, type ResumeMarkdownBlock } from "../../../shared/markdown";
+} from "../../../foundation/resume";
+import { plainText } from "../../../foundation/resume";
+import { parseResumeMarkdown, type ResumeMarkdownBlock } from "../markdown/markdown";
 import {
   replaceMarkdownRange,
   replaceMarkdownText,
@@ -18,7 +18,7 @@ import {
   toggleMarkdownLink,
   type MarkdownInlineFormat,
   type MarkdownSourceRange,
-} from "../../../shared/markdownEdits";
+} from "../markdown/markdownEdits";
 import { getResumeStyleSheet } from "../styles/resumeStyleSheets";
 import {
   MarkdownBlockContent,

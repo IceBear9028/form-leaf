@@ -1,8 +1,8 @@
 import {
   contentBlocksToMarkdown,
   textContentToMarkdown,
-} from "./markdownSerialization.ts";
-import { plainText } from "./resume.ts";
+} from "../foundation/markdownSerialization.ts";
+import { plainText } from "../foundation/resume.ts";
 import type {
   ContentBlock,
   ProfileSection,
@@ -13,7 +13,7 @@ import type {
   TimelineItem,
   V1ProjectItem,
   V1ResumeDocument,
-} from "./resume";
+} from "../foundation/resume";
 
 export function migrateResumeDocumentV1(document: V1ResumeDocument): ResumeDocument {
   return {

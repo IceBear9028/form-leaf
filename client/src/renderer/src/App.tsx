@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ResumeDocument } from "../../shared/resume";
+import type { ResumeDocument } from "../../foundation/resume";
 import {
   sortDeletedResumeSummaries,
   sortResumeSummaries,
   type DeletedResumeSummary,
   type ResumeSummary,
-} from "../../shared/resumeLibrary";
+} from "../../foundation/resumeLibrary";
 import { EditorPanel } from "./components/EditorPanel";
 import { ResumeLibrary, ResumeTrash } from "./components/ResumeLibrary";
 import { ResumePreview } from "./components/ResumePreview";

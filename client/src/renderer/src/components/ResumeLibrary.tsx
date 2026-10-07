@@ -2,7 +2,7 @@ import { useState } from "react";
 import type {
   DeletedResumeSummary,
   ResumeSummary,
-} from "../../../shared/resumeLibrary";
+} from "../../../foundation/resumeLibrary";
 
 type LibraryProps = {
   resumes: ResumeSummary[];

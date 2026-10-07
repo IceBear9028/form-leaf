@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { IPC } from "../shared/ipc";
-import type { ResumeDocument } from "../shared/resume";
-import type { ResumeStudioApi } from "../shared/resumeLibrary";
+import { IPC } from "../foundation/ipc";
+import type { ResumeDocument } from "../foundation/resume";
+import type { ResumeStudioApi } from "../foundation/resumeLibrary";
 
 const api: ResumeStudioApi = {
   listResumes: () => ipcRenderer.invoke(IPC.listResumes),

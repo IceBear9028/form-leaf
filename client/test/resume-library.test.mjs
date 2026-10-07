@@ -4,11 +4,11 @@ import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ResumeRepository } from "../src/main/resumeRepository.ts";
-import { createDefaultDocument } from "../src/shared/resume.ts";
+import { createDefaultDocument } from "../src/foundation/resume.ts";
 import {
   sortDeletedResumeSummaries,
   sortResumeSummaries,
-} from "../src/shared/resumeLibrary.ts";
+} from "../src/foundation/resumeLibrary.ts";
 
 async function temporaryWorkspace(t) {
   const directory = await mkdtemp(join(tmpdir(), "resume-studio-library-"));

@@ -15,7 +15,7 @@ import {
   isResumeDocument,
   isV1ResumeDocument,
   type ResumeDocument,
-} from "../shared/resume.ts";
+} from "../foundation/resume.ts";
 import {
   createEmptyLibraryIndex,
   DEFAULT_RESUME_TITLE,
@@ -27,8 +27,8 @@ import {
   type DeletedResumeSummary,
   type ResumeLibraryIndex,
   type ResumeSummary,
-} from "../shared/resumeLibrary.ts";
-import { migrateResumeDocumentV1 } from "../shared/resumeMigration.ts";
+} from "../foundation/resumeLibrary.ts";
+import { migrateResumeDocumentV1 } from "./resumeMigration.ts";
 
 const DOCUMENT_SUFFIX = ".resume.json";
 const DOCUMENT_BACKUP_SUFFIXES = [".backup", ".v1.backup"] as const;

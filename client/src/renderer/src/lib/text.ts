@@ -1,4 +1,4 @@
-import type { TextContent, TextMark, TextRun } from "../../../shared/resume";
+import type { TextContent, TextMark, TextRun } from "../../../foundation/resume";
 
 const escapeHtml = (value: string): string =>
   value

@@ -71,9 +71,9 @@ renderer ─┘
 
 테스트에서 import한다는 사실만으로는 `foundation`에 둘 이유가 되지 않는다.
 
-## 현재 공용 소스 사용 조사
+## 공용 소스 사용 조사와 3단계 적용 결과
 
-현재 `client/src/shared`의 production import를 조사한 결과다.
+이동 전 `client/src/shared`의 production import를 조사한 결과다.
 
 | 파일 | main | preload | renderer | 판단 |
 |---|:---:|:---:|:---:|---|
@@ -85,7 +85,7 @@ renderer ─┘
 | `markdownEdits.ts` | 미사용 | 미사용 | 사용 | renderer 이동 후보 |
 | `resumeMigration.ts` | repository에서 사용 | 미사용 | 미사용 | main 이동 후 `documentMigration.ts`로 변경 |
 
-Renderer는 현재 다음 `client/src/shared` 소스를 실제로 사용한다.
+Renderer는 이동 전에 다음 `client/src/shared` 소스를 사용했다.
 
 - `resume.ts`: `App`, 편집 패널, 미리보기, 텍스트 편집에서 현재 이력서 문서 모델과 순수 helper 사용
 - `resumeLibrary.ts`: 목록 화면과 현재 `window.resumeStudio` API 타입 사용
@@ -93,6 +93,24 @@ Renderer는 현재 다음 `client/src/shared` 소스를 실제로 사용한다.
 - `markdownEdits.ts`: Markdown 직접 편집과 선택 툴바에서 source edit 사용
 
 이 중 `markdown.ts`와 `markdownEdits.ts`는 renderer에서만 사용하므로 프로세스 공용 `foundation`의 배치 조건을 만족하지 않는다.
+
+3단계에서 실제 사용 환경에 따라 다음과 같이 이동했다. 이 단계에서는 public type과 함수 이름은 바꾸지 않았다.
+
+```text
+client/src/
+├─ foundation/
+│  ├─ ipc.ts
+│  ├─ markdownSerialization.ts
+│  ├─ resume.ts
+│  └─ resumeLibrary.ts
+├─ main/
+│  └─ resumeMigration.ts
+└─ renderer/src/markdown/
+   ├─ markdown.ts
+   └─ markdownEdits.ts
+```
+
+최종 `document` 명칭과 세부 폴더로 바꾸는 작업은 4~6단계에 나누어 진행한다.
 
 ## foundation으로 이동하거나 추가할 파일
 
