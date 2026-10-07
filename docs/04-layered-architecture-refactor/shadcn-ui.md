@@ -15,7 +15,7 @@
 - [shadcn/ui Theming](https://ui.shadcn.com/docs/theming)
 - [shadcn/ui Monorepo와 aliases](https://ui.shadcn.com/docs/monorepo)
 
-shadcn/ui는 완성된 UI 패키지를 import해 숨겨진 구현을 사용하는 방식이 아니다. CLI로 필요한 컴포넌트 소스를 프로젝트에 추가하고 애플리케이션이 그 소스를 직접 소유한다. 생성된 UI 파일은 `renderer/src/shared/ui`에 두고, 페이지 컴포넌트는 해당 primitive를 조합한다.
+shadcn/ui는 완성된 UI 패키지를 import해 숨겨진 구현을 사용하는 방식이 아니다. CLI로 필요한 컴포넌트 소스를 프로젝트에 추가하고 애플리케이션이 그 소스를 직접 소유한다. 생성된 UI 파일은 `renderer/src/shared/ui`에 두고, 페이지 컴포넌트는 해당 primitive를 조합한다. 현재 공식 `base-nova` registry는 Base UI와 `cn` 패키지를 사용한다.
 
 ## 스타일 기준
 
@@ -70,6 +70,8 @@ client/
 ```
 
 `@`는 `client/src/renderer/src`를 가리키도록 TypeScript와 electron-vite의 renderer alias를 함께 설정한다. CLI가 `global.css`, TypeScript 설정 또는 build 설정을 덮어쓰도록 두지 않고 생성 diff를 검토해 병합한다.
+
+Electron Vite 프로젝트는 shadcn CLI의 자동 framework 판별 대상이 아니므로 공식 manual installation 절차를 적용한다. `shadcn`, `class-variance-authority`, `cn`, `lucide-react`, `tw-animate-css`와 Base UI 의존성을 설치하고, `shared/lib/utils.ts`에서는 공식 예시대로 `cn`을 재노출한다. 컴포넌트 소스 자체는 CLI `add`로 생성한다.
 
 ## 필요한 컴포넌트
 
@@ -142,6 +144,8 @@ shadcn 적용은 다음 파일과 결과를 변경하지 않아야 한다.
 2. document 전용 selector와 token은 `resumeDocument.css`에 유지한다.
 3. 전역 reset을 추가하기 전 preview와 PDF 계산에 미치는 영향을 확인한다.
 4. UI 교체 전후 동일 fixture의 페이지 수, overflow, 주요 computed style과 PDF를 비교한다.
+
+10단계 설정에서는 `@import "tailwindcss"` 전체와 전역 `* { @apply ... }`를 추가하지 않았다. 기존 theme/utilities import를 유지한 채 `tw-animate-css`, `shadcn/tailwind.css`, semantic token mapping만 병합했다. 이 상태에서 기준 fixture의 preview 2페이지, overflow 0개, 1123.992px 높이, 문서 글꼴과 흰 배경이 9단계 기준값과 동일함을 확인했다.
 
 ## 구현 순서
 

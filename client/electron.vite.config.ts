@@ -23,6 +23,11 @@ export default defineConfig({
   renderer: {
     root: resolve(__dirname, "src/renderer"),
     plugins: [tailwindcss(), react()],
+    resolve: {
+      alias: {
+        "@": resolve(__dirname, "src/renderer/src"),
+      },
+    },
     build: {
       rollupOptions: {
         input: resolve(__dirname, "src/renderer/index.html"),

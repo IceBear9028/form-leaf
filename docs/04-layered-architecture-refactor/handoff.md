@@ -3,7 +3,7 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1~9단계를 완료했다.
+- 12단계 실행 계획을 승인했고 1~10단계를 완료했다.
 - 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
@@ -48,6 +48,17 @@
 
 shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과 검증 기준은 [shadcn/ui 적용 계획](shadcn-ui.md)에 기록했다. 구조 이동 중 일부 화면에 shadcn을 먼저 섞지 않는다.
 
+## 10단계 shadcn/ui 기반 설정 결과
+
+- `components.json`에 `base-nova`, `neutral`, CSS variables, Lucide와 `shared/ui` alias를 설정했다.
+- TypeScript와 electron-vite renderer의 `@` alias는 `src/renderer/src`를 가리킨다.
+- Electron Vite는 CLI framework 자동 판별 대상이 아니므로 공식 manual installation 절차로 의존성과 theme token을 설정했다.
+- CLI `add`로 필요한 primitive와 내부 의존 primitive 21개를 `renderer/src/shared/ui`에 생성했다.
+- 현재 공식 `base-nova`가 직접 사용하는 `cn` 패키지를 `shared/lib/utils.ts`에서 재노출했다.
+- Tailwind 전체 preflight와 전역 border reset은 추가하지 않아 document preview의 DOM 측정 범위를 보호했다.
+- 33개 테스트와 production build가 통과했다.
+- 임시 Electron fixture에서 preview 2페이지, overflow 0개, 높이 1123.992px, 문서 글꼴과 배경이 9단계 기준값과 동일했다.
+
 ## 9단계 회귀 검증 결과
 
 - 자동 테스트 33개와 production build가 통과했다.
@@ -62,7 +73,7 @@ shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과
 
 ## 다음 작업
 
-10단계에서 공식 shadcn/ui 설정과 alias를 추가하고, 앱 chrome 교체에 필요한 primitive를 `renderer/src/shared/ui`에 준비한다. 이 단계에서는 아직 기존 화면을 교체하지 않는다.
+11단계에서 document library·휴지통·editor 앱 chrome과 Markdown 선택 toolbar를 `shared/ui` primitive와 Lucide 아이콘으로 교체한다. document preview와 PDF selector는 변경하지 않는다.
 
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 
