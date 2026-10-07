@@ -296,34 +296,6 @@
 .markdown-edit-trailing-line { display: block; min-height: 1lh; }
 .markdown-empty-block { min-height: 1lh; }
 .markdown-empty-block-host { margin-top: var(--markdown-block-gap); }
-.markdown-selection-toolbar {
-  position: fixed;
-  z-index: 100;
-  display: flex;
-  overflow: hidden;
-  transform: translateX(-50%);
-  border: 1px solid #d6dbe3;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 7px 22px rgba(28, 38, 53, 0.18);
-}
-.markdown-selection-toolbar button {
-  display: grid;
-  width: 28px;
-  height: 30px;
-  place-items: center;
-  border: 0;
-  border-right: 1px solid #e7eaf0;
-  background: transparent;
-  color: #273243;
-  cursor: pointer;
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 12px;
-}
-.markdown-selection-toolbar button:last-child { border-right: 0; }
-.markdown-selection-toolbar button:hover { background: #f0f5fd; color: #1768e5; }
-.markdown-selection-toolbar button:focus-visible { position: relative; outline: 2px solid #3178ff; outline-offset: -2px; }
-.markdown-toolbar-code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; }
 .layout-unit--markdown { padding-bottom: var(--markdown-block-gap); }
 .layout-unit--line-end.layout-unit--markdown::after { bottom: var(--markdown-block-gap); }
 

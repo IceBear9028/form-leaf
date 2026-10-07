@@ -1,4 +1,19 @@
 import { createPortal } from "react-dom";
+import {
+  BoldIcon,
+  CodeXmlIcon,
+  ItalicIcon,
+  LinkIcon,
+  StrikethroughIcon,
+  UnderlineIcon,
+} from "lucide-react";
+import { Button } from "@/shared/ui/button";
+import { ButtonGroup } from "@/shared/ui/button-group";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/ui/tooltip";
 import type { MarkdownInlineFormat } from "./edits";
 
 export function MarkdownSelectionToolbar({
@@ -11,26 +26,26 @@ export function MarkdownSelectionToolbar({
   onLink: () => void;
 }) {
   const left = Math.min(
-    window.innerWidth - 172,
+    window.innerWidth - 224,
     Math.max(8, rect.left + rect.width / 2),
   );
   const top = Math.max(8, rect.top - 42);
 
   return createPortal(
-    <div
-      className="markdown-selection-toolbar"
+    <ButtonGroup
+      className="markdown-selection-toolbar fixed z-50 -translate-x-1/2 rounded-lg bg-popover shadow-md ring-1 ring-foreground/10"
       role="toolbar"
       aria-label="Markdown 텍스트 서식"
       style={{ left, top }}
       onPointerDown={(event) => event.preventDefault()}
     >
-      <FormatButton label="굵게" title="굵게 (⌘B)" onClick={() => onFormat("strong")}><strong>B</strong></FormatButton>
-      <FormatButton label="기울임" title="기울임 (⌘I)" onClick={() => onFormat("emphasis")}><em>I</em></FormatButton>
-      <FormatButton label="밑줄" title="밑줄 (⌘U)" onClick={() => onFormat("underline")}><u>U</u></FormatButton>
-      <FormatButton label="취소선" title="취소선" onClick={() => onFormat("delete")}><s>S</s></FormatButton>
-      <FormatButton label="인라인 코드" title="인라인 코드" onClick={() => onFormat("inline-code")}><span className="markdown-toolbar-code">&lt;/&gt;</span></FormatButton>
-      <FormatButton label="링크" title="링크" onClick={onLink}><span aria-hidden="true">↗</span></FormatButton>
-    </div>,
+      <FormatButton label="굵게" title="굵게 (⌘B)" onClick={() => onFormat("strong")}><BoldIcon aria-hidden="true" /></FormatButton>
+      <FormatButton label="기울임" title="기울임 (⌘I)" onClick={() => onFormat("emphasis")}><ItalicIcon aria-hidden="true" /></FormatButton>
+      <FormatButton label="밑줄" title="밑줄 (⌘U)" onClick={() => onFormat("underline")}><UnderlineIcon aria-hidden="true" /></FormatButton>
+      <FormatButton label="취소선" title="취소선" onClick={() => onFormat("delete")}><StrikethroughIcon aria-hidden="true" /></FormatButton>
+      <FormatButton label="인라인 코드" title="인라인 코드" onClick={() => onFormat("inline-code")}><CodeXmlIcon aria-hidden="true" /></FormatButton>
+      <FormatButton label="링크" title="링크" onClick={onLink}><LinkIcon aria-hidden="true" /></FormatButton>
+    </ButtonGroup>,
     document.body,
   );
 }
@@ -47,8 +62,21 @@ function FormatButton({
   children: React.ReactNode;
 }) {
   return (
-    <button type="button" aria-label={label} title={title} onClick={onClick}>
-      {children}
-    </button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label={label}
+            onClick={onClick}
+          />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{title}</TooltipContent>
+    </Tooltip>
   );
 }

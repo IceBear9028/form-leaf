@@ -16,8 +16,8 @@
 | 8 | document editor의 Markdown·DOM·pagination·style 책임 분리 | 완료 |
 | 9 | 구조 리팩터링 전체 회귀 검증 | 완료 |
 | 10 | shadcn/ui 기반 설정 및 `shared/ui` primitive 추가 | 완료 |
-| 11 | 앱 UI를 shadcn/ui 공식 스타일로 교체하고 직접 구현 primitive 제거 | 진행 중 |
-| 12 | 최종 UI·document preview·PDF 회귀 검증 및 문서화 | 대기 |
+| 11 | 앱 UI를 shadcn/ui 공식 스타일로 교체하고 직접 구현 primitive 제거 | 완료 |
+| 12 | 최종 UI·document preview·PDF 회귀 검증 및 문서화 | 진행 중 |
 
 ## 현재 확정된 이동 후보
 

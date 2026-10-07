@@ -1,6 +1,14 @@
 import { useEffect, useRef } from "react";
+import { BoldIcon, LinkIcon, UnderlineIcon } from "lucide-react";
 import type { TextContent } from "../../../../../../foundation/content/resume";
 import { htmlElementToTextContent, textContentToHtml } from "../../../../shared/lib/text";
+import { Button } from "@/shared/ui/button";
+import { ButtonGroup } from "@/shared/ui/button-group";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/ui/tooltip";
 
 type Props = {
   label: string;
@@ -48,23 +56,17 @@ export function RichTextEditor({
 
   return (
     <div className={`rich-field ${className}`}>
-      <div className="mb-1.5 flex items-center justify-between text-[11px] font-[650] text-[#687384]">
+      <div className="mb-1.5 flex items-center justify-between text-sm font-medium">
         <span>{label}</span>
-        <div className="flex overflow-hidden rounded-md border border-[#e1e5ea]" aria-label={`${label} 서식`}>
-          <button type="button" className={toolbarButtonClass} aria-label="굵게" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("bold")}>
-            <strong>B</strong>
-          </button>
-          <button type="button" className={toolbarButtonClass} aria-label="밑줄" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("underline")}>
-            <u>U</u>
-          </button>
-          <button type="button" className={`${toolbarButtonClass} border-r-0`} aria-label="링크" onMouseDown={(event) => event.preventDefault()} onClick={createLink}>
-            ↗
-          </button>
-        </div>
+        <ButtonGroup aria-label={`${label} 서식`}>
+          <RichTextToolbarButton label="굵게" onClick={() => runCommand("bold")}><BoldIcon aria-hidden="true" /></RichTextToolbarButton>
+          <RichTextToolbarButton label="밑줄" onClick={() => runCommand("underline")}><UnderlineIcon aria-hidden="true" /></RichTextToolbarButton>
+          <RichTextToolbarButton label="링크" onClick={createLink}><LinkIcon aria-hidden="true" /></RichTextToolbarButton>
+        </ButtonGroup>
       </div>
       <div
         ref={editorRef}
-        className={`min-h-[35px] whitespace-pre-wrap rounded-[7px] border border-[#dce1e7] bg-white px-[9px] py-2 text-xs leading-[1.55] text-[#263143] [overflow-wrap:anywhere] empty:before:pointer-events-none empty:before:text-[#b3bac4] empty:before:content-[attr(data-placeholder)] focus:border-[#73a4ec] focus:outline-2 focus:outline-[rgba(49,120,255,0.12)] [&_a]:text-[#1768e5] [&_a]:underline${multiline ? " min-h-[72px]" : ""}`}
+        className={`min-h-8 whitespace-pre-wrap rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm leading-relaxed [overflow-wrap:anywhere] empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&_a]:text-primary [&_a]:underline${multiline ? " min-h-18" : ""}`}
         contentEditable
         role="textbox"
         aria-label={label}
@@ -81,4 +83,32 @@ export function RichTextEditor({
   );
 }
 
-const toolbarButtonClass = "h-[23px] w-[26px] cursor-pointer border-0 border-r border-[#e7eaee] bg-white text-[11px] text-[#536074] hover:bg-[#edf4ff] hover:text-[#1768e5] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#3178ff]";
+function RichTextToolbarButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-xs"
+            aria-label={label}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onClick}
+          />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}

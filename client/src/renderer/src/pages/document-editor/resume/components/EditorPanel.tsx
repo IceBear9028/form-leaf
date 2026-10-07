@@ -11,6 +11,33 @@ import type {
   TimelineSection,
 } from "../../../../../../foundation/content/resume";
 import { createId, emptyText, plainText } from "../../../../../../foundation/content/resume";
+import { ChevronDownIcon, ImageIcon, PlusIcon, XIcon } from "lucide-react";
+import { Button } from "@/shared/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/shared/ui/collapsible";
+import {
+  Field as UiField,
+  FieldDescription,
+  FieldLabel,
+} from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
+import { Switch } from "@/shared/ui/switch";
+import { Textarea } from "@/shared/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/ui/tooltip";
 import { Accordion, AddButton, Field, ItemActions } from "./EditorPrimitives";
 import { RichTextEditor } from "./RichTextEditor";
 import { listResumeStyleSheets } from "../../style/registry";
@@ -20,15 +47,9 @@ type Props = {
   onChange: (document: ResumeDocument) => void;
 };
 
-const fieldGridClass = "mb-3 grid grid-cols-2 gap-[11px]";
-const itemListClass = "my-3 flex flex-col gap-[9px]";
-const collapsibleCardClass = "overflow-hidden rounded-[9px] border border-[#e1e5eb] bg-[#fbfcfd]";
-const cardSummaryClass = "flex cursor-pointer list-none justify-between gap-3 px-3 py-[11px] text-xs font-[680] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#3178ff] [&::-webkit-details-marker]:hidden [&>span:first-child]:min-w-0 [&>span:first-child]:overflow-hidden [&>span:first-child]:text-ellipsis [&>span:first-child]:whitespace-nowrap [&>span:last-child]:whitespace-nowrap [&>span:last-child]:text-[10px] [&>span:last-child]:font-medium [&>span:last-child]:text-[#929aa6]";
-const cardBodyClass = "border-t border-[#edf0f3] px-3 pb-3.5 pt-0 [&>.item-actions]:mt-[9px]";
-const checkFieldClass = "mb-[11px] flex items-center gap-1.5 text-[11px] text-[#626e7e] [&_input]:accent-[#1768e5]";
-const textButtonClass = "cursor-pointer border-0 bg-transparent p-1 text-[11px] font-[650] text-[#1768e5] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3178ff]";
-const iconButtonClass = "h-[25px] min-w-[25px] cursor-pointer rounded-md border border-[#dde2e8] bg-white p-0 text-[15px] text-[#697486] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3178ff]";
-const smallInputClass = "h-8 w-full rounded-[7px] border border-[#dce1e7] bg-white px-2.5 text-xs text-[#1d2735] placeholder:text-[#b3bac4] focus:border-[#73a4ec] focus:outline-2 focus:outline-[rgba(49,120,255,0.12)]";
+const fieldGridClass = "mb-3 grid grid-cols-2 gap-3";
+const itemListClass = "my-3 flex flex-col gap-2.5";
+const cardBodyClass = "border-t px-3 pb-3.5 pt-0 [&>.item-actions]:mt-3";
 const resumeStyleSheets = listResumeStyleSheets();
 
 const move = <T,>(items: T[], from: number, to: number): T[] => {
@@ -74,25 +95,27 @@ export function EditorPanel({ document, onChange }: Props) {
   };
 
   return (
-    <aside className="editor-panel overflow-y-auto overscroll-contain border-r border-[#dbe0e7] bg-[#f8f9fb] px-[18px] pb-[60px] pt-5" aria-label="이력서 편집">
-      <div className="px-1 pb-[18px] [&_input]:text-[15px] [&_input]:font-bold">
+    <aside className="editor-panel overflow-y-auto overscroll-contain border-r bg-muted/30 px-4 pb-15 pt-5" aria-label="이력서 편집">
+      <div className="px-1 pb-5 [&_input]:text-sm [&_input]:font-medium">
         <Field
           label="문서 이름"
           value={document.name}
           onChange={(name) => onChange({ ...document, name })}
         />
-        <label className="mt-3 flex min-w-0 flex-col gap-1.5">
-          <span className="text-[11px] font-[650] text-[#687384]">이력서 스타일</span>
-          <select
-            className="h-[35px] w-full rounded-[7px] border border-[#dce1e7] bg-white px-2.5 text-xs text-[#1d2735] focus:border-[#73a4ec] focus:outline-2 focus:outline-[rgba(49,120,255,0.12)]"
+        <UiField className="mt-3">
+          <FieldLabel>이력서 스타일</FieldLabel>
+          <Select
             value={document.styleSheetId}
-            onChange={(event) => onChange({ ...document, styleSheetId: event.target.value })}
+            onValueChange={(styleSheetId) => onChange({ ...document, styleSheetId: styleSheetId ?? document.styleSheetId })}
           >
-            {resumeStyleSheets.map((styleSheet) => (
-              <option key={styleSheet.id} value={styleSheet.id}>{styleSheet.name}</option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {resumeStyleSheets.map((styleSheet) => (
+                <SelectItem key={styleSheet.id} value={styleSheet.id}>{styleSheet.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </UiField>
       </div>
       {document.sections.map((section) => {
         if (section.type === "profile") {
@@ -116,11 +139,11 @@ export function EditorPanel({ document, onChange }: Props) {
 function ProfileEditor({ section, onChange }: { section: ProfileSection; onChange: (section: ProfileSection) => void }) {
   return (
     <Accordion title="프로필" visible={section.visible} onVisibleChange={(visible) => onChange({ ...section, visible })} defaultOpen>
-      <div className="mb-3.5 flex items-center gap-[9px]">
-        <div className="grid h-12 w-12 flex-none place-items-center overflow-hidden rounded-full border border-[#e0e4e9] bg-[#eff2f5] text-[10px] text-[#a1a9b4]">
-          {section.photoDataUrl ? <img className="h-full w-full object-cover" src={section.photoDataUrl} alt="프로필 미리보기" /> : <span>사진</span>}
+      <div className="mb-4 flex items-center gap-2">
+        <div className="grid size-12 flex-none place-items-center overflow-hidden rounded-full border bg-muted text-muted-foreground">
+          {section.photoDataUrl ? <img className="h-full w-full object-cover" src={section.photoDataUrl} alt="프로필 미리보기" /> : <ImageIcon aria-hidden="true" className="size-4" />}
         </div>
-        <label className="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-lg border border-[#d8dee7] bg-white px-2.5 py-[7px] text-xs font-[650] text-[#344154] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#3178ff]">
+        <Button variant="outline" size="sm" render={<label />}>
           사진 선택
           <input
             className="sr-only"
@@ -134,8 +157,8 @@ function ProfileEditor({ section, onChange }: { section: ProfileSection; onChang
               reader.readAsDataURL(file);
             }}
           />
-        </label>
-        {section.photoDataUrl && <button type="button" className={textButtonClass} onClick={() => onChange({ ...section, photoDataUrl: undefined })}>사진 제거</button>}
+        </Button>
+        {section.photoDataUrl && <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ ...section, photoDataUrl: undefined })}>사진 제거</Button>}
       </div>
       <div className={fieldGridClass}>
         <Field label="직무명" value={section.role} onChange={(role) => onChange({ ...section, role })} />
@@ -170,28 +193,29 @@ function TimelineEditor({ section, onChange }: { section: TimelineSection; onCha
       </div>
       <div className={itemListClass}>
         {section.items.map((item, index) => (
-          <details className={collapsibleCardClass} key={item.id} open>
-            <summary className={cardSummaryClass}>
-              <span>{plainText(item.title) || item.organization || `항목 ${index + 1}`}</span>
-              <span>{item.visible ? "표시" : "숨김"}</span>
-            </summary>
-            <div className={cardBodyClass}>
+          <Collapsible className="overflow-hidden rounded-lg border bg-card" key={item.id} defaultOpen>
+            <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+              <span className="min-w-0 flex-1 truncate">{plainText(item.title) || item.organization || `항목 ${index + 1}`}</span>
+              <span className="text-xs font-normal text-muted-foreground">{item.visible ? "표시" : "숨김"}</span>
+              <ChevronDownIcon aria-hidden="true" className="size-4 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className={cardBodyClass}>
               <ItemActions
                 onUp={index ? () => onChange({ ...section, items: move(section.items, index, index - 1) }) : undefined}
                 onDown={index < section.items.length - 1 ? () => onChange({ ...section, items: move(section.items, index, index + 1) }) : undefined}
                 onDelete={() => onChange({ ...section, items: section.items.filter((entry) => entry.id !== item.id) })}
               />
-              <label className={checkFieldClass}>
-                <input type="checkbox" checked={item.visible} onChange={(event) => updateItem(item.id, { visible: event.target.checked })} />
-                미리보기에 표시
+              <label className="mb-3 flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-sm">
+                <span>미리보기에 표시</span>
+                <Switch checked={item.visible} onCheckedChange={(visible) => updateItem(item.id, { visible })} />
               </label>
               <DateRangeEditor item={item} onChange={(period) => updateItem(item.id, { period })} />
               <Field label={labels.organization} value={item.organization} onChange={(organization) => updateItem(item.id, { organization })} />
               <RichTextEditor className="mt-[11px]" label={labels.title} multiline={false} value={item.title} onChange={(title) => updateItem(item.id, { title })} />
               <LinksEditor links={item.links} onChange={(links) => updateItem(item.id, { links })} />
               <MarkdownEditor value={item.bodyMarkdown} onChange={(bodyMarkdown) => updateItem(item.id, { bodyMarkdown })} />
-            </div>
-          </details>
+            </CollapsibleContent>
+          </Collapsible>
         ))}
       </div>
       <AddButton onClick={() => onChange({ ...section, items: [...section.items, createTimelineItem()] })}>항목 추가</AddButton>
@@ -208,20 +232,21 @@ function ProjectGroupEditor({ section, onChange }: { section: ProjectGroupSectio
       <Field label="섹션 제목" value={section.title} onChange={(title) => onChange({ ...section, title })} />
       <div className={itemListClass}>
         {section.items.map((item, index) => (
-          <details className={collapsibleCardClass} key={item.id} open>
-            <summary className={cardSummaryClass}>
-              <span>{plainText(item.title) || `프로젝트 ${index + 1}`}</span>
-              <span>{item.visible ? "표시" : "숨김"}</span>
-            </summary>
-            <div className={cardBodyClass}>
+          <Collapsible className="overflow-hidden rounded-lg border bg-card" key={item.id} defaultOpen>
+            <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+              <span className="min-w-0 flex-1 truncate">{plainText(item.title) || `프로젝트 ${index + 1}`}</span>
+              <span className="text-xs font-normal text-muted-foreground">{item.visible ? "표시" : "숨김"}</span>
+              <ChevronDownIcon aria-hidden="true" className="size-4 text-muted-foreground transition-transform group-data-panel-open:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className={cardBodyClass}>
               <ItemActions
                 onUp={index ? () => onChange({ ...section, items: move(section.items, index, index - 1).map((entry, order) => ({ ...entry, order })) }) : undefined}
                 onDown={index < section.items.length - 1 ? () => onChange({ ...section, items: move(section.items, index, index + 1).map((entry, order) => ({ ...entry, order })) }) : undefined}
                 onDelete={() => onChange({ ...section, items: section.items.filter((entry) => entry.id !== item.id) })}
               />
-              <label className={checkFieldClass}>
-                <input type="checkbox" checked={item.visible} onChange={(event) => updateItem(item.id, { visible: event.target.checked })} />
-                미리보기에 표시
+              <label className="mb-3 flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-sm">
+                <span>미리보기에 표시</span>
+                <Switch checked={item.visible} onCheckedChange={(visible) => updateItem(item.id, { visible })} />
               </label>
               <DateRangeEditor item={item} onChange={(period) => updateItem(item.id, { period })} />
               <Field label="소속" value={item.organization} onChange={(organization) => updateItem(item.id, { organization })} />
@@ -229,8 +254,8 @@ function ProjectGroupEditor({ section, onChange }: { section: ProjectGroupSectio
               <Field className="mt-[11px]" label="기술 스택" value={item.techStack.join(",")} placeholder="React, TypeScript" onChange={(value) => updateItem(item.id, { techStack: value.split(",") })} />
               <LinksEditor links={item.links} onChange={(links) => updateItem(item.id, { links })} />
               <MarkdownEditor value={item.bodyMarkdown} onChange={(bodyMarkdown) => updateItem(item.id, { bodyMarkdown })} />
-            </div>
-          </details>
+            </CollapsibleContent>
+          </Collapsible>
         ))}
       </div>
       <AddButton onClick={() => onChange({ ...section, items: [...section.items, createProjectItem(section.items.length)] })}>프로젝트 추가</AddButton>
@@ -249,17 +274,17 @@ function FreeTextEditor({ section, onChange }: { section: FreeTextSection; onCha
 
 function MarkdownEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <label className="mt-[13px] flex min-w-0 flex-col gap-1.5">
-      <span className="text-[11px] font-[650] text-[#687384]">본문</span>
-      <textarea
-        className="min-h-[150px] w-full resize-y rounded-[7px] border border-[#dce1e7] bg-white px-2.5 py-2 font-mono text-[11px] leading-[1.55] text-[#1d2735] placeholder:text-[#b3bac4] focus:border-[#73a4ec] focus:outline-2 focus:outline-[rgba(49,120,255,0.12)]"
+    <UiField className="mt-3">
+      <FieldLabel>본문</FieldLabel>
+      <Textarea
+        className="min-h-36 resize-y font-mono text-xs leading-relaxed"
         value={value}
         placeholder={"Markdown으로 본문을 작성하세요.\n\n### 소제목\n\n- 주요 내용"}
         spellCheck={false}
         onChange={(event) => onChange(event.target.value)}
       />
-      <span className="text-[10px] leading-[1.45] text-[#929aa6]">H1~H6, 목록, 강조, 링크, 인용문, 코드와 표를 사용할 수 있습니다.</span>
-    </label>
+      <FieldDescription>H1~H6, 목록, 강조, 링크, 인용문, 코드와 표를 사용할 수 있습니다.</FieldDescription>
+    </UiField>
   );
 }
 
@@ -281,16 +306,23 @@ function DateRangeEditor({ item, onChange }: { item: { period: { start: string; 
 
 function LinksEditor({ links, onChange }: { links: ResumeLink[]; onChange: (links: ResumeLink[]) => void }) {
   return (
-    <div className="mt-[13px]">
-      <div className="flex min-h-[25px] items-center justify-between text-[11px] font-[680] text-[#687384]">
+    <div className="mt-3">
+      <div className="flex min-h-7 items-center justify-between text-sm font-medium">
         <span>링크</span>
-        <button type="button" className={textButtonClass} onClick={() => onChange([...links, createLink()])}>＋ 추가</button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => onChange([...links, createLink()])}>
+          <PlusIcon aria-hidden="true" /> 추가
+        </Button>
       </div>
       {links.map((link) => (
-        <div className="mt-1.5 grid grid-cols-[0.7fr_1.3fr_28px] gap-1.5" key={link.id}>
-          <input className={smallInputClass} aria-label="링크 이름" value={link.label} placeholder="링크 이름" onChange={(event) => onChange(links.map((entry) => entry.id === link.id ? { ...entry, label: event.target.value } : entry))} />
-          <input className={smallInputClass} aria-label="링크 URL" type="url" value={link.href} placeholder="https://" onChange={(event) => onChange(links.map((entry) => entry.id === link.id ? { ...entry, href: event.target.value } : entry))} />
-          <button type="button" className={iconButtonClass} aria-label="링크 삭제" onClick={() => onChange(links.filter((entry) => entry.id !== link.id))}>×</button>
+        <div className="mt-1.5 grid grid-cols-[0.7fr_1.3fr_auto] gap-1.5" key={link.id}>
+          <Input aria-label="링크 이름" value={link.label} placeholder="링크 이름" onChange={(event) => onChange(links.map((entry) => entry.id === link.id ? { ...entry, label: event.target.value } : entry))} />
+          <Input aria-label="링크 URL" type="url" value={link.href} placeholder="https://" onChange={(event) => onChange(links.map((entry) => entry.id === link.id ? { ...entry, href: event.target.value } : entry))} />
+          <Tooltip>
+            <TooltipTrigger render={<Button type="button" variant="ghost" size="icon" aria-label="링크 삭제" onClick={() => onChange(links.filter((entry) => entry.id !== link.id))} />}>
+              <XIcon aria-hidden="true" />
+            </TooltipTrigger>
+            <TooltipContent>링크 삭제</TooltipContent>
+          </Tooltip>
         </div>
       ))}
     </div>

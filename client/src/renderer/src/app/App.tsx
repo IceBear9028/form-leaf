@@ -6,6 +6,9 @@ import {
   DocumentTrashPage,
 } from "../pages/document-library/DocumentLibraryPage";
 import { useDocumentLibrary } from "../pages/document-library/useDocumentLibrary";
+import { Spinner } from "@/shared/ui/spinner";
+import { Toaster } from "@/shared/ui/toast";
+import { TooltipProvider } from "@/shared/ui/tooltip";
 
 type AppView =
   | { type: "library" }
@@ -13,6 +16,16 @@ type AppView =
   | { type: "editor"; document: ResumeDocument };
 
 export function App() {
+  return (
+    <TooltipProvider>
+      <Toaster>
+        <AppContent />
+      </Toaster>
+    </TooltipProvider>
+  );
+}
+
+function AppContent() {
   const [view, setView] = useState<AppView>({ type: "library" });
   const library = useDocumentLibrary();
 
@@ -74,5 +87,5 @@ export function App() {
 }
 
 function LoadingScreen({ label }: { label: string }) {
-  return <div className="flex h-full w-full flex-col items-center justify-center gap-[13px] bg-[#f4f6f8] text-[13px] text-[#687384]"><div className="h-6 w-6 animate-spin rounded-full border-2 border-[#dce2e9] border-t-[#1768e5]" /><span>{label}</span></div>;
+  return <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-muted/30 text-sm text-muted-foreground"><Spinner className="size-5" /><span>{label}</span></div>;
 }

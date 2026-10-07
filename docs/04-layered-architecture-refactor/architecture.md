@@ -408,5 +408,6 @@ client/test/
 - 8단계에서 Markdown source 순수 편집과 DOM Selection adapter, pagination 계산, style schema·preset·registry·CSS 변수 변환을 각각 분리했다.
 - 9단계에서 자동 테스트 33개와 production build뿐 아니라 임시 Electron 저장소의 자동 저장, 다중 문서 독립성, 최근 수정 순 정렬, 휴지통·복원·완전 삭제, preview 페이지·overflow와 실제 PDF 생성까지 회귀 검증했다.
 - 10단계에서 renderer alias와 shadcn semantic token을 설정하고, CLI로 생성한 `base-nova` primitive를 `shared/ui`에 배치했다. Electron Vite의 framework 자동 판별 제약 때문에 초기 설정은 공식 manual installation 절차를 따랐다.
+- 11단계에서 library·trash·editor 앱 chrome을 `shared/ui` 조합으로 교체했다. 페이지는 제품 상태와 화면 조합을 계속 소유하고, focus trap·overlay·menu·tooltip·toast 같은 primitive 동작은 Base UI 기반 shadcn 소스가 담당한다.
 - `resumeDocument.css`는 출력 구조·Markdown 동적 DOM·인쇄 규칙을 계속 담당하고, 사용자가 변경할 값은 `toCssVariables.ts`가 생성하는 CSS 변수로 주입한다.
 - 구조 이동 중 임시 re-export는 한 단계 안에서만 허용하며 해당 단계 커밋 전에 제거한다.

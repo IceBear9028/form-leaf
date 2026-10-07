@@ -3,7 +3,7 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1~10단계를 완료했다.
+- 12단계 실행 계획을 승인했고 1~11단계를 완료했다.
 - 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
@@ -73,7 +73,16 @@ shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과
 
 ## 다음 작업
 
-11단계에서 document library·휴지통·editor 앱 chrome과 Markdown 선택 toolbar를 `shared/ui` primitive와 Lucide 아이콘으로 교체한다. document preview와 PDF selector는 변경하지 않는다.
+12단계에서 신규 shadcn UI의 최종 CRUD·키보드·자동 저장 회귀와 document preview·PDF 기준값을 다시 검증하고 전체 문서를 완료 상태로 정리한다.
+
+## 11단계 shadcn UI 교체 결과
+
+- library·trash·editor의 직접 작성 button/input/modal/empty/loading primitive와 공통 SVG 아이콘을 shadcn `shared/ui`와 Lucide로 교체했다.
+- 이름 변경 Dialog는 autofocus와 Escape 닫기가 동작하고, 삭제 AlertDialog는 취소 시 데이터를 변경하지 않는다.
+- editor의 Accordion, Switch, Select가 실제 Electron에서 동작하며 Switch 조작이 Accordion을 닫지 않는다.
+- Markdown selection toolbar는 6개 formatting button을 shadcn ButtonGroup으로 표시하면서 기존 selection 범위를 유지한다.
+- UI를 통해 문서를 휴지통으로 이동하고 복원한 뒤 Toast가 표시되며 활성·삭제 목록이 정확히 갱신되는 것을 확인했다.
+- UI 교체 후에도 기준 문서는 preview 2페이지, overflow 0개, 높이 1123.992px, 기존 문서 글꼴과 흰 배경을 유지했다.
 
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 

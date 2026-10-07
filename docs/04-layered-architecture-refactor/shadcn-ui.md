@@ -175,3 +175,16 @@ shadcn/ui 변경은 이번 구조 리팩터링의 마지막 코드 변경으로 
 - Markdown 직접 편집, IME, selection toolbar와 source offset 동작이 유지된다.
 - document preview의 페이지 수, overflow 판정, typography, Markdown 스타일과 PDF가 UI 교체 전과 동일하다.
 - 관련 테스트, typecheck와 production build가 통과한다.
+
+## 11단계 적용 결과
+
+- document library card와 action을 `Card`, `DropdownMenu`, `Button`, `Badge`, `Tooltip`로 교체했다.
+- 이름 변경은 `Dialog`, 휴지통 이동과 완전 삭제는 `AlertDialog`를 사용한다.
+- 빈 목록·휴지통은 `Empty`, 오류는 `Alert`, 처리 중 상태는 `Spinner`, 복원·PDF 완료는 `Toast`를 사용한다.
+- editor toolbar는 `Button`, `ButtonGroup`, `Badge`, Lucide 아이콘으로 교체했다.
+- editor form은 `Field`, `Input`, `Textarea`, `Select`, `Accordion`, `Collapsible`, `Switch`로 교체했다.
+- Markdown selection toolbar는 `ButtonGroup`, `Button`, `Tooltip`을 사용하되 selection과 source offset 로직은 유지했다.
+- 앱 UI의 직접 작성 button/input/modal class 상수와 공통 목적 SVG 아이콘을 제거했다.
+- `resumeDocument.css`에서는 selection toolbar의 앱 UI 시각 규칙만 제거했고 A4·본문·pagination·인쇄 규칙은 유지했다.
+
+실제 Electron에서 Dropdown, Dialog autofocus와 Escape 닫기, AlertDialog 취소, Accordion, Switch, Select, Markdown toolbar, 휴지통 복원 Toast를 확인했다. 자동 테스트 33개와 production build도 통과했다.
