@@ -401,6 +401,6 @@ client/test/
 
 ## 구현 중 세부 원칙
 
-- `App.tsx`의 hook 경계는 목록·휴지통 session과 editor document session을 우선 분리한다.
+- 7단계에서 `App.tsx`는 최상위 화면 전환만 남기고, 목록·휴지통 CRUD는 `useDocumentLibrary`, 자동 저장과 목록 복귀 전 flush는 `useDocumentSession`, 편집 화면 조합은 `DocumentEditorPage`로 분리했다.
 - `resumeDocument.css`는 먼저 위치만 이동하고, 출력 구조·Markdown·편집 UI 규칙의 추가 분리는 테스트로 보호된 뒤 수행한다.
 - 구조 이동 중 임시 re-export는 한 단계 안에서만 허용하며 해당 단계 커밋 전에 제거한다.
