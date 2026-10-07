@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ResumeDocument } from "../../foundation/content/resume";
+import type { ResumeDocument } from "../../../foundation/content/resume";
 import {
   sortDeletedDocumentSummaries,
   sortDocumentSummaries,
   type DeletedDocumentSummary,
   type DocumentSummary,
-} from "../../foundation/documentLibrary";
-import { EditorPanel } from "./components/EditorPanel";
-import { ResumeLibrary, ResumeTrash } from "./components/ResumeLibrary";
-import { ResumePreview } from "./components/ResumePreview";
+} from "../../../foundation/documentLibrary";
+import { EditorPanel } from "../pages/document-editor/components/EditorPanel";
+import { ResumePreview } from "../pages/document-editor/preview/ResumePreview";
+import {
+  DocumentLibraryPage,
+  DocumentTrashPage,
+} from "../pages/document-library/DocumentLibraryPage";
 
 type AppView =
   | { type: "library" }
@@ -173,7 +176,7 @@ export function App() {
 
   if (view.type === "trash") {
     return (
-      <ResumeTrash
+      <DocumentTrashPage
         documents={deletedDocuments}
         busyId={busyId}
         error={libraryError}
@@ -187,7 +190,7 @@ export function App() {
   }
 
   return (
-    <ResumeLibrary
+    <DocumentLibraryPage
       documents={documents}
       deletedCount={deletedDocuments.length}
       busyId={busyId}

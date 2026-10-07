@@ -7,12 +7,12 @@ import type {
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
-import type { TextContent, TextMark, TextRun } from "../../../foundation/content/resume";
+import type { TextContent, TextMark, TextRun } from "../../../../../foundation/content/resume";
 
 export {
   contentBlocksToMarkdown,
   textContentToMarkdown,
-} from "../../../foundation/markdownSerialization.ts";
+} from "../../../../../foundation/markdownSerialization.ts";
 
 export type ResumeMarkdownBlock = {
   id: string;

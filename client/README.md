@@ -40,7 +40,7 @@ client/
 └─ src/
    ├─ main/       Electron main process
    ├─ preload/    renderer에 노출할 최소 권한 API
-   ├─ renderer/   React 기반 편집 UI, Markdown parser와 A4 미리보기
+   ├─ renderer/   app 진입점, 페이지별 React UI, 공용 helper
    └─ foundation/ 실행 환경이 공유하는 WorkspaceDocument, IPC 계약과 직렬화 규칙
 ```
 

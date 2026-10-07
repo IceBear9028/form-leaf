@@ -3,7 +3,7 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1~5단계를 완료했다.
+- 12단계 실행 계획을 승인했고 1~6단계를 완료했다.
 - 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
@@ -25,6 +25,8 @@
 - main 전용 migration을 `main/document/documentMigration.ts`로 이동하고 저장 문서 판별과 v1 이력서 변환을 한 경계로 모았다.
 - main은 `registerDocumentHandlers.ts`, `registerPdfHandlers.ts`와 `document/{documentRepository,documentMigration,documentPaths,atomicJsonStore}.ts`로 분리했다.
 - 저장 경로와 JSON backup 규칙은 별도 모듈로 이동했으며 기존 `workspaces/resumes`, `trash`, `.resume.json`, `.backup`, `.v1.backup` 규칙을 유지한다.
+- Renderer를 `app`, `pages/document-library`, `pages/document-editor`, `shared/lib`로 이동하고 `main.tsx`, `App.tsx`, `global.css`를 `app`에 모았다.
+- `resumeDocument.css`는 앱 UI가 아니라 preview/인쇄 엔진의 일부로 `pages/document-editor/preview`에 유지했다.
 - `foundation`은 연결 계층이 아니다. 실제 renderer→main 연결은 preload와 IPC가 담당한다.
 - `foundation`에는 둘 이상의 실행 환경이 사용하는 환경 독립 기반 코드만 둔다.
 
@@ -44,8 +46,8 @@ shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과
 
 ## 다음 작업
 
-6단계에서 Renderer를 `app/pages/shared` 구조로 이동한다. 이 단계는 컴포넌트 책임 분리보다 파일 소유권과 import 방향 정리에 집중한다.
+7단계에서 `App.tsx`에 함께 있는 목록·휴지통 상태와 자동 저장 document session을 각각 테스트 가능한 hook으로 분리한다.
 
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 
-1단계 기준선은 자동 테스트 27개와 production build 통과다. 2~4단계도 같은 테스트와 production build를 통과했고, 5단계는 storage 단위 테스트 2개를 추가해 총 29개 테스트와 production build를 통과했다.
+1단계 기준선은 자동 테스트 27개와 production build 통과다. 2~4단계도 같은 테스트와 production build를 통과했고, 5~6단계는 storage 단위 테스트 2개를 포함한 총 29개 테스트와 production build를 통과했다.

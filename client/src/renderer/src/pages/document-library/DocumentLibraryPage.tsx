@@ -2,7 +2,7 @@ import { useState } from "react";
 import type {
   DeletedDocumentSummary,
   DocumentSummary,
-} from "../../../foundation/documentLibrary";
+} from "../../../../foundation/documentLibrary";
 
 type LibraryProps = {
   documents: DocumentSummary[];
@@ -17,7 +17,7 @@ type LibraryProps = {
   onRetry: () => void;
 };
 
-export function ResumeLibrary({
+export function DocumentLibraryPage({
   documents,
   deletedCount,
   busyId,
@@ -154,7 +154,7 @@ type TrashProps = {
   onRetry: () => void;
 };
 
-export function ResumeTrash({
+export function DocumentTrashPage({
   documents,
   busyId,
   error,

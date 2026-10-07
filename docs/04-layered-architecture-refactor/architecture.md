@@ -272,6 +272,8 @@ Tailwind를 사용해도 CSS 진입 파일은 필요하다. 현재 `app.css`가 
 
 이 구조는 FSD 전체를 도입한 것이 아니다. `app`, `pages`, `shared`라는 경계를 선택적으로 사용하되 `features`, `entities` 같은 추가 레이어는 현재 규모에서 만들지 않는다.
 
+6단계에서 Renderer 파일을 이 구조로 이동했다. `app`만 페이지를 조립하며, `pages`는 `app`을 import하지 않고 `shared`는 `app`과 `pages`를 import하지 않는 방향을 typecheck와 정적 검색으로 확인했다. 상태와 대형 컴포넌트의 함수 분리는 7~8단계에서 별도로 진행한다.
+
 ## document와 resume 이름 경계
 
 `document`는 앱이 저장하고 관리하는 최상위 단위다. 목록, 생성, 로드, 저장, 이름 변경, 휴지통, 복원, 완전 삭제는 문서 종류와 무관하므로 `Document` 이름을 사용한다.

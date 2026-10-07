@@ -11,8 +11,8 @@
 | 3 | `main/preload/renderer/foundation` 실행 환경 경계 정리 | 완료 |
 | 4 | 공통 저장·CRUD·IPC 명칭을 `document`로 변경 | 완료 |
 | 5 | main process 저장소·migration·파일 I/O 책임 분리 | 완료 |
-| 6 | Renderer를 `app/pages/shared` 구조로 이동 | 진행 중 |
-| 7 | `App.tsx`의 목록·휴지통·문서 세션 상태 분리 | 대기 |
+| 6 | Renderer를 `app/pages/shared` 구조로 이동 | 완료 |
+| 7 | `App.tsx`의 목록·휴지통·문서 세션 상태 분리 | 진행 중 |
 | 8 | document editor의 Markdown·DOM·pagination·style 책임 분리 | 대기 |
 | 9 | 구조 리팩터링 전체 회귀 검증 | 대기 |
 | 10 | shadcn/ui 기반 설정 및 `shared/ui` primitive 추가 | 대기 |
@@ -27,8 +27,8 @@
 - `resumeLibrary.ts`와 공통 CRUD 타입을 `documentLibrary.ts`와 `Document*`로 변경 완료
 - preload API 타입과 진입점을 `ResumeStudioApi`·`window.resumeStudio`에서 `DocumentApi`·`window.documents`로 변경 완료
 - `resume.ts`를 공통 `document.ts`와 이력서 전용 `content/resume.ts`로 분리 완료
-- `shared/markdown.ts`를 `renderer/src/pages/document-editor/markdown/parser.ts`로 이동
-- `shared/markdownEdits.ts`를 `renderer/src/pages/document-editor/markdown/edits.ts`로 이동
+- `shared/markdown.ts`를 `renderer/src/pages/document-editor/markdown/parser.ts`로 이동 완료
+- `shared/markdownEdits.ts`를 `renderer/src/pages/document-editor/markdown/edits.ts`로 이동 완료
 - `shared/resumeMigration.ts`를 `main/document/documentMigration.ts`로 이동 완료
 - `ipc.ts`, `markdownSerialization.ts`는 `foundation`에 유지
 - `ResumeEditor`, `ResumePreview`, `ResumeContent`처럼 이력서 구조에 종속된 이름은 유지

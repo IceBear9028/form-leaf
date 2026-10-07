@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getResumeStyleSheet,
   listResumeStyleSheets,
-} from "../src/renderer/src/styles/resumeStyleSheets.ts";
+} from "../src/renderer/src/pages/document-editor/preview/resumeStyleSheets.ts";
 
 test("스타일 프리셋은 같은 문법 계약을 서로 다른 CSS 변수로 제공한다", () => {
   const styles = listResumeStyleSheets();

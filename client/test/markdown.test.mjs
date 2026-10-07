@@ -8,14 +8,14 @@ import {
   parseResumeMarkdown,
   parseResumeMarkdownTree,
   textContentToMarkdown,
-} from "../src/renderer/src/markdown/markdown.ts";
+} from "../src/renderer/src/pages/document-editor/markdown/parser.ts";
 import {
   replaceMarkdownRange,
   replaceMarkdownText,
   replaceMarkdownTextWithBlockShortcut,
   toggleMarkdownInlineFormat,
   toggleMarkdownLink,
-} from "../src/renderer/src/markdown/markdownEdits.ts";
+} from "../src/renderer/src/pages/document-editor/markdown/edits.ts";
 
 test("줄 시작 Markdown 접두어 뒤 Space를 블록 문법으로 전환한다", () => {
   const cases = [

@@ -7,9 +7,9 @@ import type {
   TextContent,
   TimelineItem,
   TimelineKind,
-} from "../../../foundation/content/resume";
-import { plainText } from "../../../foundation/content/resume";
-import { parseResumeMarkdown, type ResumeMarkdownBlock } from "../markdown/markdown";
+} from "../../../../../foundation/content/resume";
+import { plainText } from "../../../../../foundation/content/resume";
+import { parseResumeMarkdown, type ResumeMarkdownBlock } from "../markdown/parser";
 import {
   replaceMarkdownRange,
   replaceMarkdownText,
@@ -18,14 +18,14 @@ import {
   toggleMarkdownLink,
   type MarkdownInlineFormat,
   type MarkdownSourceRange,
-} from "../markdown/markdownEdits";
-import { getResumeStyleSheet } from "../styles/resumeStyleSheets";
+} from "../markdown/edits";
+import { getResumeStyleSheet } from "./resumeStyleSheets";
 import {
   MarkdownBlockContent,
   MarkdownFootnotesContent,
   type MarkdownContext,
-} from "./MarkdownContent";
-import { MarkdownSelectionToolbar } from "./MarkdownSelectionToolbar";
+} from "../markdown/MarkdownContent";
+import { MarkdownSelectionToolbar } from "../markdown/MarkdownSelectionToolbar";
 
 type MarkdownOwner = "introduction" | "project" | "career" | "education" | "activity" | "free-text";
 

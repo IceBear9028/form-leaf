@@ -19,8 +19,8 @@ import {
   parseResumeMarkdown,
   type ResumeMarkdownBlock,
   type ResumeMarkdownDefinition,
-} from "../markdown/markdown";
-import type { MarkdownSourceRange } from "../markdown/markdownEdits";
+} from "./parser";
+import type { MarkdownSourceRange } from "./edits";
 
 export type MarkdownContext =
   | "introduction"
