@@ -3,7 +3,7 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1~8단계를 완료했다.
+- 12단계 실행 계획을 승인했고 1~9단계를 완료했다.
 - 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
@@ -48,10 +48,22 @@
 
 shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과 검증 기준은 [shadcn/ui 적용 계획](shadcn-ui.md)에 기록했다. 구조 이동 중 일부 화면에 shadcn을 먼저 섞지 않는다.
 
+## 9단계 회귀 검증 결과
+
+- 자동 테스트 33개와 production build가 통과했다.
+- 별도 임시 `user-data-dir`에서 Electron을 실행해 실제 사용자 저장소와 검증 데이터를 분리했다.
+- 편집 화면에서 제목을 바꾼 뒤 자동 저장 완료 표시와 목록 복귀 후 저장된 제목을 확인했다.
+- 서로 다른 두 문서에 제목·프로필·Markdown 본문을 저장해 데이터가 독립적으로 유지되는 것을 확인했다.
+- 두 문서를 차례로 저장해 목록이 `updatedAt` 최신 순서로 바뀌는 것을 확인했다.
+- 선택한 문서만 휴지통으로 이동하고, 복원 후 활성 목록으로 돌아오며, 완전 삭제 후 활성 목록과 휴지통 모두에서 제거되는 것을 확인했다.
+- 휴지통·복원·완전 삭제 전 과정 후에도 나머지 문서의 제목과 Markdown 본문은 그대로 유지됐다.
+- 저장된 문서를 다시 열었을 때 preview가 2페이지, overflow 0개로 렌더링되고 분리한 style preset의 글꼴과 배경이 적용되는 것을 확인했다.
+- 앱의 실제 PDF IPC와 Electron `webContents.printToPDF` 경로로 39KB PDF 1페이지를 생성해 유효한 PDF 1.4 파일임을 확인했다.
+
 ## 다음 작업
 
-9단계에서 구조 리팩터링 전체 테스트, 실제 Electron CRUD·자동 저장·휴지통 흐름, preview 페이지·overflow와 PDF 회귀를 검증한다.
+10단계에서 공식 shadcn/ui 설정과 alias를 추가하고, 앱 chrome 교체에 필요한 primitive를 `renderer/src/shared/ui`에 준비한다. 이 단계에서는 아직 기존 화면을 교체하지 않는다.
 
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 
-1단계 기준선은 자동 테스트 27개와 production build 통과다. 8단계는 storage·pagination·source map 테스트를 추가한 총 33개 테스트와 production build를 통과했다. 7단계는 임시 사용자 데이터 경로의 실제 Electron에서 빈 목록 화면과 `window.documents` 11개 API 노출도 확인했다.
+1단계 기준선은 자동 테스트 27개와 production build 통과다. 8단계는 storage·pagination·source map 테스트를 추가한 총 33개 테스트와 production build를 통과했다. 7단계는 임시 사용자 데이터 경로의 실제 Electron에서 빈 목록 화면과 `window.documents` 11개 API 노출도 확인했고, 9단계는 같은 격리 방식으로 전체 CRUD·자동 저장·정렬·휴지통·preview·PDF 회귀를 확인했다.
