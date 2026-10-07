@@ -2,7 +2,7 @@
 
 ## 현재까지 확정한 결정
 
-- 저장소 루트의 애플리케이션 디렉터리 이름은 `app`에서 `client`로 변경한다.
+- 저장소 루트의 애플리케이션 디렉터리 이름을 `app`에서 `client`로 변경했다.
 - `client/src` 아래 실행 환경은 `main`, `preload`, `renderer`로 구분한다.
 - 여러 실행 환경이 같은 소스를 import해야 할 때만 `client/src/foundation`을 사용한다.
 - `renderer/index.html`과 `renderer/src`로 나뉜 현재 electron-vite 구조는 유지한다.
@@ -17,11 +17,11 @@
 - 현재 규모에서 FSD나 기능별 `domain/application/adapter/ui` 폴더를 강제하지 않는다.
 - main의 상세 내부 구조와 테스트 배치는 별도로 검토한 뒤 확정한다.
 
-이 문서는 목표 구조를 합의하기 위한 문서다. 아직 애플리케이션 파일은 이동하지 않았다.
+이 문서는 목표 구조와 단계별 적용 상태를 기록한다. 현재 루트 디렉터리 이름만 `client`로 변경했으며 내부 경계 이동은 다음 단계에서 진행한다.
 
 ## 최상위 소스 구조
 
-기준 경로는 향후 이름을 변경할 `client/src`다. 현재 실제 경로는 `app/src`다.
+기준 경로는 `client/src`다.
 
 ```text
 client/src/
@@ -73,7 +73,7 @@ renderer ─┘
 
 ## 현재 공용 소스 사용 조사
 
-현재 `app/src/shared`의 production import를 조사한 결과다.
+현재 `client/src/shared`의 production import를 조사한 결과다.
 
 | 파일 | main | preload | renderer | 판단 |
 |---|:---:|:---:|:---:|---|
@@ -85,7 +85,7 @@ renderer ─┘
 | `markdownEdits.ts` | 미사용 | 미사용 | 사용 | renderer 이동 후보 |
 | `resumeMigration.ts` | repository에서 사용 | 미사용 | 미사용 | main 이동 후 `documentMigration.ts`로 변경 |
 
-Renderer는 현재 다음 `app/src/shared` 소스를 실제로 사용한다.
+Renderer는 현재 다음 `client/src/shared` 소스를 실제로 사용한다.
 
 - `resume.ts`: `App`, 편집 패널, 미리보기, 텍스트 편집에서 현재 이력서 문서 모델과 순수 helper 사용
 - `resumeLibrary.ts`: 목록 화면과 현재 `window.resumeStudio` API 타입 사용

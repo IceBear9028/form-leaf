@@ -47,7 +47,7 @@
 
 ## 현재 합의
 
-- 루트 애플리케이션 디렉터리는 `app`에서 `client`로 변경한다.
+- 루트 애플리케이션 디렉터리를 `app`에서 `client`로 변경했다.
 - `main`, `preload`, `renderer`, `foundation`을 `client/src`의 최상위 경계로 사용한다.
 - `renderer/src`는 현행대로 유지한다.
 - `foundation`은 둘 이상의 실행 환경이 사용하는 환경 독립 기반 코드만 포함한다.

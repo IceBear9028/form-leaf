@@ -3,8 +3,8 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1단계 기준 검증을 완료했다.
-- `docs/04-layered-architecture-refactor`만 구조 검토용으로 작성했다.
+- 12단계 실행 계획을 승인했고 1단계 기준 검증과 2단계 디렉터리 이름 변경을 완료했다.
+- 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
 - electron-vite의 `renderer/index.html`과 `renderer/src` 구조는 유지한다.
@@ -39,10 +39,10 @@
 
 shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과 검증 기준은 [shadcn/ui 적용 계획](shadcn-ui.md)에 기록했다. 구조 이동 중 일부 화면에 shadcn을 먼저 섞지 않는다.
 
-## 구현 시작 조건
+## 다음 작업
 
-구조안과 테스트 배치를 승인했다. 2단계 루트 `app` → `client` 변경부터 시작한다.
+3단계에서 `client/src/shared`의 파일을 실제 사용 환경에 따라 `foundation`, `main`, `renderer`로 이동한다. 이 단계에서는 public API와 저장 schema의 이름을 바꾸지 않으며, `document` 명칭 변경은 4단계에서 별도로 진행한다.
 
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 
-1단계 기준선은 자동 테스트 27개와 production build 통과다.
+1단계 기준선은 자동 테스트 27개와 production build 통과다. 2단계도 새 `client` 경로에서 같은 테스트와 production build를 통과했다.

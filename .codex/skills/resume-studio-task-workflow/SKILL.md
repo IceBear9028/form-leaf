@@ -51,7 +51,7 @@ Ask the user only when a missing decision would materially change the product or
 
 Follow these project-specific rules:
 
-- Keep desktop application code under `app/` and task documentation under `docs/`.
+- Keep desktop application code under `client/` and task documentation under `docs/`.
 - Use Tailwind CSS for application chrome and editor UI.
 - Keep printable resume layout rules in the dedicated resume CSS/style system; do not convert them to Tailwind utilities.
 - Keep the app local-first and serverless unless the user explicitly changes that requirement.
@@ -77,7 +77,7 @@ For visual/PDF work, compare the rendered output with the supplied reference at 
 
 ## 6. Validate completion
 
-Run the narrowest relevant checks first, then the full project checks. For application changes, normally run from `app/`:
+Run the narrowest relevant checks first, then the full project checks. For application changes, normally run from `client/`:
 
 ```text
 npm run typecheck

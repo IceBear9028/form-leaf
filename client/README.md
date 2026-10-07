@@ -4,23 +4,23 @@
 
 ## 실행
 
-`resume-studio` 프로젝트 루트에서 실행할 때는 `app`의 `package.json`을 명시한다.
+`resume-studio` 프로젝트 루트에서 실행할 때는 `client`의 `package.json`을 명시한다.
 
 ```bash
 cd /Users/isang-yun/code/resume-studio
-npm --prefix app run app
+npm --prefix client run app
 ```
 
 개발 모드는 다음과 같이 실행한다.
 
 ```bash
-npm --prefix app run dev
+npm --prefix client run dev
 ```
 
-또는 `app` 디렉터리로 이동한 뒤 일반 npm 명령을 사용할 수 있다.
+또는 `client` 디렉터리로 이동한 뒤 일반 npm 명령을 사용할 수 있다.
 
 ```bash
-cd /Users/isang-yun/code/resume-studio/app
+cd /Users/isang-yun/code/resume-studio/client
 npm install
 npm run dev
 ```
@@ -36,7 +36,7 @@ npm run app
 ## 구현 구조
 
 ```text
-app/
+client/
 └─ src/
    ├─ main/       Electron main process
    ├─ preload/    renderer에 노출할 최소 권한 API

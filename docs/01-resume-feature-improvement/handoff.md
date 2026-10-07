@@ -74,25 +74,25 @@
 - `docs/01-resume-feature-improvement/design.md`
 - `docs/01-resume-feature-improvement/markdown-spec.md`
 - `docs/01-resume-feature-improvement/handoff.md`
-- `app/package.json`
-- `app/package-lock.json`
-- `app/tsconfig.json`
-- `app/src/shared/markdown.ts`
-- `app/src/shared/markdownSerialization.ts`
-- `app/src/shared/resume.ts`
-- `app/src/shared/resumeMigration.ts`
-- `app/src/main/index.ts`
-- `app/src/renderer/src/components/EditorPanel.tsx`
-- `app/src/renderer/src/components/ResumePreview.tsx`
-- `app/src/renderer/src/main.tsx`
-- `app/src/renderer/src/components/MarkdownContent.tsx`
-- `app/src/renderer/src/components/MarkdownPrototype.tsx`
-- `app/src/renderer/src/styles/app.css`
-- `app/src/renderer/src/styles/resume.css`
-- `app/src/renderer/src/styles/resumeStyleSheets.ts`
-- `app/test/markdown.test.mjs`
-- `app/test/resume-migration.test.mjs`
-- `app/test/resume-style-sheets.test.mjs`
+- `client/package.json`
+- `client/package-lock.json`
+- `client/tsconfig.json`
+- `client/src/shared/markdown.ts`
+- `client/src/shared/markdownSerialization.ts`
+- `client/src/shared/resume.ts`
+- `client/src/shared/resumeMigration.ts`
+- `client/src/main/index.ts`
+- `client/src/renderer/src/components/EditorPanel.tsx`
+- `client/src/renderer/src/components/ResumePreview.tsx`
+- `client/src/renderer/src/main.tsx`
+- `client/src/renderer/src/components/MarkdownContent.tsx`
+- `client/src/renderer/src/components/MarkdownPrototype.tsx`
+- `client/src/renderer/src/styles/app.css`
+- `client/src/renderer/src/styles/resume.css`
+- `client/src/renderer/src/styles/resumeStyleSheets.ts`
+- `client/test/markdown.test.mjs`
+- `client/test/resume-migration.test.mjs`
+- `client/test/resume-style-sheets.test.mjs`
 
 ## 검증 결과
 

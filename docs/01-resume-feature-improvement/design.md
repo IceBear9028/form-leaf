@@ -8,7 +8,7 @@
 
 ## 현재 구조와 제거 대상
 
-기존 v1 데이터 모델은 [resume.ts](../../app/src/shared/resume.ts)의 레거시 타입으로 유지한다.
+기존 v1 데이터 모델은 [resume.ts](../../client/src/shared/resume.ts)의 레거시 타입으로 유지한다.
 
 - `IntroductionSection`은 여러 개의 `paragraphs`를 가진다.
 - `ProjectItem`은 `summary`와 `blocks`에 서술형 내용을 나누어 저장한다.
@@ -139,14 +139,14 @@ Markdown 문법 삽입 버튼은 필수 기능으로 두지 않는다. 첫 구�
 
 | 영역 | 파일 또는 모듈 | 변경 책임 |
 |---|---|---|
-| 공유 데이터 | `app/src/shared/resume.ts`, `resumeMigration.ts` | v1 타입 분리, v2 Markdown 본문 타입·검증·마이그레이션 |
-| Markdown 기반 | `app/src/shared/markdown.ts`, `markdownSerialization.ts` | remark 파이프라인·mdast 블록 분리와 메인 프로세스에서 사용할 의존성 없는 v1 직렬화 |
-| 메인 프로세스 | `app/src/main/index.ts` | 버전 판별, 메모리 변환, v1 전용 백업과 v2 저장 |
-| 편집 UI | `app/src/renderer/src/components/EditorPanel.tsx` | 블록 UI 제거와 단일 Markdown 입력 연결 |
-| 편집 primitives | `app/src/renderer/src/components/EditorPrimitives.tsx` | 공통 항목 카드와 Markdown 입력 UI |
-| 렌더링 프로토타입 | `app/src/renderer/src/components/MarkdownContent.tsx`, `MarkdownPrototype.tsx` | 안전한 React 렌더링과 스타일 검증 |
-| 미리보기 | `app/src/renderer/src/components/ResumePreview.tsx` | Markdown 렌더링 노드와 페이지네이션 연결 |
-| 이력서 스타일 | `app/src/renderer/src/styles/resumeStyleSheets.ts`, `resume.css` | 타입이 있는 Markdown 토큰, 프리셋 레지스트리와 CSS 변수 소비 |
+| 공유 데이터 | `client/src/shared/resume.ts`, `resumeMigration.ts` | v1 타입 분리, v2 Markdown 본문 타입·검증·마이그레이션 |
+| Markdown 기반 | `client/src/shared/markdown.ts`, `markdownSerialization.ts` | remark 파이프라인·mdast 블록 분리와 메인 프로세스에서 사용할 의존성 없는 v1 직렬화 |
+| 메인 프로세스 | `client/src/main/index.ts` | 버전 판별, 메모리 변환, v1 전용 백업과 v2 저장 |
+| 편집 UI | `client/src/renderer/src/components/EditorPanel.tsx` | 블록 UI 제거와 단일 Markdown 입력 연결 |
+| 편집 primitives | `client/src/renderer/src/components/EditorPrimitives.tsx` | 공통 항목 카드와 Markdown 입력 UI |
+| 렌더링 프로토타입 | `client/src/renderer/src/components/MarkdownContent.tsx`, `MarkdownPrototype.tsx` | 안전한 React 렌더링과 스타일 검증 |
+| 미리보기 | `client/src/renderer/src/components/ResumePreview.tsx` | Markdown 렌더링 노드와 페이지네이션 연결 |
+| 이력서 스타일 | `client/src/renderer/src/styles/resumeStyleSheets.ts`, `resume.css` | 타입이 있는 Markdown 토큰, 프리셋 레지스트리와 CSS 변수 소비 |
 
 ## 오류와 경계 조건
 
