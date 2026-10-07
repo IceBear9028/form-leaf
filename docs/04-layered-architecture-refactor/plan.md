@@ -9,8 +9,8 @@
 | 1 | 기준 상태 검증 및 구조 설계 문서 커밋 | 완료 |
 | 2 | 루트 `app` 디렉터리를 `client`로 변경 | 완료 |
 | 3 | `main/preload/renderer/foundation` 실행 환경 경계 정리 | 완료 |
-| 4 | 공통 저장·CRUD·IPC 명칭을 `document`로 변경 | 진행 중 |
-| 5 | main process 저장소·migration·파일 I/O 책임 분리 | 대기 |
+| 4 | 공통 저장·CRUD·IPC 명칭을 `document`로 변경 | 완료 |
+| 5 | main process 저장소·migration·파일 I/O 책임 분리 | 진행 중 |
 | 6 | Renderer를 `app/pages/shared` 구조로 이동 | 대기 |
 | 7 | `App.tsx`의 목록·휴지통·문서 세션 상태 분리 | 대기 |
 | 8 | document editor의 Markdown·DOM·pagination·style 책임 분리 | 대기 |
@@ -23,10 +23,10 @@
 
 - `app` 디렉터리 이름을 `client`로 변경 완료
 - `shared`의 프로세스 공용 파일을 `foundation`으로 이동 완료
-- `resumeRepository.ts`를 `documentRepository.ts`로 변경
-- `resumeLibrary.ts`와 공통 CRUD 타입을 `documentLibrary.ts`와 `Document*`로 변경
-- preload API 타입과 진입점을 `ResumeStudioApi`·`window.resumeStudio`에서 `DocumentApi`·`window.documents`로 변경
-- `resume.ts`를 공통 `document.ts`와 이력서 전용 `content/resume.ts`로 분리
+- `resumeRepository.ts`를 `documentRepository.ts`로 변경 완료
+- `resumeLibrary.ts`와 공통 CRUD 타입을 `documentLibrary.ts`와 `Document*`로 변경 완료
+- preload API 타입과 진입점을 `ResumeStudioApi`·`window.resumeStudio`에서 `DocumentApi`·`window.documents`로 변경 완료
+- `resume.ts`를 공통 `document.ts`와 이력서 전용 `content/resume.ts`로 분리 완료
 - `shared/markdown.ts`를 `renderer/src/pages/document-editor/markdown/parser.ts`로 이동
 - `shared/markdownEdits.ts`를 `renderer/src/pages/document-editor/markdown/edits.ts`로 이동
 - `shared/resumeMigration.ts`를 `main/document/documentMigration.ts`로 이동

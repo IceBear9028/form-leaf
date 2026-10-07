@@ -1,10 +1,10 @@
 /// <reference types="vite/client" />
 
-import type { ResumeStudioApi } from "../../foundation/resumeLibrary";
+import type { DocumentApi } from "../../foundation/documentLibrary";
 
 declare global {
   interface Window {
-    resumeStudio: ResumeStudioApi;
+    documents: DocumentApi;
   }
 }
 

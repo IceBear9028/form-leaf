@@ -7,7 +7,7 @@ import type {
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
-import type { TextContent, TextMark, TextRun } from "../../../foundation/resume";
+import type { TextContent, TextMark, TextRun } from "../../../foundation/content/resume";
 
 export {
   contentBlocksToMarkdown,

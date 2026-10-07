@@ -17,7 +17,7 @@
     "test:markdown": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/markdown.test.mjs",
     "test:migration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/resume-migration.test.mjs",
     "test:styles": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/resume-style-sheets.test.mjs",
-    "test:library": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/resume-library.test.mjs"
+    "test:library": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-library.test.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.4",

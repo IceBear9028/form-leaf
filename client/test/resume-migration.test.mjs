@@ -4,7 +4,7 @@ import {
   createDefaultDocument,
   isResumeDocument,
   isV1ResumeDocument,
-} from "../src/foundation/resume.ts";
+} from "../src/foundation/content/resume.ts";
 import { migrateResumeDocumentV1 } from "../src/main/resumeMigration.ts";
 
 const text = (value, marks, href) => ({

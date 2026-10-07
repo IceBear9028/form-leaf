@@ -2,8 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { IPC } from "../foundation/ipc";
-import type { ResumeDocument } from "../foundation/resume";
-import { ResumeRepository } from "./resumeRepository";
+import type { WorkspaceDocument } from "../foundation/document";
+import { DocumentRepository } from "./documentRepository";
 
 app.setName("Resume Studio");
 
@@ -44,18 +44,18 @@ async function exportPdf(sender: Electron.WebContents, name: string) {
   return { canceled: false as const, filePath: result.filePath };
 }
 
-function registerIpcHandlers(repository: ResumeRepository): void {
-  ipcMain.handle(IPC.listResumes, () => repository.list());
-  ipcMain.handle(IPC.listDeletedResumes, () => repository.listTrash());
-  ipcMain.handle(IPC.createResume, () => repository.create());
-  ipcMain.handle(IPC.loadResume, (_event, id: string) => repository.load(id));
-  ipcMain.handle(IPC.saveResume, (_event, id: string, document: ResumeDocument) =>
+function registerIpcHandlers(repository: DocumentRepository): void {
+  ipcMain.handle(IPC.listDocuments, () => repository.list());
+  ipcMain.handle(IPC.listDeletedDocuments, () => repository.listTrash());
+  ipcMain.handle(IPC.createDocument, () => repository.create());
+  ipcMain.handle(IPC.loadDocument, (_event, id: string) => repository.load(id));
+  ipcMain.handle(IPC.saveDocument, (_event, id: string, document: WorkspaceDocument) =>
     repository.save(id, document));
-  ipcMain.handle(IPC.renameResume, (_event, id: string, title: string) =>
+  ipcMain.handle(IPC.renameDocument, (_event, id: string, title: string) =>
     repository.rename(id, title));
-  ipcMain.handle(IPC.deleteResume, (_event, id: string) => repository.remove(id));
-  ipcMain.handle(IPC.restoreResume, (_event, id: string) => repository.restore(id));
-  ipcMain.handle(IPC.permanentlyDeleteResume, (_event, id: string) =>
+  ipcMain.handle(IPC.deleteDocument, (_event, id: string) => repository.remove(id));
+  ipcMain.handle(IPC.restoreDocument, (_event, id: string) => repository.restore(id));
+  ipcMain.handle(IPC.permanentlyDeleteDocument, (_event, id: string) =>
     repository.permanentlyDelete(id));
   ipcMain.handle(IPC.exportPdf, (event, name: string) =>
     exportPdf(event.sender, name),
@@ -105,7 +105,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  registerIpcHandlers(new ResumeRepository(workspaceDirectory()));
+  registerIpcHandlers(new DocumentRepository(workspaceDirectory()));
   createWindow();
 
   app.on("activate", () => {

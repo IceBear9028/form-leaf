@@ -3,7 +3,7 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1~3단계를 완료했다.
+- 12단계 실행 계획을 승인했고 1~4단계를 완료했다.
 - 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
@@ -17,9 +17,10 @@
 
 ## 공용 소스 적용 결과
 
-- `resume.ts`는 공통 `document.ts`와 이력서 전용 `content/resume.ts`로 분리한다.
-- `resumeLibrary.ts`는 `documentLibrary.ts`로 변경한다.
-- `ipc.ts`, `markdownSerialization.ts`, `resume.ts`, `resumeLibrary.ts`를 `foundation`으로 이동했다.
+- `resume.ts`를 공통 facade `document.ts`와 이력서 전용 `content/resume.ts`로 분리했다.
+- `resumeLibrary.ts`를 `documentLibrary.ts`로 변경했다.
+- `DocumentApi`, `window.documents`, `DocumentSummary`, `DocumentRepository`로 공통 CRUD 명칭을 변경했다.
+- 저장 호환성을 위해 `library.json` 내부 필드와 `.resume.json` 경로는 변경하지 않았다.
 - renderer 전용 `markdown.ts`, `markdownEdits.ts`를 `renderer/src/markdown`으로 이동했다.
 - main 전용 `resumeMigration.ts`를 `main`으로 이동했다. 이름과 세부 경로는 4~5단계에서 정리한다.
 - `foundation`은 연결 계층이 아니다. 실제 renderer→main 연결은 preload와 IPC가 담당한다.
@@ -35,14 +36,14 @@
 - renderer가 파일 시스템에 직접 접근하지 않는 경계
 - shadcn 적용 전후 document preview 페이지 수·overflow·typography와 PDF 결과
 
-이번 구조 리팩터링에서는 현재 저장 schema를 바꾸지 않는다. `WorkspaceDocument`, `DocumentKind`, `NoteContent`를 실제 데이터에 도입하는 작업은 이후 별도 migration이 포함된 기능 작업으로 진행한다.
+이번 구조 리팩터링에서는 현재 저장 schema를 바꾸지 않는다. `WorkspaceDocument`는 현재 `ResumeDocument`의 경계 alias이며, `DocumentKind`, `NoteContent`를 실제 데이터에 도입하는 작업은 이후 별도 migration이 포함된 기능 작업으로 진행한다.
 
 shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과 검증 기준은 [shadcn/ui 적용 계획](shadcn-ui.md)에 기록했다. 구조 이동 중 일부 화면에 shadcn을 먼저 섞지 않는다.
 
 ## 다음 작업
 
-4단계에서 공통 저장·CRUD·IPC의 `resume` 명칭을 `document`로 바꾼다. 저장 schema와 이력서 content·미리보기·출력의 `resume` 명칭은 유지한다.
+5단계에서 `DocumentRepository`의 파일 경로, atomic JSON I/O, migration 책임을 분리한다. 저장 schema와 실제 경로는 변경하지 않는다.
 
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 
-1단계 기준선은 자동 테스트 27개와 production build 통과다. 2단계와 3단계도 같은 테스트와 production build를 통과했다.
+1단계 기준선은 자동 테스트 27개와 production build 통과다. 2~4단계도 같은 테스트와 production build를 통과했다.

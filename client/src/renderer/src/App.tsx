@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ResumeDocument } from "../../foundation/resume";
+import type { ResumeDocument } from "../../foundation/content/resume";
 import {
-  sortDeletedResumeSummaries,
-  sortResumeSummaries,
-  type DeletedResumeSummary,
-  type ResumeSummary,
-} from "../../foundation/resumeLibrary";
+  sortDeletedDocumentSummaries,
+  sortDocumentSummaries,
+  type DeletedDocumentSummary,
+  type DocumentSummary,
+} from "../../foundation/documentLibrary";
 import { EditorPanel } from "./components/EditorPanel";
 import { ResumeLibrary, ResumeTrash } from "./components/ResumeLibrary";
 import { ResumePreview } from "./components/ResumePreview";
@@ -23,8 +23,8 @@ type SaveState =
 
 export function App() {
   const [view, setView] = useState<AppView>({ type: "library" });
-  const [resumes, setResumes] = useState<ResumeSummary[]>([]);
-  const [deletedResumes, setDeletedResumes] = useState<DeletedResumeSummary[]>([]);
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [deletedDocuments, setDeletedDocuments] = useState<DeletedDocumentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string>();
   const [libraryError, setLibraryError] = useState<string>();
@@ -34,11 +34,11 @@ export function App() {
     setLibraryError(undefined);
     try {
       const [active, deleted] = await Promise.all([
-        window.resumeStudio.listResumes(),
-        window.resumeStudio.listDeletedResumes(),
+        window.documents.listDocuments(),
+        window.documents.listDeletedDocuments(),
       ]);
-      setResumes(sortResumeSummaries(active));
-      setDeletedResumes(sortDeletedResumeSummaries(deleted));
+      setDocuments(sortDocumentSummaries(active));
+      setDeletedDocuments(sortDeletedDocumentSummaries(deleted));
       return true;
     } catch (error) {
       setLibraryError(errorMessage(error));
@@ -52,13 +52,13 @@ export function App() {
     void loadLibrary();
   }, [loadLibrary]);
 
-  const createResume = async () => {
+  const createDocument = async () => {
     if (busyId) return;
     setBusyId("create");
     setLibraryError(undefined);
     try {
-      const created = await window.resumeStudio.createResume();
-      setResumes((current) => sortResumeSummaries([...current, created.summary]));
+      const created = await window.documents.createDocument();
+      setDocuments((current) => sortDocumentSummaries([...current, created.summary]));
       setView({ type: "editor", document: created.document });
     } catch (error) {
       setLibraryError(errorMessage(error));
@@ -67,12 +67,12 @@ export function App() {
     }
   };
 
-  const openResume = async (id: string) => {
+  const openDocument = async (id: string) => {
     if (busyId) return;
     setBusyId(id);
     setLibraryError(undefined);
     try {
-      const document = await window.resumeStudio.loadResume(id);
+      const document = await window.documents.loadDocument(id);
       setView({ type: "editor", document });
     } catch (error) {
       setLibraryError(errorMessage(error));
@@ -81,13 +81,13 @@ export function App() {
     }
   };
 
-  const renameResume = async (id: string, title: string) => {
+  const renameDocument = async (id: string, title: string) => {
     if (busyId) return false;
     setBusyId(id);
     setLibraryError(undefined);
     try {
-      const summary = await window.resumeStudio.renameResume(id, title);
-      setResumes((current) => sortResumeSummaries(current.map((item) =>
+      const summary = await window.documents.renameDocument(id, title);
+      setDocuments((current) => sortDocumentSummaries(current.map((item) =>
         item.id === id ? summary : item,
       )));
       return true;
@@ -99,12 +99,12 @@ export function App() {
     }
   };
 
-  const deleteResume = async (id: string) => {
+  const deleteDocument = async (id: string) => {
     if (busyId) return false;
     setBusyId(id);
     setLibraryError(undefined);
     try {
-      await window.resumeStudio.deleteResume(id);
+      await window.documents.deleteDocument(id);
       await loadLibrary(false);
       return true;
     } catch (error) {
@@ -115,12 +115,12 @@ export function App() {
     }
   };
 
-  const restoreResume = async (id: string) => {
+  const restoreDocument = async (id: string) => {
     if (busyId) return false;
     setBusyId(id);
     setLibraryError(undefined);
     try {
-      await window.resumeStudio.restoreResume(id);
+      await window.documents.restoreDocument(id);
       await loadLibrary(false);
       return true;
     } catch (error) {
@@ -131,12 +131,12 @@ export function App() {
     }
   };
 
-  const permanentlyDeleteResume = async (id: string) => {
+  const permanentlyDeleteDocument = async (id: string) => {
     if (busyId) return false;
     setBusyId(id);
     setLibraryError(undefined);
     try {
-      await window.resumeStudio.permanentlyDeleteResume(id);
+      await window.documents.permanentlyDeleteDocument(id);
       await loadLibrary(false);
       return true;
     } catch (error) {
@@ -147,8 +147,8 @@ export function App() {
     }
   };
 
-  const openRestoredResume = async (id: string) => {
-    await openResume(id);
+  const openRestoredDocument = async (id: string) => {
+    await openDocument(id);
   };
 
   if (loading) return <LoadingScreen label="이력서 목록을 불러오는 중…" />;
@@ -159,7 +159,7 @@ export function App() {
         key={view.document.documentId}
         initialDocument={view.document}
         onSummaryChange={(summary) => {
-          setResumes((current) => sortResumeSummaries(current.map((item) =>
+          setDocuments((current) => sortDocumentSummaries(current.map((item) =>
             item.id === summary.id ? summary : item,
           )));
         }}
@@ -174,13 +174,13 @@ export function App() {
   if (view.type === "trash") {
     return (
       <ResumeTrash
-        resumes={deletedResumes}
+        documents={deletedDocuments}
         busyId={busyId}
         error={libraryError}
         onBack={() => setView({ type: "library" })}
-        onRestore={restoreResume}
-        onPermanentlyDelete={permanentlyDeleteResume}
-        onOpenRestored={openRestoredResume}
+        onRestore={restoreDocument}
+        onPermanentlyDelete={permanentlyDeleteDocument}
+        onOpenRestored={openRestoredDocument}
         onRetry={() => void loadLibrary(false)}
       />
     );
@@ -188,14 +188,14 @@ export function App() {
 
   return (
     <ResumeLibrary
-      resumes={resumes}
-      deletedCount={deletedResumes.length}
+      documents={documents}
+      deletedCount={deletedDocuments.length}
       busyId={busyId}
       error={libraryError}
-      onCreate={createResume}
-      onOpen={openResume}
-      onRename={renameResume}
-      onDelete={deleteResume}
+      onCreate={createDocument}
+      onOpen={openDocument}
+      onRename={renameDocument}
+      onDelete={deleteDocument}
       onOpenTrash={() => setView({ type: "trash" })}
       onRetry={() => void loadLibrary()}
     />
@@ -208,7 +208,7 @@ function ResumeEditor({
   onBack,
 }: {
   initialDocument: ResumeDocument;
-  onSummaryChange: (summary: ResumeSummary) => void;
+  onSummaryChange: (summary: DocumentSummary) => void;
   onBack: () => Promise<void>;
 }) {
   const [document, setDocument] = useState(initialDocument);
@@ -236,7 +236,7 @@ function ResumeEditor({
     const current = documentRef.current;
     dirtyRef.current = false;
     setSaveState({ type: "saving" });
-    const request = window.resumeStudio.saveResume(current.documentId, current)
+    const request = window.documents.saveDocument(current.documentId, current)
       .then((summary) => {
         onSummaryChange(summary);
         setSaveState(dirtyRef.current ? { type: "dirty" } : { type: "saved", at: summary.updatedAt });
@@ -303,7 +303,7 @@ function ResumeEditor({
     try {
       await window.document.fonts.ready;
       await afterNextPaint();
-      const result = await window.resumeStudio.exportPdf(documentRef.current.name);
+      const result = await window.documents.exportPdf(documentRef.current.name);
       if (!result.canceled) setExportedPath(result.filePath);
     } catch (error) {
       setSaveState({ type: "error", message: `PDF 생성 실패: ${errorMessage(error)}` });
@@ -330,7 +330,7 @@ function ResumeEditor({
         </div>
       </header>
       {exportedPath && (
-        <div className="export-success fixed right-[18px] top-[75px] z-80 flex items-center gap-2.5 rounded-[9px] border border-[#cce7d9] bg-[#f4fbf7] px-3 py-2.5 text-xs text-[#256343] shadow-[0_7px_25px_rgba(35,55,45,0.13)]" role="status"><span>PDF를 저장했습니다.</span><button type="button" className="cursor-pointer border-0 bg-transparent text-[11px] text-[#1768e5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3178ff]" onClick={() => void window.resumeStudio.showInFolder(exportedPath)}>Finder에서 보기</button><button type="button" className="cursor-pointer border-0 bg-transparent text-base text-[#6d7e73] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3178ff]" aria-label="알림 닫기" onClick={() => setExportedPath(null)}>×</button></div>
+        <div className="export-success fixed right-[18px] top-[75px] z-80 flex items-center gap-2.5 rounded-[9px] border border-[#cce7d9] bg-[#f4fbf7] px-3 py-2.5 text-xs text-[#256343] shadow-[0_7px_25px_rgba(35,55,45,0.13)]" role="status"><span>PDF를 저장했습니다.</span><button type="button" className="cursor-pointer border-0 bg-transparent text-[11px] text-[#1768e5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3178ff]" onClick={() => void window.documents.showInFolder(exportedPath)}>Finder에서 보기</button><button type="button" className="cursor-pointer border-0 bg-transparent text-base text-[#6d7e73] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3178ff]" aria-label="알림 닫기" onClick={() => setExportedPath(null)}>×</button></div>
       )}
       <div className="workspace grid min-h-0 flex-1 [grid-template-columns:minmax(420px,500px)_minmax(0,1fr)] max-[1180px]:[grid-template-columns:420px_minmax(0,1fr)]">
         <EditorPanel document={document} onChange={updateDocument} />

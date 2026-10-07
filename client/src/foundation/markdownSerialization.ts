@@ -1,4 +1,4 @@
-import type { ContentBlock, TextContent, TextMark, TextRun } from "./resume";
+import type { ContentBlock, TextContent, TextMark, TextRun } from "./content/resume";
 
 export function textContentToMarkdown(content: TextContent): string {
   return content.runs.map(serializeRun).join("");

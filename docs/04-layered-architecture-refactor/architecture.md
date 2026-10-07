@@ -112,6 +112,17 @@ client/src/
 
 최종 `document` 명칭과 세부 폴더로 바꾸는 작업은 4~6단계에 나누어 진행한다.
 
+4단계에서는 저장 schema를 바꾸지 않고 공통 표면을 다음과 같이 변경했다.
+
+- `resumeLibrary.ts` → `documentLibrary.ts`
+- `ResumeSummary`/`DeletedResumeSummary` → `DocumentSummary`/`DeletedDocumentSummary`
+- `ResumeStudioApi`/`window.resumeStudio` → `DocumentApi`/`window.documents`
+- 목록·CRUD IPC key와 channel → `document:*`
+- `resumeRepository.ts`/`ResumeRepository` → `documentRepository.ts`/`DocumentRepository`
+- `resume.ts` → 공통 facade `document.ts`와 이력서 전용 `content/resume.ts`
+
+`WorkspaceDocument`는 현재 `ResumeDocument`의 type alias로만 두었다. `library.json`의 `resumes` 필드, `.resume.json` 경로와 `ResumeDocument` schemaVersion 2는 그대로이므로 이 단계는 저장 migration을 만들지 않는다.
+
 ## foundation으로 이동하거나 추가할 파일
 
 ```text

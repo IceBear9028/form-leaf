@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ResumeRepository } from "../src/main/resumeRepository.ts";
-import { createDefaultDocument } from "../src/foundation/resume.ts";
+import { DocumentRepository } from "../src/main/documentRepository.ts";
+import { createDefaultDocument } from "../src/foundation/document.ts";
 import {
-  sortDeletedResumeSummaries,
-  sortResumeSummaries,
-} from "../src/foundation/resumeLibrary.ts";
+  sortDeletedDocumentSummaries,
+  sortDocumentSummaries,
+} from "../src/foundation/documentLibrary.ts";
 
 async function temporaryWorkspace(t) {
   const directory = await mkdtemp(join(tmpdir(), "resume-studio-library-"));
@@ -23,14 +23,14 @@ test("활성 목록과 휴지통을 결정적인 최근 시각 순으로 정렬�
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-02-01T00:00:00.000Z",
   };
-  const active = sortResumeSummaries([
+  const active = sortDocumentSummaries([
     { ...base, id: "resume-c", updatedAt: "2026-02-02T00:00:00.000Z" },
     { ...base, id: "resume-b", createdAt: "2026-01-02T00:00:00.000Z" },
     { ...base, id: "resume-a", createdAt: "2026-01-02T00:00:00.000Z" },
   ]);
   assert.deepEqual(active.map((item) => item.id), ["resume-c", "resume-a", "resume-b"]);
 
-  const deleted = sortDeletedResumeSummaries([
+  const deleted = sortDeletedDocumentSummaries([
     { ...base, id: "resume-a", deletedAt: "2026-03-01T00:00:00.000Z" },
     { ...base, id: "resume-b", deletedAt: "2026-03-02T00:00:00.000Z" },
   ]);
@@ -39,7 +39,7 @@ test("활성 목록과 휴지통을 결정적인 최근 시각 순으로 정렬�
 
 test("여러 이력서를 독립적으로 생성, 저장, 이름 변경, 삭제하고 복원한다", async (t) => {
   const workspace = await temporaryWorkspace(t);
-  const repository = new ResumeRepository(workspace);
+  const repository = new DocumentRepository(workspace);
   assert.deepEqual(await repository.list(), []);
 
   const first = await repository.create();
@@ -77,12 +77,12 @@ test("여러 이력서를 독립적으로 생성, 저장, 이름 변경, 삭제�
     (section) => section.type === "profile",
   )?.name, "홍길동");
 
-  const restarted = new ResumeRepository(workspace);
+  const restarted = new DocumentRepository(workspace);
   assert.equal((await restarted.list()).length, 2);
 });
 
 test("요청 ID와 문서 ID가 다르면 다른 이력서에 저장하지 않는다", async (t) => {
-  const repository = new ResumeRepository(await temporaryWorkspace(t));
+  const repository = new DocumentRepository(await temporaryWorkspace(t));
   const first = await repository.create();
   const second = await repository.create();
 
@@ -95,7 +95,7 @@ test("요청 ID와 문서 ID가 다르면 다른 이력서에 저장하지 않�
 
 test("현재 문서나 목록이 손상되면 직전 정상 백업으로 연다", async (t) => {
   const workspace = await temporaryWorkspace(t);
-  const repository = new ResumeRepository(workspace);
+  const repository = new DocumentRepository(workspace);
   const created = await repository.create();
   await repository.save(created.summary.id, {
     ...created.document,
@@ -106,14 +106,14 @@ test("현재 문서나 목록이 손상되면 직전 정상 백업으로 연다"
   await writeFile(documentPath, "{broken", "utf8");
   await writeFile(join(workspace, "library.json"), "{broken", "utf8");
 
-  const restarted = new ResumeRepository(workspace);
+  const restarted = new DocumentRepository(workspace);
   assert.equal((await restarted.list()).length, 1);
   assert.equal((await restarted.load(created.summary.id)).documentId, created.summary.id);
 });
 
 test("같은 ID의 활성 파일이 있으면 휴지통 문서를 덮어쓰지 않는다", async (t) => {
   const workspace = await temporaryWorkspace(t);
-  const repository = new ResumeRepository(workspace);
+  const repository = new DocumentRepository(workspace);
   const created = await repository.create();
   await repository.remove(created.summary.id);
 
@@ -128,7 +128,7 @@ test("같은 ID의 활성 파일이 있으면 휴지통 문서를 덮어쓰지 �
 
 test("휴지통의 선택한 이력서와 백업만 완전히 삭제한다", async (t) => {
   const workspace = await temporaryWorkspace(t);
-  const repository = new ResumeRepository(workspace);
+  const repository = new DocumentRepository(workspace);
   const first = await repository.create();
   const second = await repository.create();
   await repository.save(first.summary.id, { ...first.document, name: "완전 삭제 대상" });
@@ -156,7 +156,7 @@ test("기존 단일 이력서를 한 번만 복사 이전하고 원본을 보존
   const original = `${JSON.stringify(legacy, null, 2)}\n`;
   await writeFile(legacyPath, original, "utf8");
 
-  const repository = new ResumeRepository(workspace);
+  const repository = new DocumentRepository(workspace);
   const firstList = await repository.list();
   assert.equal(firstList.length, 1);
   assert.equal(firstList[0].id, "resume-legacy");
@@ -164,7 +164,7 @@ test("기존 단일 이력서를 한 번만 복사 이전하고 원본을 보존
   assert.equal((await repository.load("resume-legacy")).name, "내 이력서");
   assert.equal(await readFile(legacyPath, "utf8"), original);
 
-  const restarted = new ResumeRepository(workspace);
+  const restarted = new DocumentRepository(workspace);
   assert.equal((await restarted.list()).length, 1);
   assert.equal(await readFile(legacyPath, "utf8"), original);
 });

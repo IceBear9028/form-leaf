@@ -12,28 +12,28 @@ import {
 import { dirname, join } from "node:path";
 import {
   createDefaultDocument,
-  isResumeDocument,
-  isV1ResumeDocument,
-  type ResumeDocument,
-} from "../foundation/resume.ts";
+  isWorkspaceDocument,
+  isV1WorkspaceDocument,
+  type WorkspaceDocument,
+} from "../foundation/document.ts";
 import {
   createEmptyLibraryIndex,
-  DEFAULT_RESUME_TITLE,
-  isResumeLibraryIndex,
-  normalizeResumeTitle,
-  sortDeletedResumeSummaries,
-  sortResumeSummaries,
+  DEFAULT_DOCUMENT_TITLE,
+  isDocumentLibraryIndex,
+  normalizeDocumentTitle,
+  sortDeletedDocumentSummaries,
+  sortDocumentSummaries,
   summaryFromDocument,
-  type DeletedResumeSummary,
-  type ResumeLibraryIndex,
-  type ResumeSummary,
-} from "../foundation/resumeLibrary.ts";
+  type DeletedDocumentSummary,
+  type DocumentLibraryIndex,
+  type DocumentSummary,
+} from "../foundation/documentLibrary.ts";
 import { migrateResumeDocumentV1 } from "./resumeMigration.ts";
 
 const DOCUMENT_SUFFIX = ".resume.json";
 const DOCUMENT_BACKUP_SUFFIXES = [".backup", ".v1.backup"] as const;
 
-export class ResumeRepository {
+export class DocumentRepository {
   private operationQueue: Promise<void> = Promise.resolve();
   private initializationPromise: Promise<void> | undefined;
   private readonly workspaceDirectory: string;
@@ -42,29 +42,29 @@ export class ResumeRepository {
     this.workspaceDirectory = workspaceDirectory;
   }
 
-  list(): Promise<ResumeSummary[]> {
+  list(): Promise<DocumentSummary[]> {
     return this.enqueue(async () => {
       await this.ensureInitialized();
       const index = await this.reconcileIndex(await this.readIndex());
-      return sortResumeSummaries(index.resumes);
+      return sortDocumentSummaries(index.resumes);
     });
   }
 
-  listTrash(): Promise<DeletedResumeSummary[]> {
+  listTrash(): Promise<DeletedDocumentSummary[]> {
     return this.enqueue(async () => {
       await this.ensureInitialized();
       const index = await this.reconcileIndex(await this.readIndex());
-      return sortDeletedResumeSummaries(index.trash);
+      return sortDeletedDocumentSummaries(index.trash);
     });
   }
 
-  create(): Promise<{ summary: ResumeSummary; document: ResumeDocument }> {
+  create(): Promise<{ summary: DocumentSummary; document: WorkspaceDocument }> {
     return this.enqueue(async () => {
       await this.ensureInitialized();
       const createdAt = new Date().toISOString();
-      const document: ResumeDocument = {
+      const document: WorkspaceDocument = {
         ...createDefaultDocument(),
-        name: DEFAULT_RESUME_TITLE,
+        name: DEFAULT_DOCUMENT_TITLE,
         updatedAt: createdAt,
       };
       assertSafeId(document.documentId);
@@ -74,7 +74,7 @@ export class ResumeRepository {
       const summary = summaryFromDocument(document, createdAt);
       await this.writeIndex({
         ...index,
-        resumes: sortResumeSummaries([
+        resumes: sortDocumentSummaries([
           ...index.resumes.filter((item) => item.id !== summary.id),
           summary,
         ]),
@@ -83,7 +83,7 @@ export class ResumeRepository {
     });
   }
 
-  load(id: string): Promise<ResumeDocument> {
+  load(id: string): Promise<WorkspaceDocument> {
     return this.enqueue(async () => {
       await this.ensureInitialized();
       assertSafeId(id);
@@ -99,21 +99,21 @@ export class ResumeRepository {
     });
   }
 
-  save(id: string, document: ResumeDocument): Promise<ResumeSummary> {
+  save(id: string, document: WorkspaceDocument): Promise<DocumentSummary> {
     return this.enqueue(async () => {
       await this.ensureInitialized();
       return this.saveInside(id, document);
     });
   }
 
-  rename(id: string, title: string): Promise<ResumeSummary> {
+  rename(id: string, title: string): Promise<DocumentSummary> {
     return this.enqueue(async () => {
       await this.ensureInitialized();
       assertSafeId(id);
       const document = await this.readDocument(this.resumePath(id));
       return this.saveInside(id, {
         ...document,
-        name: normalizeResumeTitle(title),
+        name: normalizeDocumentTitle(title),
       });
     });
   }
@@ -142,14 +142,14 @@ export class ResumeRepository {
           await rename(`${source}${suffix}`, `${destination}${suffix}`);
           movedBackups.push(suffix);
         }
-        const deleted: DeletedResumeSummary = {
+        const deleted: DeletedDocumentSummary = {
           ...summary,
           deletedAt: new Date().toISOString(),
         };
         await this.writeIndex({
           ...index,
           resumes: index.resumes.filter((item) => item.id !== id),
-          trash: sortDeletedResumeSummaries([
+          trash: sortDeletedDocumentSummaries([
             ...index.trash.filter((item) => item.id !== id),
             deleted,
           ]),
@@ -168,7 +168,7 @@ export class ResumeRepository {
     });
   }
 
-  restore(id: string): Promise<ResumeSummary> {
+  restore(id: string): Promise<DocumentSummary> {
     return this.enqueue(async () => {
       await this.ensureInitialized();
       assertSafeId(id);
@@ -198,7 +198,7 @@ export class ResumeRepository {
         const { deletedAt: _deletedAt, ...summary } = deleted;
         await this.writeIndex({
           ...index,
-          resumes: sortResumeSummaries([...index.resumes, summary]),
+          resumes: sortDocumentSummaries([...index.resumes, summary]),
           trash: index.trash.filter((item) => item.id !== id),
         });
         return summary;
@@ -243,9 +243,9 @@ export class ResumeRepository {
     });
   }
 
-  private async saveInside(id: string, document: ResumeDocument): Promise<ResumeSummary> {
+  private async saveInside(id: string, document: WorkspaceDocument): Promise<DocumentSummary> {
     assertSafeId(id);
-    if (!isResumeDocument(document)) {
+    if (!isWorkspaceDocument(document)) {
       throw new Error("저장할 이력서의 데이터 형식이 올바르지 않습니다.");
     }
     if (document.documentId !== id) {
@@ -257,16 +257,16 @@ export class ResumeRepository {
     if (!currentSummary) throw new Error("저장할 이력서를 목록에서 찾을 수 없습니다.");
 
     const updatedAt = new Date().toISOString();
-    const nextDocument: ResumeDocument = {
+    const nextDocument: WorkspaceDocument = {
       ...document,
-      name: normalizeResumeTitle(document.name),
+      name: normalizeDocumentTitle(document.name),
       updatedAt,
     };
     await this.writeDocument(this.resumePath(id), nextDocument);
     const summary = summaryFromDocument(nextDocument, currentSummary.createdAt);
     await this.writeIndex({
       ...index,
-      resumes: sortResumeSummaries(index.resumes.map((item) =>
+      resumes: sortDocumentSummaries(index.resumes.map((item) =>
         item.id === id ? summary : item,
       )),
     });
@@ -303,11 +303,11 @@ export class ResumeRepository {
     await this.writeIndex(index);
   }
 
-  private async reconcileIndex(index: ResumeLibraryIndex): Promise<ResumeLibraryIndex> {
+  private async reconcileIndex(index: DocumentLibraryIndex): Promise<DocumentLibraryIndex> {
     const activeById = new Map(index.resumes.map((item) => [item.id, item]));
     const trashById = new Map(index.trash.map((item) => [item.id, item]));
-    const resumes: ResumeSummary[] = [];
-    const trash: DeletedResumeSummary[] = [];
+    const resumes: DocumentSummary[] = [];
+    const trash: DeletedDocumentSummary[] = [];
 
     for (const id of await this.documentIdsIn(this.resumesDirectory)) {
       const existing = activeById.get(id);
@@ -336,10 +336,10 @@ export class ResumeRepository {
       }
     }
 
-    const next: ResumeLibraryIndex = {
+    const next: DocumentLibraryIndex = {
       ...index,
-      resumes: sortResumeSummaries(resumes),
-      trash: sortDeletedResumeSummaries(trash),
+      resumes: sortDocumentSummaries(resumes),
+      trash: sortDeletedDocumentSummaries(trash),
     };
     if (JSON.stringify(next) !== JSON.stringify(index)) await this.writeIndex(next);
     return next;
@@ -353,14 +353,14 @@ export class ResumeRepository {
       .filter(isSafeId);
   }
 
-  private async readIndex(): Promise<ResumeLibraryIndex> {
+  private async readIndex(): Promise<DocumentLibraryIndex> {
     const candidates = [this.indexPath, `${this.indexPath}.backup`];
     let firstError: unknown;
     for (const path of candidates) {
       if (!existsSync(path)) continue;
       try {
         const value: unknown = JSON.parse(await readFile(path, "utf8"));
-        if (!isResumeLibraryIndex(value)) throw new Error("이력서 목록 형식이 올바르지 않습니다.");
+        if (!isDocumentLibraryIndex(value)) throw new Error("이력서 목록 형식이 올바르지 않습니다.");
         return value;
       } catch (error) {
         firstError ??= error;
@@ -369,11 +369,11 @@ export class ResumeRepository {
     throw firstError ?? new Error("이력서 목록 파일을 찾을 수 없습니다.");
   }
 
-  private async writeIndex(index: ResumeLibraryIndex): Promise<void> {
-    await writeJsonAtomically(this.indexPath, index, isResumeLibraryIndex);
+  private async writeIndex(index: DocumentLibraryIndex): Promise<void> {
+    await writeJsonAtomically(this.indexPath, index, isDocumentLibraryIndex);
   }
 
-  private async readDocument(path: string): Promise<ResumeDocument> {
+  private async readDocument(path: string): Promise<WorkspaceDocument> {
     const candidates = [path, `${path}.backup`];
     let firstError: unknown;
     for (const candidate of candidates) {
@@ -388,17 +388,17 @@ export class ResumeRepository {
     throw firstError ?? new Error("이력서 파일을 찾을 수 없습니다.");
   }
 
-  private async writeDocument(path: string, document: ResumeDocument): Promise<void> {
-    if (!isResumeDocument(document)) {
+  private async writeDocument(path: string, document: WorkspaceDocument): Promise<void> {
+    if (!isWorkspaceDocument(document)) {
       throw new Error("저장할 이력서의 데이터 형식이 올바르지 않습니다.");
     }
     await mkdir(dirname(path), { recursive: true });
     if (existsSync(path)) {
       try {
         const current: unknown = JSON.parse(await readFile(path, "utf8"));
-        if (isResumeDocument(current)) {
+        if (isWorkspaceDocument(current)) {
           await copyFile(path, `${path}.backup`);
-        } else if (isV1ResumeDocument(current)) {
+        } else if (isV1WorkspaceDocument(current)) {
           const v1BackupPath = `${path}.v1.backup`;
           if (!existsSync(v1BackupPath)) await copyFile(path, v1BackupPath);
         }
@@ -440,9 +440,9 @@ export class ResumeRepository {
   }
 }
 
-function normalizeStoredDocument(value: unknown): ResumeDocument {
-  if (isResumeDocument(value)) return value;
-  if (isV1ResumeDocument(value)) return migrateResumeDocumentV1(value);
+function normalizeStoredDocument(value: unknown): WorkspaceDocument {
+  if (isWorkspaceDocument(value)) return value;
+  if (isV1WorkspaceDocument(value)) return migrateResumeDocumentV1(value);
   throw new Error("저장된 이력서의 데이터 형식이 올바르지 않습니다.");
 }
 

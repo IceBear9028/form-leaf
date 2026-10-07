@@ -7,8 +7,8 @@ import type {
   TextContent,
   TimelineItem,
   TimelineKind,
-} from "../../../foundation/resume";
-import { plainText } from "../../../foundation/resume";
+} from "../../../foundation/content/resume";
+import { plainText } from "../../../foundation/content/resume";
 import { parseResumeMarkdown, type ResumeMarkdownBlock } from "../markdown/markdown";
 import {
   replaceMarkdownRange,

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { TextContent } from "../../../foundation/resume";
+import type { TextContent } from "../../../foundation/content/resume";
 import { htmlElementToTextContent, textContentToHtml } from "../lib/text";
 
 type Props = {

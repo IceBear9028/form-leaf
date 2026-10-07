@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type {
-  DeletedResumeSummary,
-  ResumeSummary,
-} from "../../../foundation/resumeLibrary";
+  DeletedDocumentSummary,
+  DocumentSummary,
+} from "../../../foundation/documentLibrary";
 
 type LibraryProps = {
-  resumes: ResumeSummary[];
+  documents: DocumentSummary[];
   deletedCount: number;
   busyId?: string;
   error?: string;
@@ -18,7 +18,7 @@ type LibraryProps = {
 };
 
 export function ResumeLibrary({
-  resumes,
+  documents,
   deletedCount,
   busyId,
   error,
@@ -29,12 +29,12 @@ export function ResumeLibrary({
   onOpenTrash,
   onRetry,
 }: LibraryProps) {
-  const [renameTarget, setRenameTarget] = useState<ResumeSummary>();
-  const [deleteTarget, setDeleteTarget] = useState<ResumeSummary>();
+  const [renameTarget, setRenameTarget] = useState<DocumentSummary>();
+  const [deleteTarget, setDeleteTarget] = useState<DocumentSummary>();
   const [renameValue, setRenameValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const beginRename = (resume: ResumeSummary) => {
+  const beginRename = (resume: DocumentSummary) => {
     setRenameTarget(resume);
     setRenameValue(resume.title);
   };
@@ -70,14 +70,14 @@ export function ResumeLibrary({
               <h1 className="m-0 text-[26px] font-bold tracking-[-0.025em] text-[#18202d]">내 이력서</h1>
               <p className="mb-0 mt-1.5 text-[13px] text-[#758092]">최근 수정한 순서로 표시됩니다.</p>
             </div>
-            {resumes.length > 0 && <span className="text-xs text-[#8a94a3]">총 {resumes.length}개</span>}
+            {documents.length > 0 && <span className="text-xs text-[#8a94a3]">총 {documents.length}개</span>}
           </div>
           {error && <ErrorBanner message={error} onRetry={onRetry} />}
-          {resumes.length === 0 ? (
+          {documents.length === 0 ? (
             <EmptyLibrary onCreate={onCreate} creating={busyId === "create"} />
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
-              {resumes.map((resume) => (
+              {documents.map((resume) => (
                 <article key={resume.id} className="group relative flex min-h-[170px] flex-col rounded-[14px] border border-[#dfe4eb] bg-white shadow-[0_3px_14px_rgba(24,32,45,0.05)] transition hover:-translate-y-0.5 hover:border-[#b9c9df] hover:shadow-[0_8px_24px_rgba(24,32,45,0.09)]">
                   <button
                     type="button"
@@ -144,7 +144,7 @@ export function ResumeLibrary({
 }
 
 type TrashProps = {
-  resumes: DeletedResumeSummary[];
+  documents: DeletedDocumentSummary[];
   busyId?: string;
   error?: string;
   onBack: () => void;
@@ -155,7 +155,7 @@ type TrashProps = {
 };
 
 export function ResumeTrash({
-  resumes,
+  documents,
   busyId,
   error,
   onBack,
@@ -164,11 +164,11 @@ export function ResumeTrash({
   onOpenRestored,
   onRetry,
 }: TrashProps) {
-  const [restored, setRestored] = useState<ResumeSummary>();
-  const [deleteTarget, setDeleteTarget] = useState<DeletedResumeSummary>();
+  const [restored, setRestored] = useState<DocumentSummary>();
+  const [deleteTarget, setDeleteTarget] = useState<DeletedDocumentSummary>();
   const [deleting, setDeleting] = useState(false);
 
-  const restore = async (resume: DeletedResumeSummary) => {
+  const restore = async (resume: DeletedDocumentSummary) => {
     if (await onRestore(resume.id)) {
       const { deletedAt: _deletedAt, ...summary } = resume;
       setRestored(summary);
@@ -202,13 +202,13 @@ export function ResumeTrash({
               <button type="button" className="cursor-pointer border-0 bg-transparent font-semibold text-[#1768e5]" onClick={() => void onOpenRestored(restored.id)}>바로 열기</button>
             </div>
           )}
-          {resumes.length === 0 ? (
+          {documents.length === 0 ? (
             <div className="grid min-h-[320px] place-items-center rounded-[16px] border border-dashed border-[#d4dbe5] bg-white/70 px-6 text-center">
               <div><div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-[#f0f3f7] text-[#8090a5]"><TrashIcon /></div><strong className="text-[16px] text-[#303b4a]">휴지통이 비어 있습니다.</strong><p className="mb-0 mt-2 text-[13px] text-[#7b8797]">삭제한 이력서가 여기에 표시됩니다.</p></div>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {resumes.map((resume) => (
+              {documents.map((resume) => (
                 <article key={resume.id} className="relative flex items-center gap-4 rounded-[12px] border border-[#e0e5ec] bg-white px-5 py-4 shadow-[0_2px_10px_rgba(24,32,45,0.04)]">
                   <span className="grid h-10 w-10 flex-none place-items-center rounded-[10px] bg-[#f1f3f6] text-[#758195]"><DocumentIcon /></span>
                   <div className="min-w-0 flex-1"><strong className="block truncate text-[14px] text-[#273241]">{resume.title}</strong><span className="mt-1 block text-[11px] text-[#8a94a3]">{resume.profileName || "프로필 이름 없음"} · {formatDeletedAt(resume.deletedAt)}</span></div>

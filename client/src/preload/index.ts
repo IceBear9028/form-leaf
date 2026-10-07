@@ -1,25 +1,25 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { IPC } from "../foundation/ipc";
-import type { ResumeDocument } from "../foundation/resume";
-import type { ResumeStudioApi } from "../foundation/resumeLibrary";
+import type { WorkspaceDocument } from "../foundation/document";
+import type { DocumentApi } from "../foundation/documentLibrary";
 
-const api: ResumeStudioApi = {
-  listResumes: () => ipcRenderer.invoke(IPC.listResumes),
-  listDeletedResumes: () => ipcRenderer.invoke(IPC.listDeletedResumes),
-  createResume: () => ipcRenderer.invoke(IPC.createResume),
-  loadResume: (id: string) => ipcRenderer.invoke(IPC.loadResume, id),
-  saveResume: (id: string, document: ResumeDocument) =>
-    ipcRenderer.invoke(IPC.saveResume, id, document),
-  renameResume: (id: string, title: string) =>
-    ipcRenderer.invoke(IPC.renameResume, id, title),
-  deleteResume: (id: string) => ipcRenderer.invoke(IPC.deleteResume, id),
-  restoreResume: (id: string) => ipcRenderer.invoke(IPC.restoreResume, id),
-  permanentlyDeleteResume: (id: string) =>
-    ipcRenderer.invoke(IPC.permanentlyDeleteResume, id),
+const api: DocumentApi = {
+  listDocuments: () => ipcRenderer.invoke(IPC.listDocuments),
+  listDeletedDocuments: () => ipcRenderer.invoke(IPC.listDeletedDocuments),
+  createDocument: () => ipcRenderer.invoke(IPC.createDocument),
+  loadDocument: (id: string) => ipcRenderer.invoke(IPC.loadDocument, id),
+  saveDocument: (id: string, document: WorkspaceDocument) =>
+    ipcRenderer.invoke(IPC.saveDocument, id, document),
+  renameDocument: (id: string, title: string) =>
+    ipcRenderer.invoke(IPC.renameDocument, id, title),
+  deleteDocument: (id: string) => ipcRenderer.invoke(IPC.deleteDocument, id),
+  restoreDocument: (id: string) => ipcRenderer.invoke(IPC.restoreDocument, id),
+  permanentlyDeleteDocument: (id: string) =>
+    ipcRenderer.invoke(IPC.permanentlyDeleteDocument, id),
   exportPdf: (suggestedName: string) =>
     ipcRenderer.invoke(IPC.exportPdf, suggestedName),
   showInFolder: (filePath: string) =>
     ipcRenderer.invoke(IPC.showInFolder, filePath),
 };
 
-contextBridge.exposeInMainWorld("resumeStudio", api);
+contextBridge.exposeInMainWorld("documents", api);
