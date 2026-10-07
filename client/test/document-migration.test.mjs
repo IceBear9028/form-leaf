@@ -5,7 +5,7 @@ import {
   isResumeDocument,
   isV1ResumeDocument,
 } from "../src/foundation/content/resume.ts";
-import { migrateResumeDocumentV1 } from "../src/main/resumeMigration.ts";
+import { migrateResumeDocumentV1 } from "../src/main/document/documentMigration.ts";
 
 const text = (value, marks, href) => ({
   runs: [{ text: value, ...(marks ? { marks } : {}), ...(href ? { href } : {}) }],

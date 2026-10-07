@@ -3,7 +3,7 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1~4단계를 완료했다.
+- 12단계 실행 계획을 승인했고 1~5단계를 완료했다.
 - 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
@@ -22,7 +22,9 @@
 - `DocumentApi`, `window.documents`, `DocumentSummary`, `DocumentRepository`로 공통 CRUD 명칭을 변경했다.
 - 저장 호환성을 위해 `library.json` 내부 필드와 `.resume.json` 경로는 변경하지 않았다.
 - renderer 전용 `markdown.ts`, `markdownEdits.ts`를 `renderer/src/markdown`으로 이동했다.
-- main 전용 `resumeMigration.ts`를 `main`으로 이동했다. 이름과 세부 경로는 4~5단계에서 정리한다.
+- main 전용 migration을 `main/document/documentMigration.ts`로 이동하고 저장 문서 판별과 v1 이력서 변환을 한 경계로 모았다.
+- main은 `registerDocumentHandlers.ts`, `registerPdfHandlers.ts`와 `document/{documentRepository,documentMigration,documentPaths,atomicJsonStore}.ts`로 분리했다.
+- 저장 경로와 JSON backup 규칙은 별도 모듈로 이동했으며 기존 `workspaces/resumes`, `trash`, `.resume.json`, `.backup`, `.v1.backup` 규칙을 유지한다.
 - `foundation`은 연결 계층이 아니다. 실제 renderer→main 연결은 preload와 IPC가 담당한다.
 - `foundation`에는 둘 이상의 실행 환경이 사용하는 환경 독립 기반 코드만 둔다.
 
@@ -42,8 +44,8 @@ shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과
 
 ## 다음 작업
 
-5단계에서 `DocumentRepository`의 파일 경로, atomic JSON I/O, migration 책임을 분리한다. 저장 schema와 실제 경로는 변경하지 않는다.
+6단계에서 Renderer를 `app/pages/shared` 구조로 이동한다. 이 단계는 컴포넌트 책임 분리보다 파일 소유권과 import 방향 정리에 집중한다.
 
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 
-1단계 기준선은 자동 테스트 27개와 production build 통과다. 2~4단계도 같은 테스트와 production build를 통과했다.
+1단계 기준선은 자동 테스트 27개와 production build 통과다. 2~4단계도 같은 테스트와 production build를 통과했고, 5단계는 storage 단위 테스트 2개를 추가해 총 29개 테스트와 production build를 통과했다.

@@ -1,9 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
-import { rename, writeFile } from "node:fs/promises";
+import { app, BrowserWindow, shell } from "electron";
 import { join } from "node:path";
-import { IPC } from "../foundation/ipc";
-import type { WorkspaceDocument } from "../foundation/document";
-import { DocumentRepository } from "./documentRepository";
+import { DocumentRepository } from "./document/documentRepository";
+import { registerDocumentHandlers } from "./registerDocumentHandlers";
+import { registerPdfHandlers } from "./registerPdfHandlers";
 
 app.setName("Resume Studio");
 
@@ -11,58 +10,6 @@ let mainWindow: BrowserWindow | null = null;
 
 function workspaceDirectory(): string {
   return join(app.getPath("userData"), "workspaces");
-}
-
-function safePdfName(name: string): string {
-  const normalized = name.trim().replace(/[\\/:*?"<>|]/g, "-");
-  return `${normalized || "resume"}.pdf`;
-}
-
-async function exportPdf(sender: Electron.WebContents, name: string) {
-  const owner = BrowserWindow.fromWebContents(sender) ?? mainWindow;
-  const options: Electron.SaveDialogOptions = {
-    title: "이력서 PDF 내보내기",
-    defaultPath: join(app.getPath("documents"), safePdfName(name)),
-    filters: [{ name: "PDF 문서", extensions: ["pdf"] }],
-  };
-  const result = owner
-    ? await dialog.showSaveDialog(owner, options)
-    : await dialog.showSaveDialog(options);
-
-  if (result.canceled || !result.filePath) return { canceled: true as const };
-
-  const pdf = await sender.printToPDF({
-    pageSize: "A4",
-    printBackground: true,
-    preferCSSPageSize: true,
-    displayHeaderFooter: false,
-    scale: 1,
-  });
-  const temporaryPath = `${result.filePath}.tmp`;
-  await writeFile(temporaryPath, pdf);
-  await rename(temporaryPath, result.filePath);
-  return { canceled: false as const, filePath: result.filePath };
-}
-
-function registerIpcHandlers(repository: DocumentRepository): void {
-  ipcMain.handle(IPC.listDocuments, () => repository.list());
-  ipcMain.handle(IPC.listDeletedDocuments, () => repository.listTrash());
-  ipcMain.handle(IPC.createDocument, () => repository.create());
-  ipcMain.handle(IPC.loadDocument, (_event, id: string) => repository.load(id));
-  ipcMain.handle(IPC.saveDocument, (_event, id: string, document: WorkspaceDocument) =>
-    repository.save(id, document));
-  ipcMain.handle(IPC.renameDocument, (_event, id: string, title: string) =>
-    repository.rename(id, title));
-  ipcMain.handle(IPC.deleteDocument, (_event, id: string) => repository.remove(id));
-  ipcMain.handle(IPC.restoreDocument, (_event, id: string) => repository.restore(id));
-  ipcMain.handle(IPC.permanentlyDeleteDocument, (_event, id: string) =>
-    repository.permanentlyDelete(id));
-  ipcMain.handle(IPC.exportPdf, (event, name: string) =>
-    exportPdf(event.sender, name),
-  );
-  ipcMain.handle(IPC.showInFolder, (_event, filePath: string) => {
-    shell.showItemInFolder(filePath);
-  });
 }
 
 function createWindow(): void {
@@ -105,7 +52,11 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  registerIpcHandlers(new DocumentRepository(workspaceDirectory()));
+  registerDocumentHandlers(new DocumentRepository(workspaceDirectory()));
+  registerPdfHandlers({
+    documentsDirectory: app.getPath("documents"),
+    getMainWindow: () => mainWindow,
+  });
   createWindow();
 
   app.on("activate", () => {

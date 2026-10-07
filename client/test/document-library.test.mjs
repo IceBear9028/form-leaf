@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DocumentRepository } from "../src/main/documentRepository.ts";
+import { DocumentRepository } from "../src/main/document/documentRepository.ts";
 import { createDefaultDocument } from "../src/foundation/document.ts";
 import {
   sortDeletedDocumentSummaries,

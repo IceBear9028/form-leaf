@@ -174,16 +174,17 @@ client/src/main/
 └─ document/
    ├─ documentRepository.ts
    ├─ documentMigration.ts
-   ├─ documentIndex.ts
    ├─ documentPaths.ts
    └─ atomicJsonStore.ts
 ```
 
 - handler 파일은 IPC 입력을 application 함수로 전달한다.
 - repository는 CRUD 흐름과 transaction 순서를 조합한다.
-- index 정렬·정규화·휴지통 정책은 `documentIndex.ts`의 순수 함수로 둔다.
+- main과 renderer가 함께 쓰는 index 정렬·정규화 규칙은 `foundation/documentLibrary.ts`에 두고, 파일 목록과 index를 대조하는 I/O 흐름은 repository가 조합한다.
 - 경로 계산과 atomic JSON I/O는 각각 독립 파일로 둔다.
 - migration은 기존 파일을 새 계약으로 읽는 변환만 담당한다.
+
+5단계에서 위 구조를 적용했다. `atomicJsonStore.ts`와 `documentPaths.ts`는 각각 직접 단위 테스트하며, 기존 repository 통합 테스트로 CRUD 순서와 백업·복원 동작을 함께 검증한다.
 
 ## Renderer 내부 구조
 

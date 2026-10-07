@@ -1,21 +1,17 @@
 import { existsSync } from "node:fs";
 import {
-  copyFile,
   mkdir,
-  readFile,
   readdir,
   rename,
   stat,
   unlink,
-  writeFile,
 } from "node:fs/promises";
-import { dirname, join } from "node:path";
 import {
   createDefaultDocument,
   isWorkspaceDocument,
   isV1WorkspaceDocument,
   type WorkspaceDocument,
-} from "../foundation/document.ts";
+} from "../../foundation/document.ts";
 import {
   createEmptyLibraryIndex,
   DEFAULT_DOCUMENT_TITLE,
@@ -27,19 +23,23 @@ import {
   type DeletedDocumentSummary,
   type DocumentLibraryIndex,
   type DocumentSummary,
-} from "../foundation/documentLibrary.ts";
-import { migrateResumeDocumentV1 } from "./resumeMigration.ts";
-
-const DOCUMENT_SUFFIX = ".resume.json";
-const DOCUMENT_BACKUP_SUFFIXES = [".backup", ".v1.backup"] as const;
+} from "../../foundation/documentLibrary.ts";
+import { readJsonWithBackup, writeJsonAtomically } from "./atomicJsonStore.ts";
+import { migrateStoredDocument } from "./documentMigration.ts";
+import {
+  createDocumentPaths,
+  DOCUMENT_BACKUP_SUFFIXES,
+  DOCUMENT_SUFFIX,
+  type DocumentPaths,
+} from "./documentPaths.ts";
 
 export class DocumentRepository {
   private operationQueue: Promise<void> = Promise.resolve();
   private initializationPromise: Promise<void> | undefined;
-  private readonly workspaceDirectory: string;
+  private readonly paths: DocumentPaths;
 
   constructor(workspaceDirectory: string) {
-    this.workspaceDirectory = workspaceDirectory;
+    this.paths = createDocumentPaths(workspaceDirectory);
   }
 
   list(): Promise<DocumentSummary[]> {
@@ -68,7 +68,7 @@ export class DocumentRepository {
         updatedAt: createdAt,
       };
       assertSafeId(document.documentId);
-      await this.writeDocument(this.resumePath(document.documentId), document);
+      await this.writeDocument(this.paths.activeDocument(document.documentId), document);
 
       const index = await this.readIndex();
       const summary = summaryFromDocument(document, createdAt);
@@ -91,7 +91,7 @@ export class DocumentRepository {
       if (!index.resumes.some((item) => item.id === id)) {
         throw new Error("요청한 이력서를 목록에서 찾을 수 없습니다.");
       }
-      const document = await this.readDocument(this.resumePath(id));
+      const document = await this.readDocument(this.paths.activeDocument(id));
       if (document.documentId !== id) {
         throw new Error("이력서 ID와 저장 파일이 일치하지 않습니다.");
       }
@@ -110,7 +110,7 @@ export class DocumentRepository {
     return this.enqueue(async () => {
       await this.ensureInitialized();
       assertSafeId(id);
-      const document = await this.readDocument(this.resumePath(id));
+      const document = await this.readDocument(this.paths.activeDocument(id));
       return this.saveInside(id, {
         ...document,
         name: normalizeDocumentTitle(title),
@@ -126,8 +126,8 @@ export class DocumentRepository {
       const summary = index.resumes.find((item) => item.id === id);
       if (!summary) throw new Error("삭제할 이력서를 찾을 수 없습니다.");
 
-      const source = this.resumePath(id);
-      const destination = this.trashPath(id);
+      const source = this.paths.activeDocument(id);
+      const destination = this.paths.trashDocument(id);
       if (!existsSync(source)) throw new Error("삭제할 이력서 파일을 찾을 수 없습니다.");
       if (existsSync(destination) || DOCUMENT_BACKUP_SUFFIXES.some((suffix) =>
         existsSync(`${destination}${suffix}`))) {
@@ -179,8 +179,8 @@ export class DocumentRepository {
         throw new Error("같은 ID의 이력서가 목록에 있어 복원할 수 없습니다.");
       }
 
-      const source = this.trashPath(id);
-      const destination = this.resumePath(id);
+      const source = this.paths.trashDocument(id);
+      const destination = this.paths.activeDocument(id);
       if (!existsSync(source)) throw new Error("복원할 이력서 파일을 찾을 수 없습니다.");
       if (existsSync(destination) || DOCUMENT_BACKUP_SUFFIXES.some((suffix) =>
         existsSync(`${destination}${suffix}`))) {
@@ -224,7 +224,7 @@ export class DocumentRepository {
       const deleted = index.trash.find((item) => item.id === id);
       if (!deleted) throw new Error("완전히 삭제할 이력서를 휴지통에서 찾을 수 없습니다.");
 
-      const path = this.trashPath(id);
+      const path = this.paths.trashDocument(id);
       if (!existsSync(path)) throw new Error("완전히 삭제할 이력서 파일을 찾을 수 없습니다.");
       await this.writeIndex({
         ...index,
@@ -262,7 +262,7 @@ export class DocumentRepository {
       name: normalizeDocumentTitle(document.name),
       updatedAt,
     };
-    await this.writeDocument(this.resumePath(id), nextDocument);
+    await this.writeDocument(this.paths.activeDocument(id), nextDocument);
     const summary = summaryFromDocument(nextDocument, currentSummary.createdAt);
     await this.writeIndex({
       ...index,
@@ -279,25 +279,25 @@ export class DocumentRepository {
   }
 
   private async initialize(): Promise<void> {
-    await mkdir(this.resumesDirectory, { recursive: true });
-    await mkdir(this.trashDirectory, { recursive: true });
+    await mkdir(this.paths.activeDirectory, { recursive: true });
+    await mkdir(this.paths.trashDirectory, { recursive: true });
 
-    if (existsSync(this.indexPath) || existsSync(`${this.indexPath}.backup`)) {
+    if (existsSync(this.paths.index) || existsSync(`${this.paths.index}.backup`)) {
       await this.reconcileIndex(await this.readIndex());
       return;
     }
 
     const index = createEmptyLibraryIndex();
-    if (existsSync(this.legacyPath) || existsSync(`${this.legacyPath}.backup`)) {
-      let document = await this.readDocument(this.legacyPath);
+    if (existsSync(this.paths.legacyDocument) || existsSync(`${this.paths.legacyDocument}.backup`)) {
+      let document = await this.readDocument(this.paths.legacyDocument);
       if (!document.name.trim() || document.name.trim() === "새 이력서") {
         document = { ...document, name: "내 이력서" };
       }
       assertSafeId(document.documentId);
-      const destination = this.resumePath(document.documentId);
+      const destination = this.paths.activeDocument(document.documentId);
       if (!existsSync(destination)) await this.writeDocument(destination, document);
       else document = await this.readDocument(destination);
-      const createdAt = await fileTimestamp(this.legacyPath, document.updatedAt);
+      const createdAt = await fileTimestamp(this.paths.legacyDocument, document.updatedAt);
       index.resumes.push(summaryFromDocument(document, createdAt));
     }
     await this.writeIndex(index);
@@ -309,10 +309,10 @@ export class DocumentRepository {
     const resumes: DocumentSummary[] = [];
     const trash: DeletedDocumentSummary[] = [];
 
-    for (const id of await this.documentIdsIn(this.resumesDirectory)) {
+    for (const id of await this.documentIdsIn(this.paths.activeDirectory)) {
       const existing = activeById.get(id);
       try {
-        const path = this.resumePath(id);
+        const path = this.paths.activeDocument(id);
         const document = await this.readDocument(path);
         if (document.documentId !== id) continue;
         const createdAt = existing?.createdAt ?? await fileTimestamp(path, document.updatedAt);
@@ -322,10 +322,10 @@ export class DocumentRepository {
       }
     }
 
-    for (const id of await this.documentIdsIn(this.trashDirectory)) {
+    for (const id of await this.documentIdsIn(this.paths.trashDirectory)) {
       const existing = trashById.get(id);
       try {
-        const path = this.trashPath(id);
+        const path = this.paths.trashDocument(id);
         const document = await this.readDocument(path);
         if (document.documentId !== id) continue;
         const createdAt = existing?.createdAt ?? await fileTimestamp(path, document.updatedAt);
@@ -354,83 +354,49 @@ export class DocumentRepository {
   }
 
   private async readIndex(): Promise<DocumentLibraryIndex> {
-    const candidates = [this.indexPath, `${this.indexPath}.backup`];
-    let firstError: unknown;
-    for (const path of candidates) {
-      if (!existsSync(path)) continue;
-      try {
-        const value: unknown = JSON.parse(await readFile(path, "utf8"));
-        if (!isDocumentLibraryIndex(value)) throw new Error("이력서 목록 형식이 올바르지 않습니다.");
+    return readJsonWithBackup(
+      this.paths.index,
+      (value) => {
+        if (!isDocumentLibraryIndex(value)) {
+          throw new Error("이력서 목록 형식이 올바르지 않습니다.");
+        }
         return value;
-      } catch (error) {
-        firstError ??= error;
-      }
-    }
-    throw firstError ?? new Error("이력서 목록 파일을 찾을 수 없습니다.");
+      },
+      "이력서 목록 파일을 찾을 수 없습니다.",
+    );
   }
 
   private async writeIndex(index: DocumentLibraryIndex): Promise<void> {
-    await writeJsonAtomically(this.indexPath, index, isDocumentLibraryIndex);
+    await writeJsonAtomically(
+      this.paths.index,
+      index,
+      (current) => isDocumentLibraryIndex(current)
+        ? { path: `${this.paths.index}.backup`, overwrite: true }
+        : undefined,
+    );
   }
 
   private async readDocument(path: string): Promise<WorkspaceDocument> {
-    const candidates = [path, `${path}.backup`];
-    let firstError: unknown;
-    for (const candidate of candidates) {
-      if (!existsSync(candidate)) continue;
-      try {
-        const value: unknown = JSON.parse(await readFile(candidate, "utf8"));
-        return normalizeStoredDocument(value);
-      } catch (error) {
-        firstError ??= error;
-      }
-    }
-    throw firstError ?? new Error("이력서 파일을 찾을 수 없습니다.");
+    return readJsonWithBackup(
+      path,
+      migrateStoredDocument,
+      "이력서 파일을 찾을 수 없습니다.",
+    );
   }
 
   private async writeDocument(path: string, document: WorkspaceDocument): Promise<void> {
     if (!isWorkspaceDocument(document)) {
       throw new Error("저장할 이력서의 데이터 형식이 올바르지 않습니다.");
     }
-    await mkdir(dirname(path), { recursive: true });
-    if (existsSync(path)) {
-      try {
-        const current: unknown = JSON.parse(await readFile(path, "utf8"));
-        if (isWorkspaceDocument(current)) {
-          await copyFile(path, `${path}.backup`);
-        } else if (isV1WorkspaceDocument(current)) {
-          const v1BackupPath = `${path}.v1.backup`;
-          if (!existsSync(v1BackupPath)) await copyFile(path, v1BackupPath);
-        }
-      } catch {
-        // 손상된 현재 파일로 정상 백업을 덮어쓰지 않는다.
+    await writeJsonAtomically(path, document, (current) => {
+      if (isWorkspaceDocument(current)) {
+        return { path: `${path}.backup`, overwrite: true };
       }
-    }
-    await writeTextAtomically(path, `${JSON.stringify(document, null, 2)}\n`);
-  }
-
-  private resumePath(id: string): string {
-    return join(this.resumesDirectory, `${id}${DOCUMENT_SUFFIX}`);
-  }
-
-  private trashPath(id: string): string {
-    return join(this.trashDirectory, `${id}${DOCUMENT_SUFFIX}`);
-  }
-
-  private get indexPath(): string {
-    return join(this.workspaceDirectory, "library.json");
-  }
-
-  private get legacyPath(): string {
-    return join(this.workspaceDirectory, "default.resume.json");
-  }
-
-  private get resumesDirectory(): string {
-    return join(this.workspaceDirectory, "resumes");
-  }
-
-  private get trashDirectory(): string {
-    return join(this.workspaceDirectory, "trash");
+      if (isV1WorkspaceDocument(current)) {
+        return { path: `${path}.v1.backup`, overwrite: false };
+      }
+      return undefined;
+    });
   }
 
   private enqueue<T>(operation: () => Promise<T>): Promise<T> {
@@ -440,41 +406,12 @@ export class DocumentRepository {
   }
 }
 
-function normalizeStoredDocument(value: unknown): WorkspaceDocument {
-  if (isWorkspaceDocument(value)) return value;
-  if (isV1WorkspaceDocument(value)) return migrateResumeDocumentV1(value);
-  throw new Error("저장된 이력서의 데이터 형식이 올바르지 않습니다.");
-}
-
 function isSafeId(id: string): boolean {
   return /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(id);
 }
 
 function assertSafeId(id: string): void {
   if (!isSafeId(id)) throw new Error("이력서 ID 형식이 올바르지 않습니다.");
-}
-
-async function writeJsonAtomically<T>(
-  path: string,
-  value: T,
-  validator: (current: unknown) => boolean,
-): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  if (existsSync(path)) {
-    try {
-      const current: unknown = JSON.parse(await readFile(path, "utf8"));
-      if (validator(current)) await copyFile(path, `${path}.backup`);
-    } catch {
-      // 손상된 현재 파일로 정상 백업을 덮어쓰지 않는다.
-    }
-  }
-  await writeTextAtomically(path, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-async function writeTextAtomically(path: string, value: string): Promise<void> {
-  const temporaryPath = `${path}.tmp`;
-  await writeFile(temporaryPath, value, "utf8");
-  await rename(temporaryPath, path);
 }
 
 async function fileTimestamp(path: string, fallback: string): Promise<string> {

@@ -1,8 +1,13 @@
 import {
   contentBlocksToMarkdown,
   textContentToMarkdown,
-} from "../foundation/markdownSerialization.ts";
-import { plainText } from "../foundation/content/resume.ts";
+} from "../../foundation/markdownSerialization.ts";
+import {
+  isV1WorkspaceDocument,
+  isWorkspaceDocument,
+  type WorkspaceDocument,
+} from "../../foundation/document.ts";
+import { plainText } from "../../foundation/content/resume.ts";
 import type {
   ContentBlock,
   ProfileSection,
@@ -13,7 +18,13 @@ import type {
   TimelineItem,
   V1ProjectItem,
   V1ResumeDocument,
-} from "../foundation/content/resume";
+} from "../../foundation/content/resume";
+
+export function migrateStoredDocument(value: unknown): WorkspaceDocument {
+  if (isWorkspaceDocument(value)) return value;
+  if (isV1WorkspaceDocument(value)) return migrateResumeDocumentV1(value);
+  throw new Error("저장된 이력서의 데이터 형식이 올바르지 않습니다.");
+}
 
 export function migrateResumeDocumentV1(document: V1ResumeDocument): ResumeDocument {
   return {
