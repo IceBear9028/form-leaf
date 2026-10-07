@@ -1,5 +1,5 @@
 import { MarkdownContent } from "./markdown/MarkdownContent";
-import { getResumeStyleSheet } from "./preview/resumeStyleSheets";
+import { getResumeStyleSheet } from "./style/registry";
 
 const prototypeStyle = getResumeStyleSheet(
   new URLSearchParams(window.location.search).get("style") ?? "reference-resume-v1",

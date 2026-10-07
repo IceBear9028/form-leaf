@@ -16,6 +16,7 @@ import {
   toggleMarkdownInlineFormat,
   toggleMarkdownLink,
 } from "../src/renderer/src/pages/document-editor/markdown/edits.ts";
+import { parseSourceMap } from "../src/renderer/src/pages/document-editor/markdown/sourceSelection.ts";
 
 test("줄 시작 Markdown 접두어 뒤 Space를 블록 문법으로 전환한다", () => {
   const cases = [
@@ -56,6 +57,11 @@ test("문장 중간과 지원하지 않는 접두어는 일반 문자로 유지�
 
   assert.equal(middle.source, "내용 \\# ");
   assert.equal(unsupported.source, "\\#\\#\\#\\#\\#\\#\\# ");
+});
+
+test("DOM source map 문자열은 유효한 숫자 경계만 복원한다", () => {
+  assert.deepEqual(parseSourceMap("0,1,2,NaN,4"), [0, 1, 2, 4]);
+  assert.deepEqual(parseSourceMap(undefined), []);
 });
 
 test("본문을 페이지네이션 가능한 Markdown 블록으로 분리한다", () => {

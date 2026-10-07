@@ -208,12 +208,16 @@ client/src/renderer/
    │  └─ document-editor/
    │     ├─ DocumentEditorPage.tsx # 문서 종류에 맞는 편집기 선택
    │     ├─ markdown/
+   │     │  ├─ MarkdownContent.tsx
+   │     │  ├─ MarkdownSelectionToolbar.tsx
    │     │  ├─ parser.ts
-   │     │  └─ edits.ts
+   │     │  ├─ edits.ts
+   │     │  └─ sourceSelection.ts # DOM Selection↔Markdown offset adapter
    │     ├─ style/
-   │     │  ├─ defaults.ts         # 공통 기본 스타일 값
+   │     │  ├─ schema.ts           # style token과 runtime 계약
    │     │  ├─ presets.ts          # 제공하는 스타일 preset
-   │     │  └─ toCssVariables.ts   # 스타일 값에서 CSS 변수 생성
+   │     │  ├─ registry.ts          # ID 조회와 fallback
+   │     │  └─ toCssVariables.ts    # 스타일 값에서 CSS 변수 생성
    │     └─ resume/
    │        ├─ ResumeEditor.tsx
    │        ├─ components/
@@ -222,8 +226,7 @@ client/src/renderer/
    │        │  └─ RichTextEditor.tsx
    │        └─ preview/
    │           ├─ ResumePreview.tsx
-   │           ├─ MarkdownContent.tsx
-   │           ├─ MarkdownSelectionToolbar.tsx
+   │           ├─ pagination.ts    # 높이 입력 기반 순수 페이지 계산
    │           └─ resumeDocument.css # 이력서 구조·인쇄·편집 상태 규칙
    │
    ├─ shared/
@@ -402,5 +405,6 @@ client/test/
 ## 구현 중 세부 원칙
 
 - 7단계에서 `App.tsx`는 최상위 화면 전환만 남기고, 목록·휴지통 CRUD는 `useDocumentLibrary`, 자동 저장과 목록 복귀 전 flush는 `useDocumentSession`, 편집 화면 조합은 `DocumentEditorPage`로 분리했다.
-- `resumeDocument.css`는 먼저 위치만 이동하고, 출력 구조·Markdown·편집 UI 규칙의 추가 분리는 테스트로 보호된 뒤 수행한다.
+- 8단계에서 Markdown source 순수 편집과 DOM Selection adapter, pagination 계산, style schema·preset·registry·CSS 변수 변환을 각각 분리했다.
+- `resumeDocument.css`는 출력 구조·Markdown 동적 DOM·인쇄 규칙을 계속 담당하고, 사용자가 변경할 값은 `toCssVariables.ts`가 생성하는 CSS 변수로 주입한다.
 - 구조 이동 중 임시 re-export는 한 단계 안에서만 허용하며 해당 단계 커밋 전에 제거한다.

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { ResumeDocument } from "../../../../foundation/content/resume";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary";
-import { EditorPanel } from "./components/EditorPanel";
-import { ResumePreview } from "./preview/ResumePreview";
+import { EditorPanel } from "./resume/components/EditorPanel";
+import { ResumePreview } from "./resume/preview/ResumePreview";
 import { type SaveState, useDocumentSession } from "./useDocumentSession";
 
 type Props = {

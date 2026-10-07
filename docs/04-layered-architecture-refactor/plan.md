@@ -13,8 +13,8 @@
 | 5 | main process 저장소·migration·파일 I/O 책임 분리 | 완료 |
 | 6 | Renderer를 `app/pages/shared` 구조로 이동 | 완료 |
 | 7 | `App.tsx`의 목록·휴지통·문서 세션 상태 분리 | 완료 |
-| 8 | document editor의 Markdown·DOM·pagination·style 책임 분리 | 진행 중 |
-| 9 | 구조 리팩터링 전체 회귀 검증 | 대기 |
+| 8 | document editor의 Markdown·DOM·pagination·style 책임 분리 | 완료 |
+| 9 | 구조 리팩터링 전체 회귀 검증 | 진행 중 |
 | 10 | shadcn/ui 기반 설정 및 `shared/ui` primitive 추가 | 대기 |
 | 11 | 앱 UI를 shadcn/ui 공식 스타일로 교체하고 직접 구현 primitive 제거 | 대기 |
 | 12 | 최종 UI·document preview·PDF 회귀 검증 및 문서화 | 대기 |

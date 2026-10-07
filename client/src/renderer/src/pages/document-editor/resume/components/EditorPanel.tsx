@@ -9,11 +9,11 @@ import type {
   ResumeSection,
   TimelineItem,
   TimelineSection,
-} from "../../../../../foundation/content/resume";
-import { createId, emptyText, plainText } from "../../../../../foundation/content/resume";
+} from "../../../../../../foundation/content/resume";
+import { createId, emptyText, plainText } from "../../../../../../foundation/content/resume";
 import { Accordion, AddButton, Field, ItemActions } from "./EditorPrimitives";
 import { RichTextEditor } from "./RichTextEditor";
-import { listResumeStyleSheets } from "../preview/resumeStyleSheets";
+import { listResumeStyleSheets } from "../../style/registry";
 
 type Props = {
   document: ResumeDocument;

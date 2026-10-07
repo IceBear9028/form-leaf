@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import type { TextContent } from "../../../../../foundation/content/resume";
-import { htmlElementToTextContent, textContentToHtml } from "../../../shared/lib/text";
+import type { TextContent } from "../../../../../../foundation/content/resume";
+import { htmlElementToTextContent, textContentToHtml } from "../../../../shared/lib/text";
 
 type Props = {
   label: string;

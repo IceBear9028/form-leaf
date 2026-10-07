@@ -13,4 +13,6 @@ React 기반 이력서 목록·휴지통, Markdown 편집 폼, 스타일 레지�
 
 스타일 프리셋은 Markdown 문법과 분리되어 본문 글꼴·색상·제목 계층·목록·코드·표와 프로젝트 제목을 교체할 수 있다. 전체 이력서 레이아웃과 사용자 정의 템플릿 파일 로딩은 아직 지원하지 않는다.
 
-remark parser와 source range 기반 Markdown 편집은 브라우저 편집 UI가 사용하는 `pages/document-editor/markdown`에서 관리한다.
+remark parser와 source range 기반 Markdown 편집은 브라우저 편집 UI가 사용하는 `pages/document-editor/markdown`에서 관리한다. DOM Selection 변환은 `sourceSelection.ts`, 순수 source 수정은 `edits.ts`로 분리한다.
+
+이력서 전용 form과 A4 preview는 `pages/document-editor/resume` 아래에 둔다. pagination 계산은 `resume/preview/pagination.ts`, style 계약·preset·CSS 변수 변환은 `pages/document-editor/style`에서 각각 관리한다.

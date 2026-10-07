@@ -3,7 +3,7 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1~7단계를 완료했다.
+- 12단계 실행 계획을 승인했고 1~8단계를 완료했다.
 - 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
@@ -28,6 +28,9 @@
 - Renderer를 `app`, `pages/document-library`, `pages/document-editor`, `shared/lib`로 이동하고 `main.tsx`, `App.tsx`, `global.css`를 `app`에 모았다.
 - `resumeDocument.css`는 앱 UI가 아니라 preview/인쇄 엔진의 일부로 `pages/document-editor/preview`에 유지했다.
 - `App.tsx`는 화면 전환만 남기고, `useDocumentLibrary`가 목록·휴지통 CRUD를, `useDocumentSession`이 자동 저장과 저장 flush를, `DocumentEditorPage`가 편집 화면을 소유하도록 분리했다.
+- Markdown은 `parser.ts`, 순수 source `edits.ts`, DOM Selection `sourceSelection.ts`로 분리했다.
+- preview pagination을 `resume/preview/pagination.ts`로 분리하고 keep-with-next·강제 새 페이지·overflow·임시 페이지 유지 테스트를 추가했다.
+- style은 `schema.ts`, `presets.ts`, `registry.ts`, `toCssVariables.ts`로 분리해 이후 사용자 style 입력이 preset registry와 CSS 변환에 섞이지 않도록 했다.
 - `foundation`은 연결 계층이 아니다. 실제 renderer→main 연결은 preload와 IPC가 담당한다.
 - `foundation`에는 둘 이상의 실행 환경이 사용하는 환경 독립 기반 코드만 둔다.
 
@@ -47,8 +50,8 @@ shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과
 
 ## 다음 작업
 
-8단계에서 Markdown DOM adapter, pagination 계산, preview style 변환을 대형 컴포넌트 밖으로 분리하고 각 순수 경계의 테스트를 보강한다.
+9단계에서 구조 리팩터링 전체 테스트, 실제 Electron CRUD·자동 저장·휴지통 흐름, preview 페이지·overflow와 PDF 회귀를 검증한다.
 
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 
-1단계 기준선은 자동 테스트 27개와 production build 통과다. 2~4단계도 같은 테스트와 production build를 통과했고, 5~7단계는 storage 단위 테스트 2개를 포함한 총 29개 테스트와 production build를 통과했다. 7단계는 임시 사용자 데이터 경로의 실제 Electron에서 빈 목록 화면과 `window.documents` 11개 API 노출도 확인했다.
+1단계 기준선은 자동 테스트 27개와 production build 통과다. 8단계는 storage·pagination·source map 테스트를 추가한 총 33개 테스트와 production build를 통과했다. 7단계는 임시 사용자 데이터 경로의 실제 Electron에서 빈 목록 화면과 `window.documents` 11개 API 노출도 확인했다.

@@ -1,0 +1,58 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  paginate,
+  reconcileVisiblePages,
+} from "../src/renderer/src/pages/document-editor/resume/preview/pagination.ts";
+
+test("keepWithNext 묶음은 남은 공간이 부족하면 함께 다음 페이지로 이동한다", () => {
+  const units = [
+    { id: "intro" },
+    { id: "heading", keepWithNext: true },
+    { id: "body" },
+  ];
+  const pages = paginate(units, new Map([
+    ["intro", 50],
+    ["heading", 30],
+    ["body", 40],
+  ]), 100);
+
+  assert.deepEqual(pages.map((page) => page.units.map((unit) => unit.id)), [
+    ["intro"],
+    ["heading", "body"],
+  ]);
+  assert.equal(pages.some((page) => page.overflow), false);
+});
+
+test("강제 새 페이지와 단일 unit overflow를 표시한다", () => {
+  const units = [
+    { id: "first" },
+    { id: "forced", forceNewPage: true },
+    { id: "oversized" },
+  ];
+  const pages = paginate(units, new Map([
+    ["first", 20],
+    ["forced", 20],
+    ["oversized", 120],
+  ]), 100);
+
+  assert.deepEqual(pages.map((page) => page.units.map((unit) => unit.id)), [
+    ["first"],
+    ["forced"],
+    ["oversized"],
+  ]);
+  assert.equal(pages[2].overflow, true);
+});
+
+test("측정 전 임시 페이지는 기존 페이지 시작 unit을 기준으로 유지한다", () => {
+  const visible = reconcileVisiblePages([
+    { id: "page-1", units: [{ id: "a" }, { id: "b" }], overflow: false },
+    { id: "page-2", units: [{ id: "c" }], overflow: true },
+  ], [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }]);
+
+  assert.deepEqual(visible.map((page) => page.units.map((unit) => unit.id)), [
+    ["a", "b"],
+    ["c", "d"],
+  ]);
+  assert.equal(visible[1].overflow, true);
+});
