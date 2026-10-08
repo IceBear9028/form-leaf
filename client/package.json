@@ -1,9 +1,9 @@
 {
-  "name": "resume-studio",
-  "productName": "Resume Studio",
+  "name": "document",
+  "productName": "Document",
   "version": "0.1.0",
   "private": true,
-  "description": "Local-first resume editor",
+  "description": "Local-first document editor",
   "main": "out/main/index.js",
   "scripts": {
     "postinstall": "install-electron",

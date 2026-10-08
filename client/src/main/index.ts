@@ -4,7 +4,9 @@ import { DocumentRepository } from "./document/documentRepository";
 import { registerDocumentHandlers } from "./registerDocumentHandlers";
 import { registerPdfHandlers } from "./registerPdfHandlers";
 
-app.setName("Resume Studio");
+const legacyUserDataDirectory = join(app.getPath("appData"), "Resume Studio");
+app.setName("Document");
+app.setPath("userData", legacyUserDataDirectory);
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -18,7 +20,7 @@ function createWindow(): void {
     height: 980,
     minWidth: 1120,
     minHeight: 720,
-    title: "Resume Studio",
+    title: "Document",
     backgroundColor: "#eef1f5",
     show: false,
     webPreferences: {

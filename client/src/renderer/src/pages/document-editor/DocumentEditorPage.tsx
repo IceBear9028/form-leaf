@@ -93,7 +93,7 @@ export function DocumentEditorPage({
             <strong className="block truncate text-sm font-medium">
               {session.document.name || "제목 없는 이력서"}
             </strong>
-            <span className="block text-xs text-muted-foreground max-[1180px]:hidden">Resume Studio</span>
+            <span className="block text-xs text-muted-foreground max-[1180px]:hidden">Document</span>
           </div>
         </div>
         <SaveIndicator state={session.saveState} onRetry={() => void session.saveNow()} />

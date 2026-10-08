@@ -414,10 +414,10 @@ function LibraryHeader({
   return (
     <header className="grid h-16 flex-none grid-cols-[1fr_auto] items-center border-b border-border bg-background px-5 [-webkit-app-region:drag]">
       <div className="flex items-center gap-3">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">R</div>
+        <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">D</div>
         <div>
-          <strong className="block text-sm font-medium">Resume Studio</strong>
-          <span className="block text-xs text-muted-foreground">로컬 이력서 보관함</span>
+          <strong className="block text-sm font-medium">Document</strong>
+          <span className="block text-xs text-muted-foreground">로컬 문서 보관함</span>
         </div>
       </div>
       <div className="flex items-center gap-2 [-webkit-app-region:no-drag]">
