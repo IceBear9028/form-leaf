@@ -118,7 +118,7 @@ Electron Vite 프로젝트는 shadcn CLI의 자동 framework 판별 대상이 �
 
 다음 코드는 shadcn 적용 단계에서 제거한다.
 
-- `ResumeLibrary.tsx`의 `Modal`, `ModalActions`, `CardAction`, `ErrorBanner`, `EmptyLibrary`, button class 상수
+- `DocumentLibraryPage.tsx`의 `Modal`, `ModalActions`, `CardAction`, `ErrorBanner`, `EmptyLibrary`, button class 상수
 - `EditorPrimitives.tsx`의 `Field`, `Accordion`, `AddButton`과 input/button class 상수
 - `EditorPanel.tsx`의 반복 input, checkbox, details/summary visual class
 - `App.tsx`의 zoom button class, 직접 만든 loading spinner, PDF 성공 status UI
@@ -133,7 +133,7 @@ Markdown 선택 toolbar는 문서 내용이 아니라 편집용 UI chrome이다.
 shadcn 적용은 다음 파일과 결과를 변경하지 않아야 한다.
 
 - `resumeDocument.css`의 A4 크기, pagination, typography와 Markdown 본문 규칙
-- `foundation/documentStyle.ts`의 document style schema
+- `pages/document-editor/style`의 preset schema와 CSS variable 변환
 - style preset과 `toCssVariables.ts`가 만드는 `--resume-*`, `--markdown-*` 값
 - 실제 미리보기와 측정용 DOM에 같은 변수를 적용하는 흐름
 - PDF 출력 결과
@@ -188,3 +188,7 @@ shadcn/ui 변경은 이번 구조 리팩터링의 마지막 코드 변경으로 
 - `resumeDocument.css`에서는 selection toolbar의 앱 UI 시각 규칙만 제거했고 A4·본문·pagination·인쇄 규칙은 유지했다.
 
 실제 Electron에서 Dropdown, Dialog autofocus와 Escape 닫기, AlertDialog 취소, Accordion, Switch, Select, Markdown toolbar, 휴지통 복원 Toast를 확인했다. 자동 테스트 33개와 production build도 통과했다.
+
+## 12단계 최종 검증
+
+신규 임시 저장소에서 생성·자동 저장·최근 수정 순·이름 변경·휴지통 이동·복원·완전 삭제와 재실행 영속성을 확인했다. Markdown selection toolbar로 적용한 굵게 원문도 재실행 후 유지됐다. 앱 UI 변경 전후 preview의 2페이지, overflow 0개, 1123.992px 높이와 문서 typography가 같고, 실제 UI에서 생성한 42KB PDF가 유효한 PDF 1.4 1페이지 파일임을 확인했다.

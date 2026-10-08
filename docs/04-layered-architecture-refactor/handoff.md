@@ -3,7 +3,7 @@
 ## 현재 상태
 
 - 기준 커밋: `8633580 feat: add multi-resume library`
-- 12단계 실행 계획을 승인했고 1~11단계를 완료했다.
+- 12단계 실행 계획의 모든 단계를 완료했다.
 - 루트 애플리케이션 디렉터리는 `app`에서 `client`로 이동했다.
 - 루트 애플리케이션 디렉터리의 목표 이름은 `client`다.
 - `client/src/main`, `preload`, `renderer`, `foundation` 경계를 사용한다.
@@ -71,9 +71,22 @@ shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과
 - 저장된 문서를 다시 열었을 때 preview가 2페이지, overflow 0개로 렌더링되고 분리한 style preset의 글꼴과 배경이 적용되는 것을 확인했다.
 - 앱의 실제 PDF IPC와 Electron `webContents.printToPDF` 경로로 39KB PDF 1페이지를 생성해 유효한 PDF 1.4 파일임을 확인했다.
 
+## 12단계 최종 회귀 검증 결과
+
+- 완전히 새로운 임시 `user-data-dir`에서 빈 목록부터 전체 사용자 흐름을 검증했다.
+- 첫 문서 생성, 제목 자동 저장, 목록 복귀, 이름 변경 Dialog의 Enter 제출을 확인했다.
+- 두 번째 문서를 만든 뒤 최근 수정 문서가 목록 첫 번째에 표시되는 것을 확인했다.
+- Markdown 원문 입력 후 preview selection toolbar의 굵게 버튼을 사용해 `**Markdown**` 원문이 저장되는 것을 확인했다.
+- 문서를 휴지통으로 이동하고 복원 Toast를 확인한 뒤, 다시 이동해 AlertDialog로 완전 삭제했다.
+- 완전 삭제 후 활성 문서 1개와 휴지통 0개가 남고, 다른 문서의 Markdown 원문이 그대로 유지됐다.
+- 같은 임시 저장소로 Electron을 재실행한 뒤 제목과 Markdown 원문이 유지되는 것을 확인했다.
+- 최종 preview는 2페이지, overflow 0개, 높이 1123.992px, 기존 문서 글꼴과 흰 배경을 유지했다.
+- 실제 `PDF 내보내기` 버튼으로 42KB PDF 1페이지를 생성해 유효한 PDF 1.4 파일임을 확인했다.
+- 자동 테스트 33개, typecheck와 production build가 최종 통과했다.
+
 ## 다음 작업
 
-12단계에서 신규 shadcn UI의 최종 CRUD·키보드·자동 저장 회귀와 document preview·PDF 기준값을 다시 검증하고 전체 문서를 완료 상태로 정리한다.
+레이어 구조와 shadcn 앱 UI 전환은 완료됐다. 다음 기능 작업은 분리된 `pages/document-editor/style` 경계에서 사용자 document style 설정 schema와 UI를 설계하는 단계부터 시작할 수 있다.
 
 ## 11단계 shadcn UI 교체 결과
 
@@ -87,3 +100,9 @@ shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과
 승인 후에도 main과 renderer의 큰 파일을 동시에 분리하지 않는다. 각 단계에서 기존 동작을 테스트하고 production build를 확인한 뒤 다음 단계로 이동한다.
 
 1단계 기준선은 자동 테스트 27개와 production build 통과다. 8단계는 storage·pagination·source map 테스트를 추가한 총 33개 테스트와 production build를 통과했다. 7단계는 임시 사용자 데이터 경로의 실제 Electron에서 빈 목록 화면과 `window.documents` 11개 API 노출도 확인했고, 9단계는 같은 격리 방식으로 전체 CRUD·자동 저장·정렬·휴지통·preview·PDF 회귀를 확인했다.
+
+최종 관련 커밋:
+
+- `4aa24df test: verify layered architecture regression`
+- `a285215 feat: add shadcn ui foundation`
+- `6dcb819 feat: migrate app chrome to shadcn ui`
