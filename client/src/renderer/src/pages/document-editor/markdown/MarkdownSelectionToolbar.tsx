@@ -33,7 +33,7 @@ export function MarkdownSelectionToolbar({
 
   return createPortal(
     <ButtonGroup
-      className="markdown-selection-toolbar fixed z-50 -translate-x-1/2 rounded-lg bg-popover shadow-md ring-1 ring-foreground/10"
+      className="markdown-selection-toolbar fixed z-50 -translate-x-1/2 rounded-lg bg-popover shadow-md ring-1 ring-border"
       role="toolbar"
       aria-label="Markdown 텍스트 서식"
       style={{ left, top }}

@@ -77,7 +77,7 @@ export function DocumentEditorPage({
 
   return (
     <div className="app-shell flex h-full flex-col bg-background text-foreground">
-      <header className="app-toolbar relative z-20 grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center gap-5 border-b bg-background px-5 [-webkit-app-region:drag]">
+      <header className="app-toolbar relative z-20 grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center gap-5 border-b border-border bg-background px-5 [-webkit-app-region:drag]">
         <div className="flex min-w-0 items-center gap-3">
           <Button
             type="button"

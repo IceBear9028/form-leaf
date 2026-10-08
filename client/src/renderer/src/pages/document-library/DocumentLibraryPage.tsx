@@ -315,7 +315,7 @@ export function DocumentTrashPage({
 
   return (
     <LibraryShell>
-      <header className="flex h-16 flex-none items-center border-b bg-background px-5 [-webkit-app-region:drag]">
+      <header className="flex h-16 flex-none items-center border-b border-border bg-background px-5 [-webkit-app-region:drag]">
         <Button variant="outline" className="[-webkit-app-region:no-drag]" onClick={onBack}>
           <ArrowLeftIcon aria-hidden="true" /> 이력서 목록
         </Button>
@@ -412,7 +412,7 @@ function LibraryHeader({
   onOpenTrash: () => void;
 }) {
   return (
-    <header className="grid h-16 flex-none grid-cols-[1fr_auto] items-center border-b bg-background px-5 [-webkit-app-region:drag]">
+    <header className="grid h-16 flex-none grid-cols-[1fr_auto] items-center border-b border-border bg-background px-5 [-webkit-app-region:drag]">
       <div className="flex items-center gap-3">
         <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">R</div>
         <div>

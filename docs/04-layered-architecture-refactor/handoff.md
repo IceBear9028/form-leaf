@@ -50,14 +50,15 @@ shadcn/ui component inventory, `components.json`, alias, 적용 제외 대상과
 
 ## 10단계 shadcn/ui 기반 설정 결과
 
-- `components.json`에 `base-nova`, `neutral`, CSS variables, Lucide와 `shared/ui` alias를 설정했다.
+- 10단계에서는 `base-nova`와 Neutral로 시작했고, 후속 사용자 선택에 따라 현재 `components.json`은 `base-vega`, Neutral base, Lime theme token, CSS variables, Lucide와 `shared/ui` alias를 사용한다.
 - TypeScript와 electron-vite renderer의 `@` alias는 `src/renderer/src`를 가리킨다.
 - Electron Vite는 CLI framework 자동 판별 대상이 아니므로 공식 manual installation 절차로 의존성과 theme token을 설정했다.
 - CLI `add`로 필요한 primitive와 내부 의존 primitive 21개를 `renderer/src/shared/ui`에 생성했다.
-- 현재 공식 `base-nova`가 직접 사용하는 `cn` 패키지를 `shared/lib/utils.ts`에서 재노출했다.
+- 현재 공식 `base-vega`가 직접 사용하는 `cn` 패키지를 `shared/lib/utils.ts`에서 재노출했다.
 - Tailwind 전체 preflight와 전역 border reset은 추가하지 않아 document preview의 DOM 측정 범위를 보호했다.
 - 33개 테스트와 production build가 통과했다.
 - 임시 Electron fixture에서 preview 2페이지, overflow 0개, 높이 1123.992px, 문서 글꼴과 배경이 9단계 기준값과 동일했다.
+- Vega·Lime 전환 후 앱 chrome의 누락된 border color를 `border-border`로 명시해 검은 경계선을 제거했고, 같은 preview 기준값이 유지되는 것을 다시 확인했다.
 
 ## 9단계 회귀 검증 결과
 

@@ -15,11 +15,11 @@
 - [shadcn/ui Theming](https://ui.shadcn.com/docs/theming)
 - [shadcn/ui Monorepo와 aliases](https://ui.shadcn.com/docs/monorepo)
 
-shadcn/ui는 완성된 UI 패키지를 import해 숨겨진 구현을 사용하는 방식이 아니다. CLI로 필요한 컴포넌트 소스를 프로젝트에 추가하고 애플리케이션이 그 소스를 직접 소유한다. 생성된 UI 파일은 `renderer/src/shared/ui`에 두고, 페이지 컴포넌트는 해당 primitive를 조합한다. 현재 공식 `base-nova` registry는 Base UI와 `cn` 패키지를 사용한다.
+shadcn/ui는 완성된 UI 패키지를 import해 숨겨진 구현을 사용하는 방식이 아니다. CLI로 필요한 컴포넌트 소스를 프로젝트에 추가하고 애플리케이션이 그 소스를 직접 소유한다. 생성된 UI 파일은 `renderer/src/shared/ui`에 두고, 페이지 컴포넌트는 해당 primitive를 조합한다. 현재 선택한 공식 `base-vega` registry는 Base UI와 `cn` 패키지를 사용한다.
 
 ## 스타일 기준
 
-- 공식 문서가 현재 예시로 사용하는 `base-nova`, `neutral`, CSS variables, `lucide` 아이콘 구성을 기준으로 한다.
+- 앱 UI는 공식 `base-vega`, Neutral base color, Lime theme·chart color, CSS variables, `lucide` 아이콘 구성을 기준으로 한다.
 - shadcn 컴포넌트의 기본 색상, radius, shadow, typography, focus ring을 현재 앱 디자인에 맞춰 다시 덮어쓰지 않는다.
 - `className` 추가는 grid, flex, width, spacing, Electron drag region처럼 화면 배치에 필요한 경우로 제한한다.
 - 애플리케이션 UI theme은 `background`, `foreground`, `primary`, `muted`, `destructive`, `border`, `ring` 같은 shadcn semantic token을 사용한다.
@@ -49,7 +49,7 @@ client/
 ```json
 {
   "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "base-nova",
+  "style": "base-vega",
   "rsc": false,
   "tsx": true,
   "tailwind": {
@@ -192,3 +192,12 @@ shadcn/ui 변경은 이번 구조 리팩터링의 마지막 코드 변경으로 
 ## 12단계 최종 검증
 
 신규 임시 저장소에서 생성·자동 저장·최근 수정 순·이름 변경·휴지통 이동·복원·완전 삭제와 재실행 영속성을 확인했다. Markdown selection toolbar로 적용한 굵게 원문도 재실행 후 유지됐다. 앱 UI 변경 전후 preview의 2페이지, overflow 0개, 1123.992px 높이와 문서 typography가 같고, 실제 UI에서 생성한 42KB PDF가 유효한 PDF 1.4 1페이지 파일임을 확인했다.
+
+## 후속 Vega·Lime 전환
+
+- 사용자가 선택한 공식 preset `b3REd6hAe`를 기준으로 `base-vega`, Neutral base color, Lime theme·chart color를 적용했다.
+- 설치된 UI primitive는 `base-vega` registry 원본으로 다시 생성했다.
+- 전체 Tailwind preflight를 사용하지 않는 구조에서는 단순 `border`가 브라우저 기본 검정색을 상속할 수 있으므로, 앱 chrome의 Empty·header·editor panel·accordion 경계에 `border-border`를 명시했다.
+- 검은색을 임의의 포인트 색상으로 사용하지 않고 primary action과 Switch는 공식 Lime semantic token을 사용한다. dialog backdrop의 `bg-black/10`처럼 콘텐츠 가독성을 위한 투명 overlay만 유지한다.
+- 실제 Electron에서 Empty 점선, toolbar, editor panel과 accordion 경계가 Neutral border로 표시되고 주요 action이 Lime으로 표시되는 것을 확인했다.
+- document preview는 2페이지, overflow 0개, 1123.992px 높이, 기존 Pretendard와 흰 배경을 유지했다.

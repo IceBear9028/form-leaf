@@ -49,7 +49,7 @@ type Props = {
 
 const fieldGridClass = "mb-3 grid grid-cols-2 gap-3";
 const itemListClass = "my-3 flex flex-col gap-2.5";
-const cardBodyClass = "border-t px-3 pb-3.5 pt-0 [&>.item-actions]:mt-3";
+const cardBodyClass = "border-t border-border px-3 pb-3.5 pt-0 [&>.item-actions]:mt-3";
 const resumeStyleSheets = listResumeStyleSheets();
 
 const move = <T,>(items: T[], from: number, to: number): T[] => {
@@ -95,7 +95,7 @@ export function EditorPanel({ document, onChange }: Props) {
   };
 
   return (
-    <aside className="editor-panel overflow-y-auto overscroll-contain border-r bg-muted/30 px-4 pb-15 pt-5" aria-label="이력서 편집">
+    <aside className="editor-panel overflow-y-auto overscroll-contain border-r border-border bg-muted/30 px-4 pb-15 pt-5" aria-label="이력서 편집">
       <div className="px-1 pb-5 [&_input]:text-sm [&_input]:font-medium">
         <Field
           label="문서 이름"
@@ -140,7 +140,7 @@ function ProfileEditor({ section, onChange }: { section: ProfileSection; onChang
   return (
     <Accordion title="프로필" visible={section.visible} onVisibleChange={(visible) => onChange({ ...section, visible })} defaultOpen>
       <div className="mb-4 flex items-center gap-2">
-        <div className="grid size-12 flex-none place-items-center overflow-hidden rounded-full border bg-muted text-muted-foreground">
+        <div className="grid size-12 flex-none place-items-center overflow-hidden rounded-full border border-border bg-muted text-muted-foreground">
           {section.photoDataUrl ? <img className="h-full w-full object-cover" src={section.photoDataUrl} alt="프로필 미리보기" /> : <ImageIcon aria-hidden="true" className="size-4" />}
         </div>
         <Button variant="outline" size="sm" render={<label />}>
@@ -193,7 +193,7 @@ function TimelineEditor({ section, onChange }: { section: TimelineSection; onCha
       </div>
       <div className={itemListClass}>
         {section.items.map((item, index) => (
-          <Collapsible className="overflow-hidden rounded-lg border bg-card" key={item.id} defaultOpen>
+          <Collapsible className="overflow-hidden rounded-lg border border-border bg-card" key={item.id} defaultOpen>
             <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
               <span className="min-w-0 flex-1 truncate">{plainText(item.title) || item.organization || `항목 ${index + 1}`}</span>
               <span className="text-xs font-normal text-muted-foreground">{item.visible ? "표시" : "숨김"}</span>
@@ -205,7 +205,7 @@ function TimelineEditor({ section, onChange }: { section: TimelineSection; onCha
                 onDown={index < section.items.length - 1 ? () => onChange({ ...section, items: move(section.items, index, index + 1) }) : undefined}
                 onDelete={() => onChange({ ...section, items: section.items.filter((entry) => entry.id !== item.id) })}
               />
-              <label className="mb-3 flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-sm">
+              <label className="mb-3 flex cursor-pointer items-center justify-between rounded-lg border border-border p-2.5 text-sm">
                 <span>미리보기에 표시</span>
                 <Switch checked={item.visible} onCheckedChange={(visible) => updateItem(item.id, { visible })} />
               </label>
@@ -232,7 +232,7 @@ function ProjectGroupEditor({ section, onChange }: { section: ProjectGroupSectio
       <Field label="섹션 제목" value={section.title} onChange={(title) => onChange({ ...section, title })} />
       <div className={itemListClass}>
         {section.items.map((item, index) => (
-          <Collapsible className="overflow-hidden rounded-lg border bg-card" key={item.id} defaultOpen>
+          <Collapsible className="overflow-hidden rounded-lg border border-border bg-card" key={item.id} defaultOpen>
             <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
               <span className="min-w-0 flex-1 truncate">{plainText(item.title) || `프로젝트 ${index + 1}`}</span>
               <span className="text-xs font-normal text-muted-foreground">{item.visible ? "표시" : "숨김"}</span>
@@ -244,7 +244,7 @@ function ProjectGroupEditor({ section, onChange }: { section: ProjectGroupSectio
                 onDown={index < section.items.length - 1 ? () => onChange({ ...section, items: move(section.items, index, index + 1).map((entry, order) => ({ ...entry, order })) }) : undefined}
                 onDelete={() => onChange({ ...section, items: section.items.filter((entry) => entry.id !== item.id) })}
               />
-              <label className="mb-3 flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-sm">
+              <label className="mb-3 flex cursor-pointer items-center justify-between rounded-lg border border-border p-2.5 text-sm">
                 <span>미리보기에 표시</span>
                 <Switch checked={item.visible} onCheckedChange={(visible) => updateItem(item.id, { visible })} />
               </label>

@@ -41,7 +41,7 @@ shadcn/ui 적용은 main, preload, foundation, Renderer 구조 이동과 로직 
 
 - `components.json`, Renderer `@` alias와 `shared/lib/utils.ts` 설정
 - `shared/ui`에 필요한 shadcn component만 추가
-- 공식 `base-nova`·`neutral`·CSS variables·Lucide 스타일 적용
+- 공식 `base-vega`·Neutral base·Lime theme·CSS variables·Lucide 스타일 적용
 - 직접 만든 button/input/modal/accordion/empty/loading primitive 제거
 - 앱 chrome만 교체하고 document preview·Markdown 본문·PDF 스타일은 보존
 
