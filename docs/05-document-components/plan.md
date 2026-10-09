@@ -5,8 +5,8 @@
 | 단계 | 작업 | 상태 | 핵심 완료 조건 |
 |---|---|---|---|
 | 1 | 계약·전환 정책 확정 | 완료 | 다섯 구현 기본안 승인, 문서 계약 일치 |
-| 2 | 범용 document core 구현 | 진행 중 | schema·graph·transaction 단위 테스트 통과 |
-| 3 | 레거시 importer 구현 | 대기 | v1/v2를 원본 손상 없이 범용 문서로 변환 |
+| 2 | 범용 document core 구현 | 완료 | schema·graph·transaction 단위 테스트 통과 |
+| 3 | 레거시 importer 구현 | 진행 중 | v1/v2를 원본 손상 없이 범용 문서로 변환 |
 | 4 | 읽기 전용 범용 DOM renderer 구현 | 대기 | 일반 node fixture의 화면·측정·pagination 일치 |
 | 5 | node tree·inspector 편집기 구현 | 대기 | 빈 문서에서 일반 node 구성·저장 가능 |
 | 6 | component·repeater 재사용 구현 | 대기 | 문서 내부 definition·instance·반복 구조 동작 |

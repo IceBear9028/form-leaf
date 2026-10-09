@@ -2,7 +2,7 @@
 
 ## 설계 상태
 
-범용 `schemaVersion: 3` 계약과 전환 정책을 확정했다. 현재 앱은 기존 `WorkspaceDocument`를 유지한 채 새 core를 병렬 구현하고, 새 stack이 준비된 뒤 앱 진입점을 전환한다.
+범용 `schemaVersion: 3` core와 validation·transaction 구현을 완료했다. 현재 앱은 아직 기존 `WorkspaceDocument`를 사용하며, 다음 단계에서 과거 입력을 범용 문서로 바꾸는 importer를 격리 구현한다.
 
 ## 제품 불변 조건
 

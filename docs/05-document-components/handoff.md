@@ -2,28 +2,33 @@
 
 ## 현재 상태
 
-- 상태: 계약·전환 정책 확정
-- 현재 단계: 2. 범용 document core 구현
-- 작업 트리: 작업 문서 변경
-- 기준 커밋: `c59f33b refactor: rename app branding to document`
+- 상태: 범용 document core 구현 완료
+- 현재 단계: 3. 레거시 importer 구현
+- 기준 커밋: `e6542b4 docs: define generic document component plan`
 - 커밋 정책: 각 계획 단계 완료 후 검증·문서 갱신과 함께 커밋
 
 ## 완료된 작업
 
-- 현재 저장 계약, editor, renderer, repository와 목록의 domain 결합 지점을 조사했다.
-- 특정 문서 목적을 모르는 `DocumentData`, node·component·style·asset 계약을 확정했다.
-- category 전용 schema를 제거하고 root node tree와 repeater 조합으로 설계했다.
-- 오른쪽 DOM 문서를 주 편집 화면으로, 왼쪽을 node tree와 inspector로 정의했다.
-- Canvas가 아닌 DOM flow, 문서 내부 component와 개인 library 독립 복사 정책을 확정했다.
-- 앱 내부 legacy importer, 최소 layout, prop archive, Markdown 색상 범위와 library 저장 기준을 확정했다.
-- 기존 앱을 유지한 채 새 core·renderer·editor를 병렬 구축한 뒤 8단계에서 전환하는 9단계 계획을 작성했다.
+- `schemaVersion: 3`의 범용 `DocumentData`, node·component·style·asset 계약을 구현했다.
+- 새 문서를 범용 metadata와 빈 root container만으로 만드는 factory를 구현했다.
+- 정의되지 않은 key, `kind`, `categories`, raw CSS와 잘못된 참조를 거부하는 strict validator를 구현했다.
+- node·component graph의 dangling reference, 다중 parent와 cycle 검증을 구현했다.
+- node 추가·이동·복제·표시·보관·복원 transaction을 구현했다.
+- component definition·instance·prop archive와 repeater item transaction을 구현했다.
+- prop archive 뒤에도 instance override 값을 유지한다.
+- 새 core는 기존 `WorkspaceDocument`와 병행 export하며 현재 앱 경로를 바꾸지 않았다.
 
 ## 변경 파일
 
+- `client/src/foundation/document.ts`
+- `client/src/foundation/documentModel.ts`
+- `client/src/foundation/documentValidation.ts`
+- `client/src/foundation/documentTransactions.ts`
+- `client/test/document-core.test.mjs`
+- `client/package.json`
 - `docs/README.md`
 - `docs/05-document-components/README.md`
 - `docs/05-document-components/design.md`
-- `docs/05-document-components/ux.md`
 - `docs/05-document-components/plan.md`
 - `docs/05-document-components/handoff.md`
 
@@ -31,10 +36,13 @@
 
 | 명령 또는 확인 | 결과 |
 |---|---|
-| 작업 문서 간 제품 원칙·용어 비교 | 완료 |
-| 목적별 target schema·starter 잔존 검색 | 완료 |
-| `git diff --check`와 문서 공백 검사 | 통과 |
+| `npm run test:document-core` | 통과, 6개 |
+| `npm test` | 통과, 전체 39개 |
+| `npm run typecheck` | 통과 |
+| `npm run build` | 통과 |
+| generic core 목적별 domain token 검색 | 결과 없음 |
+| `git diff --check`와 새 파일 공백 검사 | 통과 |
 
 ## 다음 작업
 
-목적과 무관한 빈 root fixture부터 작성하고 `schemaVersion: 3` model, strict validator와 불변 transaction을 구현한다. 완료 후 전체 typecheck와 build를 통과시키고 2단계 문서 상태를 갱신해 별도 커밋한다.
+`client/src/main/document/legacy/`에 과거 계약 adapter와 v1 내용 변환을 격리하고, v1/v2 입력을 범용 `DocumentData`로 변환하는 pure importer를 구현한다. 기존 repository 반환 타입과 화면은 8단계 전환 전까지 유지한다.
