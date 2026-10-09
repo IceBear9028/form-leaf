@@ -8,6 +8,10 @@ export const IPC = {
   deleteDocument: "document:delete",
   restoreDocument: "document:restore",
   permanentlyDeleteDocument: "document:permanently-delete",
-  exportPdf: "resume:export-pdf",
+  listComponents: "component:list",
+  saveComponent: "component:save",
+  loadComponent: "component:load",
+  deleteComponent: "component:delete",
+  exportPdf: "document:export-pdf",
   showInFolder: "shell:show-in-folder",
 } as const;

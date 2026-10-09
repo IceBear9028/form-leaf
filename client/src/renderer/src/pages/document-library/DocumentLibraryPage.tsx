@@ -102,7 +102,7 @@ export function DocumentLibraryPage({
 
   const beginRename = (document: DocumentSummary) => {
     setRenameTarget(document);
-    setRenameValue(document.title);
+    setRenameValue(document.name);
   };
 
   const submitRename = async () => {
@@ -133,7 +133,7 @@ export function DocumentLibraryPage({
         <div className="mx-auto max-w-6xl">
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">내 이력서</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">내 문서</h1>
               <p className="mt-1 text-sm text-muted-foreground">최근 수정한 순서로 표시됩니다.</p>
             </div>
             {documents.length > 0 && <Badge variant="secondary">총 {documents.length}개</Badge>}
@@ -190,10 +190,8 @@ export function DocumentLibraryPage({
                       disabled={Boolean(busyId)}
                       onClick={() => void onOpen(document.id)}
                     >
-                      <CardTitle className="line-clamp-2">{document.title}</CardTitle>
-                      <CardDescription className="mt-1.5">
-                        {document.profileName || "프로필 이름 없음"}
-                      </CardDescription>
+                      <CardTitle className="line-clamp-2">{document.name}</CardTitle>
+                      <CardDescription className="mt-1.5">로컬 문서</CardDescription>
                       <span className="mt-auto pt-4 text-xs text-muted-foreground">
                         {formatUpdatedAt(document.updatedAt)}
                       </span>
@@ -215,11 +213,11 @@ export function DocumentLibraryPage({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>이력서 이름 변경</DialogTitle>
+            <DialogTitle>문서 이름 변경</DialogTitle>
             <DialogDescription>목록에서 구분할 문서 이름을 입력하세요.</DialogDescription>
           </DialogHeader>
           <Field>
-            <FieldLabel htmlFor="rename-document">이력서 제목</FieldLabel>
+            <FieldLabel htmlFor="rename-document">문서 이름</FieldLabel>
             <Input
               id="rename-document"
               autoFocus
@@ -250,9 +248,9 @@ export function DocumentLibraryPage({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia><Trash2Icon aria-hidden="true" /></AlertDialogMedia>
-            <AlertDialogTitle>이력서를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogTitle>문서를 삭제할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong className="font-medium text-foreground">{deleteTarget?.title}</strong>을(를)
+              <strong className="font-medium text-foreground">{deleteTarget?.name}</strong>을(를)
               휴지통으로 이동합니다. 휴지통에서 다시 복원할 수 있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -296,8 +294,8 @@ export function DocumentTrashPage({
     if (!await onRestore(document.id)) return;
     toast.add({
       type: "success",
-      title: `${document.title} 복원 완료`,
-      description: "이력서 목록으로 복원했습니다.",
+      title: `${document.name} 복원 완료`,
+      description: "문서 목록으로 복원했습니다.",
       actionProps: {
         children: "바로 열기",
         onClick: () => void onOpenRestored(document.id),
@@ -317,7 +315,7 @@ export function DocumentTrashPage({
     <LibraryShell>
       <header className="flex h-16 flex-none items-center border-b border-border bg-background px-5 [-webkit-app-region:drag]">
         <Button variant="outline" className="[-webkit-app-region:no-drag]" onClick={onBack}>
-          <ArrowLeftIcon aria-hidden="true" /> 이력서 목록
+          <ArrowLeftIcon aria-hidden="true" /> 문서 목록
         </Button>
         <strong className="ml-4 text-sm font-medium">휴지통</strong>
       </header>
@@ -326,7 +324,7 @@ export function DocumentTrashPage({
           <div className="mb-6">
             <h1 className="text-2xl font-semibold tracking-tight">휴지통</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              최근 삭제한 순서입니다. 필요한 이력서를 원래 목록으로 복원할 수 있습니다.
+              최근 삭제한 순서입니다. 필요한 문서를 원래 목록으로 복원할 수 있습니다.
             </p>
           </div>
           {error && <ErrorAlert message={error} onRetry={onRetry} />}
@@ -335,7 +333,7 @@ export function DocumentTrashPage({
               <EmptyHeader>
                 <EmptyMedia variant="icon"><Trash2Icon aria-hidden="true" /></EmptyMedia>
                 <EmptyTitle>휴지통이 비어 있습니다.</EmptyTitle>
-                <EmptyDescription>삭제한 이력서가 여기에 표시됩니다.</EmptyDescription>
+                <EmptyDescription>삭제한 문서가 여기에 표시됩니다.</EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
@@ -347,9 +345,9 @@ export function DocumentTrashPage({
                       <FileTextIcon aria-hidden="true" className="size-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <CardTitle className="truncate">{document.title}</CardTitle>
+                      <CardTitle className="truncate">{document.name}</CardTitle>
                       <CardDescription className="mt-1 truncate">
-                        {document.profileName || "프로필 이름 없음"} · {formatDeletedAt(document.deletedAt)}
+                        {formatDeletedAt(document.deletedAt)}
                       </CardDescription>
                     </div>
                     <div className="flex flex-none gap-2">
@@ -378,9 +376,9 @@ export function DocumentTrashPage({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia><Trash2Icon aria-hidden="true" /></AlertDialogMedia>
-            <AlertDialogTitle>이력서를 완전히 삭제할까요?</AlertDialogTitle>
+            <AlertDialogTitle>문서를 완전히 삭제할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong className="font-medium text-foreground">{deleteTarget?.title}</strong>과(와)
+              <strong className="font-medium text-foreground">{deleteTarget?.name}</strong>과(와)
               저장된 백업을 영구 삭제합니다. 이 작업은 취소하거나 복원할 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -427,7 +425,7 @@ function LibraryHeader({
         </Button>
         <Button disabled={creating} onClick={() => void onCreate()}>
           {creating ? <Spinner /> : <PlusIcon aria-hidden="true" />}
-          {creating ? "만드는 중…" : "새 이력서"}
+          {creating ? "만드는 중…" : "새 문서"}
         </Button>
       </div>
     </header>
@@ -439,13 +437,13 @@ function EmptyLibrary({ onCreate, creating }: { onCreate: () => Promise<void>; c
     <Empty className="min-h-105 border">
       <EmptyHeader>
         <EmptyMedia variant="icon"><FileTextIcon aria-hidden="true" /></EmptyMedia>
-        <EmptyTitle>아직 작성한 이력서가 없습니다.</EmptyTitle>
-        <EmptyDescription>첫 이력서를 만들고 내용을 작성해 보세요.</EmptyDescription>
+        <EmptyTitle>아직 작성한 문서가 없습니다.</EmptyTitle>
+        <EmptyDescription>첫 문서를 만들고 내용을 작성해 보세요.</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
         <Button disabled={creating} onClick={() => void onCreate()}>
           {creating ? <Spinner /> : <PlusIcon aria-hidden="true" />}
-          {creating ? "만드는 중…" : "첫 이력서 만들기"}
+          {creating ? "만드는 중…" : "첫 문서 만들기"}
         </Button>
       </EmptyContent>
     </Empty>

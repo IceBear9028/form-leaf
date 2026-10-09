@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArchiveIcon, BoxesIcon, CopyPlusIcon, ListPlusIcon, PlusIcon } from "lucide-react";
+import { ArchiveIcon, BoxesIcon, CopyPlusIcon, DownloadIcon, ListPlusIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react";
+import type { ComponentLibrarySummary } from "../../../../foundation/componentLibrary.ts";
 import type { ComponentDefinition, DocumentData, DocumentNode } from "../../../../foundation/documentModel.ts";
 import { createEntityId } from "../../../../foundation/documentModel.ts";
 import {
   applyComponentDefinitionDraft,
   createComponentFromSubtree,
   exposeComponentProp,
+  exportComponentPackage,
+  importComponentPackage,
 } from "../../../../foundation/documentComponentOperations.ts";
 import {
   addComponentInstance,
@@ -31,11 +34,28 @@ export function ComponentReusePanel({
 }) {
   const componentIds = Object.keys(document.components);
   const [componentId, setComponentId] = useState<string>();
+  const [libraryItems, setLibraryItems] = useState<ComponentLibrarySummary[]>([]);
+  const [libraryId, setLibraryId] = useState("");
+  const [libraryBusy, setLibraryBusy] = useState(false);
+  const [libraryError, setLibraryError] = useState<string>();
   const selectedComponentId = componentId && document.components[componentId]
     ? componentId
     : componentIds[0];
   const component = selectedComponentId ? document.components[selectedComponentId] : undefined;
   const selectedNode = selection ? document.nodes[selection.nodeId] : undefined;
+
+  const refreshLibrary = async () => {
+    try {
+      setLibraryItems(await window.documents.listComponents());
+      setLibraryError(undefined);
+    } catch (error) {
+      setLibraryError(errorMessage(error));
+    }
+  };
+
+  useEffect(() => {
+    void refreshLibrary();
+  }, []);
 
   const createFromSelection = () => {
     if (!selectedNode || selectedNode.id === document.rootNodeId || selectedNode.archivedFrom) return;
@@ -75,6 +95,52 @@ export function ComponentReusePanel({
       items: [],
     }));
     onSelectionChange(selectNode(nodeId));
+  };
+
+  const saveToLibrary = async () => {
+    if (!component || libraryBusy) return;
+    setLibraryBusy(true);
+    try {
+      await window.documents.saveComponent({
+        name: component.name,
+        package: exportComponentPackage(document, component.id),
+      });
+      await refreshLibrary();
+    } catch (error) {
+      setLibraryError(errorMessage(error));
+    } finally {
+      setLibraryBusy(false);
+    }
+  };
+
+  const importFromLibrary = async () => {
+    if (!libraryId || libraryBusy) return;
+    setLibraryBusy(true);
+    try {
+      const item = await window.documents.loadComponent(libraryId);
+      const imported = importComponentPackage(document, item.package);
+      onChange(imported.document);
+      setComponentId(imported.componentId);
+      setLibraryError(undefined);
+    } catch (error) {
+      setLibraryError(errorMessage(error));
+    } finally {
+      setLibraryBusy(false);
+    }
+  };
+
+  const deleteLibraryItem = async () => {
+    if (!libraryId || libraryBusy) return;
+    setLibraryBusy(true);
+    try {
+      await window.documents.deleteComponent(libraryId);
+      setLibraryId("");
+      await refreshLibrary();
+    } catch (error) {
+      setLibraryError(errorMessage(error));
+    } finally {
+      setLibraryBusy(false);
+    }
   };
 
   return (
@@ -130,10 +196,37 @@ export function ComponentReusePanel({
           <Button type="button" variant="outline" size="sm" onClick={addRepeater}>
             <ListPlusIcon aria-hidden="true" /> Repeater
           </Button>
+          <Button type="button" variant="outline" size="sm" disabled={libraryBusy} className="col-span-2" onClick={() => void saveToLibrary()}>
+            <SaveIcon aria-hidden="true" /> 라이브러리에 저장
+          </Button>
         </div>
       )}
+      <div className="space-y-2 border-t border-border p-3">
+        <p className="text-xs font-semibold">개인 라이브러리</p>
+        <select
+          className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
+          value={libraryId}
+          onChange={(event) => setLibraryId(event.target.value)}
+        >
+          <option value="">저장된 컴포넌트 선택</option>
+          {libraryItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={!libraryId || libraryBusy} onClick={() => void importFromLibrary()}>
+            <DownloadIcon aria-hidden="true" /> 문서로 복사
+          </Button>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label="라이브러리 항목 삭제" disabled={!libraryId || libraryBusy} onClick={() => void deleteLibraryItem()}>
+            <Trash2Icon aria-hidden="true" />
+          </Button>
+        </div>
+        {libraryError && <p className="text-xs text-destructive">{libraryError}</p>}
+      </div>
     </aside>
   );
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function ComponentDefinitionEditor({

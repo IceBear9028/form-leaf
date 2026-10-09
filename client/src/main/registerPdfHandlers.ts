@@ -15,7 +15,7 @@ export function registerPdfHandlers({
   ipcMain.handle(IPC.exportPdf, async (event, name: string) => {
     const owner = BrowserWindow.fromWebContents(event.sender) ?? getMainWindow();
     const options: Electron.SaveDialogOptions = {
-      title: "이력서 PDF 내보내기",
+      title: "문서 PDF 내보내기",
       defaultPath: join(documentsDirectory, safePdfName(name)),
       filters: [{ name: "PDF 문서", extensions: ["pdf"] }],
     };
@@ -45,5 +45,5 @@ export function registerPdfHandlers({
 
 function safePdfName(name: string): string {
   const normalized = name.trim().replace(/[\\/:*?"<>|]/g, "-");
-  return `${normalized || "resume"}.pdf`;
+  return `${normalized || "document"}.pdf`;
 }

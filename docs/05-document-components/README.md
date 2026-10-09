@@ -2,7 +2,7 @@
 
 ## 상태
 
-preview 직접 편집 완료·저장소·앱 전환 구현 중
+범용 저장소·앱 전환 완료·레거시 runtime 제거 진행 중
 
 ## 제품 원칙
 
@@ -18,9 +18,9 @@ preview 직접 편집 완료·저장소·앱 전환 구현 중
 
 ## 문제
 
-현재 구현은 공통 이름을 일부 사용하지만 실제 데이터, 편집기와 출력은 이력서 도메인에 결합되어 있다.
+작업 시작 당시 구현은 공통 이름을 일부 사용했지만 실제 데이터, 편집기와 출력은 특정 문서 도메인에 결합되어 있었다.
 
-- `WorkspaceDocument`는 실제로 `ResumeDocument`의 alias다.
+- `WorkspaceDocument`는 실제로 목적별 과거 문서 타입의 alias였다.
 - 저장 schema가 `profile`, `timeline`, `project-group` 섹션을 정의한다.
 - 목록 summary가 `profileName`을 계산하고 index가 `resumes` 배열을 사용한다.
 - 편집기와 미리보기가 이력서 section type별로 분기한다.
@@ -98,16 +98,16 @@ preview 직접 편집 완료·저장소·앱 전환 구현 중
 ## 완료 조건
 
 - [ ] production core의 저장 계약에 특정 문서 종류나 업무 카테고리가 없다.
-- [ ] `WorkspaceDocument`가 더 이상 `ResumeDocument`의 alias가 아니다.
-- [ ] 새 문서는 빈 root와 범용 metadata만 가진다.
-- [ ] 사용자가 node를 추가하고 component 정의와 instance를 만들 수 있다.
-- [ ] 최상위 layer 이름을 무엇으로 바꿔도 동일하게 편집·저장·출력된다.
-- [ ] renderer와 editor가 범용 node type 외의 사용자 이름으로 분기하지 않는다.
-- [ ] 텍스트·서식 텍스트·Markdown을 preview에서 직접 편집할 수 있다.
-- [ ] 선택 toolbar의 서식과 색상이 승인된 저장 계약에 맞게 재실행 후 복원된다.
-- [ ] component를 개인 library에 저장하고 다른 문서에 독립 복사본으로 추가할 수 있다.
-- [ ] 현재 문서 파일과 backup을 손상시키지 않는 migration 또는 import 경로가 검증된다.
-- [ ] DOM 측정, pagination, print CSS와 PDF 출력이 범용 node renderer에서 동작한다.
+- [x] `WorkspaceDocument`가 더 이상 목적별 과거 문서 타입의 alias가 아니다.
+- [x] 새 문서는 빈 root와 범용 metadata만 가진다.
+- [x] 사용자가 node를 추가하고 component 정의와 instance를 만들 수 있다.
+- [x] 최상위 layer 이름을 무엇으로 바꿔도 동일하게 편집·저장·출력된다.
+- [x] renderer와 editor가 범용 node type 외의 사용자 이름으로 분기하지 않는다.
+- [x] 텍스트·서식 텍스트·Markdown을 preview에서 직접 편집할 수 있다.
+- [x] 선택 toolbar의 서식과 색상이 승인된 저장 계약에 맞게 재실행 후 복원된다.
+- [x] component를 개인 library에 저장하고 다른 문서에 독립 복사본으로 추가할 수 있다.
+- [x] 현재 문서 파일과 backup을 손상시키지 않는 migration 또는 import 경로가 검증된다.
+- [x] DOM 측정, pagination, print CSS와 PDF 출력이 범용 node renderer에서 동작한다.
 - [ ] 관련 자동 테스트, 타입 검사, production build와 실제 Electron 회귀 검증이 통과한다.
 
 ## 관련 문서

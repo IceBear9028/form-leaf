@@ -1,12 +1,17 @@
-import type { PdfExportResult, WorkspaceDocument } from "./document.ts";
+import type { PdfExportResult } from "./document.ts";
+import type { DocumentData } from "./documentModel.ts";
+import type {
+  ComponentLibraryItem,
+  ComponentLibraryPackageInput,
+  ComponentLibrarySummary,
+} from "./componentLibrary.ts";
 
-export const DOCUMENT_LIBRARY_SCHEMA_VERSION = 1 as const;
-export const DEFAULT_DOCUMENT_TITLE = "제목 없는 이력서";
+export const DOCUMENT_LIBRARY_SCHEMA_VERSION = 2 as const;
+export const DEFAULT_DOCUMENT_NAME = "제목 없는 문서";
 
 export type DocumentSummary = {
   id: string;
-  title: string;
-  profileName: string;
+  name: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -17,20 +22,24 @@ export type DeletedDocumentSummary = DocumentSummary & {
 
 export type DocumentLibraryIndex = {
   schemaVersion: typeof DOCUMENT_LIBRARY_SCHEMA_VERSION;
-  resumes: DocumentSummary[];
+  documents: DocumentSummary[];
   trash: DeletedDocumentSummary[];
 };
 
 export type DocumentApi = {
   listDocuments: () => Promise<DocumentSummary[]>;
   listDeletedDocuments: () => Promise<DeletedDocumentSummary[]>;
-  createDocument: () => Promise<{ summary: DocumentSummary; document: WorkspaceDocument }>;
-  loadDocument: (id: string) => Promise<WorkspaceDocument>;
-  saveDocument: (id: string, document: WorkspaceDocument) => Promise<DocumentSummary>;
-  renameDocument: (id: string, title: string) => Promise<DocumentSummary>;
+  createDocument: () => Promise<{ summary: DocumentSummary; document: DocumentData }>;
+  loadDocument: (id: string) => Promise<DocumentData>;
+  saveDocument: (id: string, document: DocumentData) => Promise<DocumentSummary>;
+  renameDocument: (id: string, name: string) => Promise<DocumentSummary>;
   deleteDocument: (id: string) => Promise<void>;
   restoreDocument: (id: string) => Promise<DocumentSummary>;
   permanentlyDeleteDocument: (id: string) => Promise<void>;
+  listComponents: () => Promise<ComponentLibrarySummary[]>;
+  saveComponent: (input: ComponentLibraryPackageInput) => Promise<ComponentLibrarySummary>;
+  loadComponent: (id: string) => Promise<ComponentLibraryItem>;
+  deleteComponent: (id: string) => Promise<void>;
   exportPdf: (suggestedName: string) => Promise<PdfExportResult>;
   showInFolder: (filePath: string) => Promise<void>;
 };
@@ -38,28 +47,22 @@ export type DocumentApi = {
 export function createEmptyLibraryIndex(): DocumentLibraryIndex {
   return {
     schemaVersion: DOCUMENT_LIBRARY_SCHEMA_VERSION,
-    resumes: [],
+    documents: [],
     trash: [],
   };
 }
 
-export function normalizeDocumentTitle(title: string): string {
-  return title.trim() || DEFAULT_DOCUMENT_TITLE;
-}
-
-export function profileNameFromDocument(document: WorkspaceDocument): string {
-  const profile = document.sections.find((section) => section.type === "profile");
-  return profile?.name.trim() ?? "";
+export function normalizeDocumentName(name: string): string {
+  return name.trim() || DEFAULT_DOCUMENT_NAME;
 }
 
 export function summaryFromDocument(
-  document: WorkspaceDocument,
+  document: DocumentData,
   createdAt: string,
 ): DocumentSummary {
   return {
     id: document.documentId,
-    title: normalizeDocumentTitle(document.name),
-    profileName: profileNameFromDocument(document),
+    name: normalizeDocumentName(document.name),
     createdAt,
     updatedAt: document.updatedAt,
   };
@@ -85,15 +88,14 @@ export function sortDeletedDocumentSummaries(
 export function isDocumentLibraryIndex(value: unknown): value is DocumentLibraryIndex {
   if (!isRecord(value)) return false;
   return value.schemaVersion === DOCUMENT_LIBRARY_SCHEMA_VERSION &&
-    Array.isArray(value.resumes) && value.resumes.every(isDocumentSummary) &&
+    Array.isArray(value.documents) && value.documents.every(isDocumentSummary) &&
     Array.isArray(value.trash) && value.trash.every(isDeletedDocumentSummary);
 }
 
 function isDocumentSummary(value: unknown): value is DocumentSummary {
   return isRecord(value) &&
     typeof value.id === "string" &&
-    typeof value.title === "string" &&
-    typeof value.profileName === "string" &&
+    typeof value.name === "string" &&
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string";
 }

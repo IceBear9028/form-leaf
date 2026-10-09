@@ -11,8 +11,8 @@
 | 5 | node tree·inspector 편집기 구현 | 완료 | 빈 문서에서 일반 node 구성·저장 가능 |
 | 6 | component·repeater 재사용 구현 | 완료 | 문서 내부 definition·instance·반복 구조 동작 |
 | 7 | preview 직접 편집·서식 구현 | 완료 | text·rich-text·Markdown 편집 회귀 통과 |
-| 8 | 저장소·library·IPC와 앱 전환 | 진행 중 | 새 stack으로 CRUD·재실행·다른 문서 재사용 동작 |
-| 9 | 레거시 runtime 제거·전체 검증 | 대기 | domain 결합 제거, 전체 검사와 실제 앱 검증 통과 |
+| 8 | 저장소·library·IPC와 앱 전환 | 완료 | 새 stack으로 CRUD·재실행·다른 문서 재사용 동작 |
+| 9 | 레거시 runtime 제거·전체 검증 | 진행 중 | domain 결합 제거, 전체 검사와 실제 앱 검증 통과 |
 
 상태는 `대기`, `진행 중`, `완료`, `차단` 중 하나만 사용한다. 동시에 하나의 단계만 `진행 중`으로 둔다.
 

@@ -93,7 +93,25 @@
   pointer-events: none;
 }
 
+.document-print-surface {
+  display: none;
+}
+
 @media print {
+  .app-toolbar,
+  .workspace {
+    display: none !important;
+  }
+
+  .document-print-surface {
+    display: block;
+    width: 210mm;
+    min-height: 297mm;
+    padding: 18mm;
+    color: #000;
+    background: #fff;
+  }
+
   .document-renderer--screen,
   .document-renderer--measure,
   .document-image-placeholder,

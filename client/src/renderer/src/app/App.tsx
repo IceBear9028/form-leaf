@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { ResumeDocument } from "../../../foundation/content/resume";
-import { DocumentEditorPage } from "../pages/document-editor/DocumentEditorPage";
+import type { DocumentData } from "../../../foundation/document";
+import { GenericDocumentEditorPage } from "../pages/document-editor/GenericDocumentEditorPage";
 import {
   DocumentLibraryPage,
   DocumentTrashPage,
@@ -13,7 +13,7 @@ import { TooltipProvider } from "@/shared/ui/tooltip";
 type AppView =
   | { type: "library" }
   | { type: "trash" }
-  | { type: "editor"; document: ResumeDocument };
+  | { type: "editor"; document: DocumentData };
 
 export function App() {
   return (
@@ -35,12 +35,12 @@ function AppContent() {
   };
 
   if (library.loading) {
-    return <LoadingScreen label="이력서 목록을 불러오는 중…" />;
+    return <LoadingScreen label="문서 목록을 불러오는 중…" />;
   }
 
   if (view.type === "editor") {
     return (
-      <DocumentEditorPage
+      <GenericDocumentEditorPage
         key={view.document.documentId}
         initialDocument={view.document}
         onSummaryChange={library.updateSummary}

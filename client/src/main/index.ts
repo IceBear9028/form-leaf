@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from "electron";
 import { join } from "node:path";
 import { DocumentRepository } from "./document/documentRepository";
+import { ComponentLibraryRepository } from "./document/componentLibraryRepository";
 import { registerDocumentHandlers } from "./registerDocumentHandlers";
 import { registerPdfHandlers } from "./registerPdfHandlers";
 
@@ -54,7 +55,11 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  registerDocumentHandlers(new DocumentRepository(workspaceDirectory()));
+  const workspace = workspaceDirectory();
+  registerDocumentHandlers(
+    new DocumentRepository(workspace),
+    new ComponentLibraryRepository(workspace),
+  );
   registerPdfHandlers({
     documentsDirectory: app.getPath("documents"),
     getMainWindow: () => mainWindow,

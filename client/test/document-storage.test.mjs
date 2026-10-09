@@ -15,13 +15,15 @@ async function temporaryDirectory(t) {
   return directory;
 }
 
-test("문서 경로 계산은 기존 저장 위치와 파일 접미사를 유지한다", () => {
+test("범용 문서와 이전 문서 경로를 분리한다", () => {
   const paths = createDocumentPaths("/workspace");
 
-  assert.equal(paths.index, join("/workspace", "library.json"));
+  assert.equal(paths.index, join("/workspace", "documents.json"));
   assert.equal(paths.legacyDocument, join("/workspace", "default.resume.json"));
-  assert.equal(paths.activeDocument("resume-1"), join("/workspace", "resumes", "resume-1.resume.json"));
-  assert.equal(paths.trashDocument("resume-1"), join("/workspace", "trash", "resume-1.resume.json"));
+  assert.equal(paths.activeDocument("document-1"), join("/workspace", "documents", "document-1.document.json"));
+  assert.equal(paths.trashDocument("document-1"), join("/workspace", "document-trash", "document-1.document.json"));
+  assert.equal(paths.componentItem("component-1"), join("/workspace", "components", "component-1.component.json"));
+  assert.equal(paths.legacyActiveDocument("resume-1"), join("/workspace", "resumes", "resume-1.resume.json"));
 });
 
 test("atomic JSON 저장은 정상 직전본을 백업하고 손상된 현재 파일 대신 복구한다", async (t) => {

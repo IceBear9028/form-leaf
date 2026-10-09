@@ -2,7 +2,7 @@
 
 ## 설계 상태
 
-범용 `schemaVersion: 3` core와 격리된 legacy importer 구현을 완료했다. 현재 앱은 아직 기존 `WorkspaceDocument`를 사용하며, 다음 단계에서 목적과 무관한 읽기 전용 DOM renderer를 구현한다.
+범용 `schemaVersion: 3` core, DOM renderer·editor, 저장소와 앱 route 전환을 완료했다. 현재 production route는 `DocumentData`만 사용하며, 마지막 단계에서 과거 editor·preview·style runtime과 compatibility export를 제거한다.
 
 ## 제품 불변 조건
 
@@ -18,7 +18,7 @@
 
 사용자 데이터의 `name` 또는 text value에는 어떤 문자열도 들어갈 수 있다. renderer, validator, repository와 editor는 문자열의 의미를 해석하지 않는다.
 
-## 현재 결합
+## 작업 시작 시 결합
 
 현재 구현은 다음 지점에서 특정 문서 도메인에 결합되어 있다.
 
@@ -366,11 +366,11 @@ package는 사용자가 저장 대상으로 선택한 component definition의 �
 - repeater item은 추가, 복제, 이동과 표시 상태 변경을 지원한다.
 - 모든 transaction은 완성된 document graph를 검증하므로 직접·간접 component cycle은 commit 전에 거부된다.
 
-`ComponentLibraryPackage`는 entry component가 참조하는 component graph와 node·style·asset dependency만 포함한다. 다른 document로 가져올 때 component, prop, node, repeater item, style과 asset ID를 모두 새로 만들고 내부 참조를 함께 바꾼다. 가져온 결과는 원본 package나 원래 document의 이후 변경과 연결되지 않는다. 파일 저장과 IPC는 8단계에서 이 pure export/import 경계 위에 추가한다.
+`ComponentLibraryPackage`는 entry component가 참조하는 component graph와 node·style·asset dependency만 포함한다. 다른 document로 가져올 때 component, prop, node, repeater item, style과 asset ID를 모두 새로 만들고 내부 참조를 함께 바꾼다. 가져온 결과는 원본 package나 원래 document의 이후 변경과 연결되지 않는다. `components.json`과 `components/<id>.component.json` 저장소 및 `component:*` IPC는 이 pure export/import 경계 위에 구현했다.
 
 ## 범용 문서 library와 저장
 
-현재 `DocumentLibraryIndex.resumes`와 `profileName`은 제거 대상이다.
+`DocumentLibraryIndex`는 목적별 summary 필드 없이 다음 범용 계약을 사용한다.
 
 ```ts
 type DocumentSummary = {
@@ -387,8 +387,10 @@ type DocumentLibraryIndex = {
 };
 ```
 
-- 새 파일 suffix는 특정 목적이 없는 이름을 사용한다.
-- 기존 경로와 suffix는 migration 입력으로만 읽는다.
+- 새 목록은 `documents.json`, 새 파일은 `documents/<id>.document.json`, 휴지통은 `document-trash/`를 사용한다.
+- 기존 `library.json`, `resumes/`, `default.resume.json`과 과거 suffix는 migration 입력으로만 읽는다.
+- 모든 legacy 파일을 별도 범용 파일로 저장하고 `documents.json`까지 기록한 뒤 `legacy-import-v1.json` 완료 표식을 남긴다. 원본은 수정하거나 삭제하지 않는다.
+- 문서, index, component item과 component index는 정상 직전본을 `.backup`으로 보존한다.
 - preload와 IPC는 이미 `document:*`, `window.documents`를 사용하므로 범용 계약을 유지한다.
 - repository error와 UI 문구에서 특정 문서 목적을 제거한다.
 
@@ -406,7 +408,7 @@ generic renderer      ──X──→ legacy domain types
 generic editor        ──X──→ legacy domain types
 ```
 
-legacy importer만 과거 type string과 입력 구조를 안다. 현재 앱 전환 전에는 `legacySchema.ts`가 기존 화면과 공유하는 타입 정의를 adapter로 다시 export한다. 8단계 앱 전환 후 실제 과거 타입과 validator를 이 폴더로 이동하고, 9단계에서 다른 runtime import를 제거한다.
+legacy importer만 과거 type string과 입력 구조를 안다. 앱 route와 저장소는 범용 stack으로 전환했지만 `legacySchema.ts`는 아직 과거 타입 정의를 compatibility export로 참조한다. 9단계에서 정의와 validator를 legacy 폴더로 옮기고 다른 runtime import를 제거한다.
 
 `importLegacyDocument`는 v1을 먼저 v2 내용으로 정규화한 뒤 일반 node·component·repeater·style·asset으로 변환한다. 원본 객체는 수정하지 않으며, 이미지 형식이나 최종 graph가 유효하지 않으면 경로가 포함된 오류로 전체 변환을 중단한다. 변환 이후 runtime은 원본 문서 목적을 알지 못한다.
 

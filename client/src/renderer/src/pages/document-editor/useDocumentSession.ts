@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ResumeDocument } from "../../../../foundation/content/resume";
+import type { DocumentData } from "../../../../foundation/documentModel";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary";
 
 export type SaveState =
@@ -41,7 +42,10 @@ export function useDocumentSession(
     const current = documentRef.current;
     dirtyRef.current = false;
     setSaveState({ type: "saving" });
-    const request = window.documents.saveDocument(current.documentId, current)
+    const request = window.documents.saveDocument(
+      current.documentId,
+      current as unknown as DocumentData,
+    )
       .then((summary) => {
         onSummaryChange(summary);
         setSaveState(dirtyRef.current
