@@ -316,6 +316,27 @@ type EditTarget =
 
 굵게, 기울임, 밑줄, 취소선, 링크와 inline color는 rich-text mark에 저장한다. node 전체 글꼴·크기·색상은 style에서 관리한다. Markdown은 표준 marker와 승인된 확장만 원문에 저장한다.
 
+### 구현된 직접 편집 경계
+
+renderer가 각 편집 가능한 leaf에 다음 stable target 중 하나를 전달한다.
+
+```ts
+type DocumentEditTarget =
+  | { kind: "node"; nodeId: string }
+  | { kind: "component-prop"; instanceNodeId: string; propId: string }
+  | { kind: "repeater-item-prop"; repeaterNodeId: string; itemId: string; propId: string };
+```
+
+- document tree의 text, rich-text와 Markdown node는 node target으로 편집한다.
+- component와 repeater 내부는 active prop으로 노출된 leaf만 instance·item target을 가진다.
+- prop으로 노출되지 않은 definition 내부 문자열은 instance 화면에서 직접 바꿀 수 없다.
+- 일반 입력, paste와 한글 조합 완료는 target 값 transaction으로 저장한다.
+- rich-text는 UTF-16 range를 run 경계로 나눠 선택 밖 mark를 보존하고 굵게·기울임·밑줄·취소선·링크·색상을 mark로 저장한다.
+- Markdown은 렌더링 DOM의 source map을 기존 원문 range transaction에 연결해 marker, escape와 줄바꿈을 보존한다.
+- 편집 직후에는 target과 range를 이용해 DOM selection을 복원하며 format toolbar는 pointer down으로 기존 선택을 유지한다.
+- screen mode만 편집 callback을 받고 measure·print mode는 같은 renderer의 읽기 전용 결과를 사용한다.
+- 독립 harness는 직접 편집 전 document snapshot으로 undo·redo하며 저장 전 dirty 상태를 유지한다.
+
 ## Component library와 문서 간 재사용
 
 document 안의 component definition은 해당 파일이 완전한 결과를 소유하도록 문서에 포함한다.

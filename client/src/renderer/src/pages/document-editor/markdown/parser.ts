@@ -22,6 +22,9 @@ export type ResumeMarkdownBlock = {
 
 export type ResumeMarkdownDefinition = Pick<Definition, "url" | "title">;
 
+export type MarkdownBlock = ResumeMarkdownBlock;
+export type MarkdownDefinition = ResumeMarkdownDefinition;
+
 export type MarkdownTextSegment = {
   text: string;
   sourceStart: number;
@@ -57,6 +60,8 @@ export function parseResumeMarkdown(source: string): ResumeMarkdownBlock[] {
     };
   });
 }
+
+export const parseMarkdownBlocks = parseResumeMarkdown;
 
 export function markdownEditableBlankLineOffsets(
   source: string,

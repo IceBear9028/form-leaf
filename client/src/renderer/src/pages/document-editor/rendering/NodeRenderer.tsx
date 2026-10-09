@@ -1,5 +1,12 @@
 import { Fragment, type ReactNode } from "react";
 import type { RichTextMark } from "../../../../../foundation/documentModel.ts";
+import type {
+  DirectEditValue,
+  DocumentEditTarget,
+  TextRange,
+} from "../../../../../foundation/documentEditing.ts";
+import { EditableTextValue, type DirectTextSelection } from "./EditableTextValue.tsx";
+import { EditableMarkdownValue } from "./EditableMarkdownValue.tsx";
 import { MarkdownView } from "./MarkdownView.tsx";
 import type { RenderTreeNode } from "./renderTree.ts";
 import { safeHref } from "./safeHref.ts";
@@ -17,17 +24,27 @@ export function NodeRenderer({
   selectedNodeId,
   selectableNodeIds,
   onSelect,
+  onEditValueChange,
+  onRichTextSelection,
+  richTextSelection,
 }: {
   node: RenderTreeNode;
   measure?: boolean;
   selectedNodeId?: string;
   selectableNodeIds?: ReadonlySet<string>;
   onSelect?: (target: RenderSelectionTarget) => void;
+  onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
+  onRichTextSelection?: (selection?: DirectTextSelection) => void;
+  richTextSelection?: DirectTextSelection;
 }) {
   if (!node.visible) return null;
   const isStructure = node.type === "container" || node.type === "component-instance" || node.type === "repeater";
   const style = styleToCss(node.style);
   const selectable = Boolean(onSelect && selectableNodeIds?.has(node.sourceNodeId));
+  const directlyEditable = Boolean(
+    node.editTarget && onEditValueChange &&
+    (node.type === "text" || node.type === "rich-text" || node.type === "markdown"),
+  );
   const select = selectable
     ? (event: { stopPropagation: () => void }) => {
       event.stopPropagation();
@@ -44,10 +61,10 @@ export function NodeRenderer({
     "data-document-node-type": node.type,
     "data-measure-id": measure ? node.renderId : undefined,
     "data-document-selected": selectedNodeId === node.sourceNodeId ? "true" : undefined,
-    tabIndex: selectable ? 0 : undefined,
-    role: selectable ? "button" : undefined,
+    tabIndex: selectable && !directlyEditable ? 0 : undefined,
+    role: selectable && !directlyEditable ? "button" : undefined,
     onClick: select,
-    onKeyDown: selectable
+    onKeyDown: selectable && !directlyEditable
       ? (event: { key: string; preventDefault: () => void; stopPropagation: () => void }) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
@@ -57,24 +74,40 @@ export function NodeRenderer({
   };
 
   if (node.type === "container") {
-    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} />)}</div>;
+    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />)}</div>;
   }
   if (node.type === "component-instance") {
-    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} /></div>;
+    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} /></div>;
   }
   if (node.type === "repeater") {
     return (
       <div {...attributes}>
         {node.items.map((item) => item.visible && (
           <div className="document-repeater-item" data-repeater-item-id={item.id} key={item.id}>
-            <NodeRenderer node={item.child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} />
+            <NodeRenderer node={item.child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />
           </div>
         ))}
       </div>
     );
   }
-  if (node.type === "text") return <div {...attributes}>{node.value}</div>;
+  if (node.type === "text") {
+    return directlyEditable && node.editTarget && onEditValueChange
+      ? <EditableTextValue hostProps={attributes} target={node.editTarget} value={node.value} onChange={onEditValueChange} />
+      : <div {...attributes}>{node.value}</div>;
+  }
   if (node.type === "rich-text") {
+    if (directlyEditable && node.editTarget && onEditValueChange) {
+      return (
+        <EditableTextValue
+          hostProps={attributes}
+          target={node.editTarget}
+          value={node.value}
+          onChange={onEditValueChange}
+          onRichTextSelection={onRichTextSelection}
+          selectionToRestore={richTextSelection}
+        />
+      );
+    }
     return (
       <div {...attributes}>
         {node.value.runs.map((run, index) => (
@@ -85,7 +118,18 @@ export function NodeRenderer({
       </div>
     );
   }
-  if (node.type === "markdown") return <div {...attributes}><MarkdownView source={node.source} /></div>;
+  if (node.type === "markdown") {
+    return directlyEditable && node.editTarget && onEditValueChange
+      ? (
+        <EditableMarkdownValue
+          hostProps={attributes}
+          target={node.editTarget}
+          source={node.source}
+          onChange={onEditValueChange}
+        />
+      )
+      : <div {...attributes}><MarkdownView source={node.source} /></div>;
+  }
   return (
     <div {...attributes}>
       {node.asset

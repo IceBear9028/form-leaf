@@ -6,6 +6,7 @@ import type {
   RichTextValue,
   StyleDefinition,
 } from "../../../../../foundation/documentModel.ts";
+import type { DocumentEditTarget } from "../../../../../foundation/documentEditing.ts";
 import { assertDocumentData } from "../../../../../foundation/documentValidation.ts";
 
 type RenderNodeBase = {
@@ -14,6 +15,7 @@ type RenderNodeBase = {
   name: string;
   visible: boolean;
   style?: StyleDefinition;
+  editTarget?: DocumentEditTarget;
 };
 
 export type RenderContainerNode = RenderNodeBase & {
@@ -71,24 +73,34 @@ export type RenderTreeNode =
 
 export function buildRenderTree(document: DocumentData): RenderTreeNode {
   assertDocumentData(document);
-  return resolveNode(document, document.rootNodeId, `node:${document.rootNodeId}`, new Map());
+  return resolveNode(document, document.rootNodeId, `node:${document.rootNodeId}`, new Map(), true);
 }
+
+type RenderOverride = {
+  value: ComponentPropValue;
+  target?: DocumentEditTarget;
+};
 
 function resolveNode(
   document: DocumentData,
   nodeId: string,
   renderId: string,
-  overrides: Map<string, ComponentPropValue>,
+  overrides: Map<string, RenderOverride>,
+  allowDirectEdits: boolean,
 ): RenderTreeNode {
   const source = document.nodes[nodeId];
   if (!source) throw new Error(`node를 찾을 수 없습니다: ${nodeId}`);
-  const node = applyOverride(source, overrides.get(nodeId));
+  const override = overrides.get(nodeId);
+  const node = applyOverride(source, override?.value);
   const base = {
     renderId,
     sourceNodeId: node.id,
     name: node.name,
     visible: node.visible,
     style: node.styleId ? document.styles[node.styleId] : undefined,
+    editTarget: override?.target ?? (allowDirectEdits && isDirectlyEditable(node)
+      ? { kind: "node" as const, nodeId: node.id }
+      : undefined),
   };
 
   if (node.type === "container") {
@@ -96,7 +108,7 @@ function resolveNode(
       ...base,
       type: node.type,
       children: node.childIds.map((childId) =>
-        resolveNode(document, childId, `${renderId}/node:${childId}`, overrides),
+        resolveNode(document, childId, `${renderId}/node:${childId}`, overrides, allowDirectEdits),
       ),
     };
   }
@@ -113,7 +125,13 @@ function resolveNode(
   }
   if (node.type === "component-instance") {
     const component = document.components[node.componentId];
-    const componentOverrides = buildOverrides(component.propDefinitions, node.props);
+    const componentOverrides = buildOverrides(
+      component.propDefinitions,
+      node.props,
+      allowDirectEdits
+        ? (propId): DocumentEditTarget => ({ kind: "component-prop", instanceNodeId: node.id, propId })
+        : undefined,
+    );
     return {
       ...base,
       type: node.type,
@@ -123,6 +141,7 @@ function resolveNode(
         component.rootNodeId,
         `${renderId}/component:${component.id}/node:${component.rootNodeId}`,
         componentOverrides,
+        false,
       ),
     };
   }
@@ -138,7 +157,19 @@ function resolveNode(
         document,
         component.rootNodeId,
         `${renderId}/item:${item.id}/component:${component.id}/node:${component.rootNodeId}`,
-        buildOverrides(component.propDefinitions, item.props),
+        buildOverrides(
+          component.propDefinitions,
+          item.props,
+          allowDirectEdits
+            ? (propId): DocumentEditTarget => ({
+              kind: "repeater-item-prop",
+              repeaterNodeId: node.id,
+              itemId: item.id,
+              propId,
+            })
+            : undefined,
+        ),
+        false,
       ),
     })),
   };
@@ -147,16 +178,21 @@ function resolveNode(
 function buildOverrides(
   definitions: DocumentData["components"][string]["propDefinitions"],
   props: Record<string, ComponentPropValue>,
-): Map<string, ComponentPropValue> {
-  const overrides = new Map<string, ComponentPropValue>();
+  target?: (propId: string) => DocumentEditTarget,
+): Map<string, RenderOverride> {
+  const overrides = new Map<string, RenderOverride>();
   definitions.forEach((definition) => {
     if (definition.status !== "active") return;
-    overrides.set(
-      definition.binding.nodeId,
-      Object.hasOwn(props, definition.id) ? props[definition.id] : definition.defaultValue,
-    );
+    overrides.set(definition.binding.nodeId, {
+      value: Object.hasOwn(props, definition.id) ? props[definition.id] : definition.defaultValue,
+      target: target?.(definition.id),
+    });
   });
   return overrides;
+}
+
+function isDirectlyEditable(node: DocumentNode): boolean {
+  return node.type === "text" || node.type === "rich-text" || node.type === "markdown";
 }
 
 function applyOverride(

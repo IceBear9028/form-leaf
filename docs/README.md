@@ -21,8 +21,8 @@
 | 02 | 미리보기 Markdown 직접 편집 | 1차 구현 완료·사용자 검증 중 | [02-preview-markdown-editing](02-preview-markdown-editing/README.md) |
 | 03 | 여러 이력서 보관함과 CRUD | 1차 구현·검증 완료 | [03-resume-library](03-resume-library/README.md) |
 | 04 | 레이어 경계와 테스트 단위 리팩터링 | 12단계 구현·회귀 검증 완료 | [04-layered-architecture-refactor](04-layered-architecture-refactor/README.md) |
-| 05 | 범용 문서·컴포넌트 모델 | component·repeater 완료·preview 직접 편집 구현 중 | [05-document-components](05-document-components/README.md) |
+| 05 | 범용 문서·컴포넌트 모델 | preview 직접 편집 완료·저장소·앱 전환 구현 중 | [05-document-components](05-document-components/README.md) |
 
 `04`의 승인된 12단계 계획은 단계별 검증과 커밋까지 완료했다.
 
-`05`는 이력서·포트폴리오 같은 목적을 코드에 내장하지 않는 범용 문서 편집기를 구현한다. 범용 core, DOM editor와 component·repeater 재사용을 완료했으며 preview 직접 편집과 서식을 구현한다.
+`05`는 이력서·포트폴리오 같은 목적을 코드에 내장하지 않는 범용 문서 편집기를 구현한다. 범용 core, DOM editor, component 재사용과 preview 직접 편집을 완료했으며 저장소·library·IPC와 앱 진입점을 전환한다.

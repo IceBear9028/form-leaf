@@ -17,6 +17,24 @@
   cursor: default;
 }
 
+.document-renderer--screen [data-document-edit-target="true"] {
+  cursor: text;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.document-renderer--screen [data-document-edit-target="true"]:focus-visible {
+  outline: 1.5px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.document-renderer--screen [data-document-edit-target="true"]:empty::before,
+.document-renderer--screen .document-empty-editable:empty::before {
+  content: attr(data-placeholder);
+  color: color-mix(in srgb, currentColor 45%, transparent);
+  pointer-events: none;
+}
+
 .document-node--image img {
   display: block;
   max-width: 100%;
@@ -78,7 +96,9 @@
 @media print {
   .document-renderer--screen,
   .document-renderer--measure,
-  .document-image-placeholder {
+  .document-image-placeholder,
+  .document-selection-toolbar,
+  .markdown-selection-toolbar {
     display: none !important;
   }
 }

@@ -29,6 +29,7 @@ export type MarkdownContext =
   | "project"
   | "side-project"
   | "activity"
+  | "document"
   | "free-text";
 
 type MarkdownRenderContext = {

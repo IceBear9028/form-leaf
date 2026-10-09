@@ -2,7 +2,7 @@
 
 ## 상태
 
-component·repeater 완료·preview 직접 편집 구현 중
+preview 직접 편집 완료·저장소·앱 전환 구현 중
 
 ## 제품 원칙
 

@@ -218,7 +218,7 @@ component 메뉴의 `내 라이브러리에 저장`을 사용한다.
 - 이미 만들어진 문서와 library 원본 사이에는 live link가 없다.
 - library 원본을 바꿔도 기존 문서는 자동으로 바뀌지 않는다.
 - 같은 문서에 다시 가져올 때도 ID 충돌이 없도록 새 ID를 만든다.
-- 기본 저장은 구조와 기본값만 포함한다. 실제 사용자 콘텐츠 포함은 사용자가 명시적으로 선택하는 별도 기능으로 둔다.
+- 저장 대상으로 선택한 definition의 node 값과 prop 기본값을 포함한다. 문서에 배치한 개별 instance·repeater item override는 포함하지 않는다.
 
 ## 빈 상태
 
@@ -253,4 +253,3 @@ component 메뉴의 `내 라이브러리에 저장`을 사용한다.
 - Canvas 기반 자유 배치와 좌표 단위 이동
 - 여러 문서에 component 변경을 자동 전파하는 연결 instance
 - 임의 HTML, CSS 또는 JavaScript 실행
-
