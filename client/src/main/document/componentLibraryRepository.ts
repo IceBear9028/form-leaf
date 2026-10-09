@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import { mkdir, readdir, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import { createEmptyDocument } from "../../foundation/documentModel.ts";
+import { importComponentPackage } from "../../foundation/documentComponentOperations.ts";
 import {
   COMPONENT_LIBRARY_SCHEMA_VERSION,
   createEmptyComponentLibraryIndex,
@@ -47,10 +49,17 @@ export class ComponentLibraryRepository {
         package: structuredClone(input.package),
       };
       if (!isComponentLibraryItem(item)) throw new Error("저장할 컴포넌트 형식이 올바르지 않습니다.");
+      assertValidComponentItem(item);
       await this.writeItem(item);
       const index = await this.readIndex();
       const summary = summaryFromItem(item);
-      await this.writeIndex({ ...index, items: sortComponentSummaries([...index.items, summary]) });
+      await this.writeIndex({
+        ...index,
+        items: sortComponentSummaries([
+          ...index.items.filter((entry) => entry.id !== summary.id),
+          summary,
+        ]),
+      });
       return summary;
     });
   }
@@ -136,6 +145,7 @@ export class ComponentLibraryRepository {
   private readItem(id: string): Promise<ComponentLibraryItem> {
     return readJsonWithBackup(this.paths.componentItem(id), (value) => {
       if (!isComponentLibraryItem(value)) throw new Error("컴포넌트 항목 형식이 올바르지 않습니다.");
+      assertValidComponentItem(value);
       return value;
     }, "컴포넌트 항목 파일을 찾을 수 없습니다.");
   }
@@ -168,4 +178,16 @@ function isSafeId(id: string): boolean {
 
 function assertSafeId(id: string): void {
   if (!isSafeId(id)) throw new Error("컴포넌트 ID 형식이 올바르지 않습니다.");
+}
+
+function assertValidComponentItem(item: ComponentLibraryItem): void {
+  try {
+    importComponentPackage(createEmptyDocument(), item.package);
+  } catch (error) {
+    throw new Error(`컴포넌트 package가 올바르지 않습니다: ${errorMessage(error)}`);
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   paginate,
   reconcileVisiblePages,
-} from "../src/renderer/src/pages/document-editor/resume/preview/pagination.ts";
+} from "../src/renderer/src/pages/document-editor/rendering/pagination.ts";
 
 test("keepWithNext 묶음은 남은 공간이 부족하면 함께 다음 페이지로 이동한다", () => {
   const units = [
@@ -27,7 +27,7 @@ test("keepWithNext 묶음은 남은 공간이 부족하면 함께 다음 페이�
 test("강제 새 페이지와 단일 unit overflow를 표시한다", () => {
   const units = [
     { id: "first" },
-    { id: "forced", forceNewPage: true },
+    { id: "forced", forcePageBreakBefore: true },
     { id: "oversized" },
   ];
   const pages = paginate(units, new Map([

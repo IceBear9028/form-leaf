@@ -49,14 +49,13 @@ client/src/main/document/
 └─ legacy/                     # 격리된 과거 입력 타입과 importer
 
 client/src/renderer/src/pages/document-editor/
-├─ DocumentEditorPage.tsx
+├─ GenericDocumentEditorPage.tsx
+├─ ComponentReusePanel.tsx
 ├─ DocumentStructurePanel.tsx
 ├─ PropertyInspector.tsx
-├─ ComponentEditor.tsx
-├─ DocumentRenderer.tsx
 └─ rendering/
+   ├─ PaginatedDocumentRenderer.tsx
    ├─ NodeRenderer.tsx
-   ├─ nodeRegistry.ts
    ├─ pagination.ts
    └─ document.css
 ```
@@ -296,7 +295,7 @@ Markdown renderer는 CommonMark·GFM 구조, 기존 `++밑줄++` 표시와 각�
 
 `PropertyInspector`는 선택 node의 구조화된 property만 편집한다. container의 flow·간격·padding·정렬·폭, image의 alt·asset 참조, 공통 typography와 pagination 규칙을 다룬다. 숫자와 색상은 유효한 값만 transaction에 전달하고 최종 validator가 다시 검증한다. text, rich-text와 Markdown 본문은 7단계 preview 직접 편집과 중복되므로 inspector에 입력란을 만들지 않는다.
 
-새 구조 편집기는 `GenericDocumentEditorHarness`에서 빈 범용 문서로 독립 실행할 수 있다. 기존 앱 route와 저장 session은 8단계 전환 전까지 그대로 유지한다.
+범용 구조 편집기는 `GenericDocumentEditorPage`에서 library·autosave·PDF 흐름과 연결된다. tree와 preview 선택은 stable node ID를 공유하며 임시 독립 harness는 앱 전환 후 제거했다.
 
 ## 직접 편집과 서식
 
@@ -416,15 +415,15 @@ legacy importer만 과거 type string과 입력 구조를 안다. 앱 route와 �
 
 | 영역 | 현재 파일 또는 모듈 | 변경 책임 |
 |---|---|---|
-| 공통 계약 | `foundation/document.ts`, `content/resume.ts` | generic envelope·node·component 계약으로 교체 |
-| 문서 목록 | `foundation/documentLibrary.ts` | `documents`와 범용 summary로 migration |
-| migration | `main/document/documentMigration.ts` | generic core와 격리된 legacy importer |
+| 공통 계약 | `foundation/document.ts`, `documentModel.ts` | generic envelope·node·component 계약 |
+| 문서 목록 | `foundation/documentLibrary.ts` | `documents`와 범용 summary |
+| migration | `main/document/legacy/` | 과거 입력 타입·경로와 격리된 importer |
 | repository | `main/document/documentRepository.ts`, `documentPaths.ts` | 범용 validation, index와 suffix |
-| editor | `pages/document-editor/DocumentEditorPage.tsx` | generic canvas·structure·inspector 조립 |
-| current form | `resume/components` | 범용 node/component editor로 대체 |
-| current preview | `resume/preview` | generic node renderer·pagination·print CSS로 대체 |
+| editor | `pages/document-editor/GenericDocumentEditorPage.tsx` | 범용 DOM·structure·inspector 조립 |
+| component | `ComponentReusePanel.tsx`, `componentLibraryRepository.ts` | 문서 내부 재사용과 개인 library 독립 복사 |
+| renderer | `rendering/PaginatedDocumentRenderer.tsx` | 동일 node renderer의 측정·화면·print pagination |
 | Markdown | `pages/document-editor/markdown` | generic edit target에 연결 |
-| styles | `pages/document-editor/style` | document style validation과 CSS 변수 adapter |
+| styles | `documentValidation.ts`, `rendering/styleToCss.ts` | 허용 style 검증과 CSS adapter |
 | 테스트 | `client/test` | domain label과 무관한 schema·render·storage 회귀 |
 
 ## 오류와 경계 조건

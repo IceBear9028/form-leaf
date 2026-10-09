@@ -2,7 +2,7 @@
 
 ## 상태
 
-범용 저장소·앱 전환 완료·레거시 runtime 제거 진행 중
+완료
 
 ## 제품 원칙
 
@@ -97,7 +97,7 @@
 
 ## 완료 조건
 
-- [ ] production core의 저장 계약에 특정 문서 종류나 업무 카테고리가 없다.
+- [x] production core의 저장 계약에 특정 문서 종류나 업무 카테고리가 없다.
 - [x] `WorkspaceDocument`가 더 이상 목적별 과거 문서 타입의 alias가 아니다.
 - [x] 새 문서는 빈 root와 범용 metadata만 가진다.
 - [x] 사용자가 node를 추가하고 component 정의와 instance를 만들 수 있다.
@@ -108,7 +108,7 @@
 - [x] component를 개인 library에 저장하고 다른 문서에 독립 복사본으로 추가할 수 있다.
 - [x] 현재 문서 파일과 backup을 손상시키지 않는 migration 또는 import 경로가 검증된다.
 - [x] DOM 측정, pagination, print CSS와 PDF 출력이 범용 node renderer에서 동작한다.
-- [ ] 관련 자동 테스트, 타입 검사, production build와 실제 Electron 회귀 검증이 통과한다.
+- [x] 관련 자동 테스트, 타입 검사, production build와 실제 Electron 회귀 검증이 통과한다.
 
 ## 관련 문서
 

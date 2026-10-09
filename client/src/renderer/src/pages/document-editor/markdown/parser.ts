@@ -7,23 +7,25 @@ import type {
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
-import type { TextContent, TextMark, TextRun } from "../../../../../foundation/content/resume";
+export type MarkdownInlineMark = "strong" | "underline" | "link";
 
-export {
-  contentBlocksToMarkdown,
-  textContentToMarkdown,
-} from "../../../../../foundation/markdownSerialization.ts";
+export type MarkdownInlineRun = {
+  text: string;
+  marks?: MarkdownInlineMark[];
+  href?: string;
+};
 
-export type ResumeMarkdownBlock = {
+export type MarkdownInlineValue = {
+  runs: MarkdownInlineRun[];
+};
+
+export type MarkdownBlock = {
   id: string;
   node: RootContent;
   extraBlankLinesBefore: number;
 };
 
-export type ResumeMarkdownDefinition = Pick<Definition, "url" | "title">;
-
-export type MarkdownBlock = ResumeMarkdownBlock;
-export type MarkdownDefinition = ResumeMarkdownDefinition;
+export type MarkdownDefinition = Pick<Definition, "url" | "title">;
 
 export type MarkdownTextSegment = {
   text: string;
@@ -33,21 +35,21 @@ export type MarkdownTextSegment = {
   underline: boolean;
 };
 
-const markOrder: TextMark[] = ["strong", "underline", "link"];
+const markOrder: MarkdownInlineMark[] = ["strong", "underline", "link"];
 
 const markdownProcessor = unified()
   .use(remarkParse)
   .use(remarkGfm);
 
-export function parseResumeMarkdownTree(source: string): Root {
+export function parseMarkdownTree(source: string): Root {
   const parsed = markdownProcessor.parse(normalizeLineEndings(source));
   const tree = markdownProcessor.runSync(parsed) as Root;
   applySourcePositionedBreaks(tree, normalizeLineEndings(source));
   return tree;
 }
 
-export function parseResumeMarkdown(source: string): ResumeMarkdownBlock[] {
-  const children = parseResumeMarkdownTree(source).children;
+export function parseMarkdownBlocks(source: string): MarkdownBlock[] {
+  const children = parseMarkdownTree(source).children;
   return children.map((node, index) => {
     const previous = children[index - 1];
     const linesBetween = previous?.position?.end.line && node.position?.start.line
@@ -60,8 +62,6 @@ export function parseResumeMarkdown(source: string): ResumeMarkdownBlock[] {
     };
   });
 }
-
-export const parseMarkdownBlocks = parseResumeMarkdown;
 
 export function markdownEditableBlankLineOffsets(
   source: string,
@@ -78,9 +78,9 @@ export function markdownEditableBlankLineOffsets(
 }
 
 export function collectMarkdownDefinitions(
-  blocks: ResumeMarkdownBlock[],
-): Map<string, ResumeMarkdownDefinition> {
-  const definitions = new Map<string, ResumeMarkdownDefinition>();
+  blocks: MarkdownBlock[],
+): Map<string, MarkdownDefinition> {
+  const definitions = new Map<string, MarkdownDefinition>();
   blocks.forEach(({ node }) => {
     if (node.type !== "definition") return;
     definitions.set(normalizeIdentifier(node.identifier), {
@@ -91,8 +91,8 @@ export function collectMarkdownDefinitions(
   return definitions;
 }
 
-export function parseMarkdownInline(source: string): TextContent {
-  const tree = parseResumeMarkdownTree(source);
+export function parseMarkdownInline(source: string): MarkdownInlineValue {
+  const tree = parseMarkdownTree(source);
   const definitions = collectMarkdownDefinitions(
     tree.children.map((node, index) => ({
       id: `inline-${index}`,
@@ -100,7 +100,7 @@ export function parseMarkdownInline(source: string): TextContent {
       extraBlankLinesBefore: 0,
     })),
   );
-  const runs: TextRun[] = [];
+  const runs: MarkdownInlineRun[] = [];
 
   tree.children.forEach((node, index) => {
     if (index > 0 && node.type !== "definition") appendRun(runs, "\n", []);
@@ -146,10 +146,10 @@ export function markdownTextSegments(
 }
 
 function appendInlineNodes(
-  runs: TextRun[],
+  runs: MarkdownInlineRun[],
   nodes: PhrasingContent[],
-  marks: TextMark[],
-  definitions: Map<string, ResumeMarkdownDefinition>,
+  marks: MarkdownInlineMark[],
+  definitions: Map<string, MarkdownDefinition>,
   href?: string,
 ): void {
   nodes.forEach((node) => {
@@ -201,9 +201,9 @@ function appendInlineNodes(
 }
 
 function appendTextWithUnderline(
-  runs: TextRun[],
+  runs: MarkdownInlineRun[],
   value: string,
-  marks: TextMark[],
+  marks: MarkdownInlineMark[],
   href?: string,
 ): void {
   let cursor = 0;
@@ -224,11 +224,11 @@ function appendTextWithUnderline(
   }
 }
 
-function addMark(marks: TextMark[], mark: TextMark): TextMark[] {
+function addMark(marks: MarkdownInlineMark[], mark: MarkdownInlineMark): MarkdownInlineMark[] {
   return markOrder.filter((candidate) => candidate === mark || marks.includes(candidate));
 }
 
-function appendRun(runs: TextRun[], text: string, marks: TextMark[], href?: string): void {
+function appendRun(runs: MarkdownInlineRun[], text: string, marks: MarkdownInlineMark[], href?: string): void {
   if (!text) return;
   const normalizedMarks = markOrder.filter((mark) => marks.includes(mark));
   const previous = runs.at(-1);
@@ -238,7 +238,7 @@ function appendRun(runs: TextRun[], text: string, marks: TextMark[], href?: stri
     previous.text += text;
     return;
   }
-  const run: TextRun = { text };
+  const run: MarkdownInlineRun = { text };
   if (normalizedMarks.length) run.marks = normalizedMarks;
   if (normalizedMarks.includes("link") && href) run.href = href;
   runs.push(run);

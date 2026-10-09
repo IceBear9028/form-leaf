@@ -22,10 +22,14 @@ import {
   createDocumentPaths,
   DOCUMENT_BACKUP_SUFFIXES,
   DOCUMENT_SUFFIX,
-  LEGACY_DOCUMENT_SUFFIX,
   type DocumentPaths,
 } from "./documentPaths.ts";
 import { importLegacyDocument } from "./legacy/importLegacyDocument.ts";
+import {
+  createLegacyDocumentPaths,
+  LEGACY_DOCUMENT_SUFFIX,
+  type LegacyDocumentPaths,
+} from "./legacy/legacyPaths.ts";
 
 type LegacyMigrationMarker = {
   schemaVersion: 1;
@@ -36,9 +40,11 @@ export class DocumentRepository {
   private operationQueue: Promise<void> = Promise.resolve();
   private initializationPromise: Promise<void> | undefined;
   private readonly paths: DocumentPaths;
+  private readonly legacyPaths: LegacyDocumentPaths;
 
   constructor(workspaceDirectory: string) {
     this.paths = createDocumentPaths(workspaceDirectory);
+    this.legacyPaths = createLegacyDocumentPaths(workspaceDirectory);
   }
 
   list(): Promise<DocumentSummary[]> {
@@ -235,7 +241,7 @@ export class DocumentRepository {
     if (!existsSync(this.paths.index) && !existsSync(`${this.paths.index}.backup`)) {
       await this.writeIndex(createEmptyLibraryIndex());
     }
-    if (!existsSync(this.paths.migrationMarker) && !existsSync(`${this.paths.migrationMarker}.backup`)) {
+    if (!existsSync(this.legacyPaths.migrationMarker) && !existsSync(`${this.legacyPaths.migrationMarker}.backup`)) {
       await this.migrateLegacyDocuments();
     }
     await this.reconcileIndex(await this.readIndex());
@@ -260,24 +266,24 @@ export class DocumentRepository {
     }
     await this.writeIndex({ ...index, documents: sortDocumentSummaries([...documents.values()]) });
     await writeJsonAtomically<LegacyMigrationMarker>(
-      this.paths.migrationMarker,
+      this.legacyPaths.migrationMarker,
       { schemaVersion: 1, completedAt: new Date().toISOString() },
       (current) => isMigrationMarker(current)
-        ? { path: `${this.paths.migrationMarker}.backup`, overwrite: true }
+        ? { path: `${this.legacyPaths.migrationMarker}.backup`, overwrite: true }
         : undefined,
     );
   }
 
   private async legacyDocumentPaths(): Promise<string[]> {
     const paths: string[] = [];
-    if (existsSync(this.paths.legacyDocument) || existsSync(`${this.paths.legacyDocument}.backup`)) {
-      paths.push(this.paths.legacyDocument);
+    if (existsSync(this.legacyPaths.singleDocument) || existsSync(`${this.legacyPaths.singleDocument}.backup`)) {
+      paths.push(this.legacyPaths.singleDocument);
     }
-    if (existsSync(this.paths.legacyActiveDirectory)) {
-      const entries = await readdir(this.paths.legacyActiveDirectory, { withFileTypes: true });
+    if (existsSync(this.legacyPaths.activeDirectory)) {
+      const entries = await readdir(this.legacyPaths.activeDirectory, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.isFile() && entry.name.endsWith(LEGACY_DOCUMENT_SUFFIX)) {
-          paths.push(this.paths.legacyActiveDocument(entry.name.slice(0, -LEGACY_DOCUMENT_SUFFIX.length)));
+          paths.push(this.legacyPaths.activeDocument(entry.name.slice(0, -LEGACY_DOCUMENT_SUFFIX.length)));
         }
       }
     }

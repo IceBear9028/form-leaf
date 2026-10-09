@@ -8,7 +8,7 @@
 export {
   isResumeDocument as isLegacyV2Document,
   isV1ResumeDocument as isLegacyV1Document,
-} from "../../../foundation/content/resume.ts";
+} from "./legacyTypes.ts";
 
 export type {
   ContentBlock as LegacyContentBlock,
@@ -23,4 +23,4 @@ export type {
   TimelineSection as LegacyTimelineSection,
   V1ProjectItem as LegacyV1ProjectItem,
   V1ResumeDocument as LegacyV1Document,
-} from "../../../foundation/content/resume.ts";
+} from "./legacyTypes.ts";

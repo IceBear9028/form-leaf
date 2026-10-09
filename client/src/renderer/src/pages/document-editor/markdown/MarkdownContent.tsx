@@ -16,24 +16,16 @@ import {
   collectMarkdownDefinitions,
   markdownEditableBlankLineOffsets,
   markdownTextSegments,
-  parseResumeMarkdown,
-  type ResumeMarkdownBlock,
-  type ResumeMarkdownDefinition,
+  parseMarkdownBlocks,
+  type MarkdownBlock,
+  type MarkdownDefinition,
 } from "./parser";
 import type { MarkdownSourceRange } from "./edits";
 
-export type MarkdownContext =
-  | "introduction"
-  | "career"
-  | "education"
-  | "project"
-  | "side-project"
-  | "activity"
-  | "document"
-  | "free-text";
+export type MarkdownContext = "document";
 
 type MarkdownRenderContext = {
-  definitions: Map<string, ResumeMarkdownDefinition>;
+  definitions: Map<string, MarkdownDefinition>;
   footnoteNumbers: Map<string, number>;
   idPrefix: string;
   editing?: MarkdownEditingContext;
@@ -62,8 +54,7 @@ export function MarkdownContent({
   context: MarkdownContext;
 }) {
   const generatedId = useId();
-  const blocks = parseResumeMarkdown(source);
-  const firstParagraphId = blocks.find(({ node }) => node.type === "paragraph")?.id;
+  const blocks = parseMarkdownBlocks(source);
   const footnotes = getFootnotes(blocks);
   const renderContext = createRenderContext(blocks, `markdown-${generatedId.replaceAll(":", "")}`);
 
@@ -73,7 +64,6 @@ export function MarkdownContent({
         <MarkdownBlockView
           key={block.id}
           block={block}
-          lead={context === "project" && block.id === firstParagraphId}
           renderContext={renderContext}
         />
       ))}
@@ -92,8 +82,8 @@ export function MarkdownBlockContent({
   lead = false,
   editing,
 }: {
-  block: ResumeMarkdownBlock;
-  documentBlocks: ResumeMarkdownBlock[];
+  block: MarkdownBlock;
+  documentBlocks: MarkdownBlock[];
   context: MarkdownContext;
   idPrefix: string;
   lead?: boolean;
@@ -312,7 +302,7 @@ export function MarkdownFootnotesContent({
   context,
   idPrefix,
 }: {
-  documentBlocks: ResumeMarkdownBlock[];
+  documentBlocks: MarkdownBlock[];
   context: MarkdownContext;
   idPrefix: string;
 }) {
@@ -332,7 +322,7 @@ export function MarkdownBlockView({
   renderContext = emptyRenderContext,
   showExtraBlankLines = true,
 }: {
-  block: ResumeMarkdownBlock;
+  block: MarkdownBlock;
   lead?: boolean;
   renderContext?: MarkdownRenderContext;
   showExtraBlankLines?: boolean;
@@ -976,14 +966,14 @@ function normalizeIdentifier(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-function getFootnotes(blocks: ResumeMarkdownBlock[]): FootnoteDefinition[] {
+function getFootnotes(blocks: MarkdownBlock[]): FootnoteDefinition[] {
   return blocks
     .map(({ node }) => node)
     .filter((node): node is FootnoteDefinition => node.type === "footnoteDefinition");
 }
 
 function createRenderContext(
-  blocks: ResumeMarkdownBlock[],
+  blocks: MarkdownBlock[],
   idPrefix: string,
   editing?: MarkdownEditingContext,
 ): MarkdownRenderContext {
@@ -1076,8 +1066,8 @@ function sourceRangeForSegment(element: HTMLElement): MarkdownSourceRange | unde
 }
 
 function leadingLineOffsets(
-  block: ResumeMarkdownBlock,
-  blocks: ResumeMarkdownBlock[],
+  block: MarkdownBlock,
+  blocks: MarkdownBlock[],
   source: string,
 ): number[] {
   const visible = blocks.filter(({ node }) =>
@@ -1092,8 +1082,8 @@ function leadingLineOffsets(
 }
 
 function trailingLineOffsets(
-  block: ResumeMarkdownBlock,
-  blocks: ResumeMarkdownBlock[],
+  block: MarkdownBlock,
+  blocks: MarkdownBlock[],
   source: string,
 ): number[] {
   const visible = blocks.filter(({ node }) =>
@@ -1113,8 +1103,8 @@ function trailingLineOffsets(
 }
 
 function previousEditableBlockCapturesGap(
-  block: ResumeMarkdownBlock,
-  blocks: ResumeMarkdownBlock[],
+  block: MarkdownBlock,
+  blocks: MarkdownBlock[],
   source: string,
 ): boolean {
   const visible = blocks.filter(({ node }) =>

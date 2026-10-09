@@ -4,8 +4,8 @@ import {
   createDefaultDocument,
   isResumeDocument,
   isV1ResumeDocument,
-} from "../src/foundation/content/resume.ts";
-import { migrateResumeDocumentV1 } from "../src/main/document/documentMigration.ts";
+} from "../src/main/document/legacy/legacyTypes.ts";
+import { migrateLegacyV1 } from "../src/main/document/legacy/migrateLegacyV1.ts";
 
 const text = (value, marks, href) => ({
   runs: [{ text: value, ...(marks ? { marks } : {}), ...(href ? { href } : {}) }],
@@ -111,7 +111,7 @@ test("v1의 정형 필드는 유지하고 서술형 블록만 Markdown 본문으
   const snapshot = structuredClone(source);
 
   assert.equal(isV1ResumeDocument(source), true);
-  const migrated = migrateResumeDocumentV1(source);
+  const migrated = migrateLegacyV1(source);
 
   assert.equal(isResumeDocument(migrated), true);
   assert.equal(migrated.schemaVersion, 2);

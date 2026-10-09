@@ -1,14 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  contentBlocksToMarkdown,
   markdownTextSegments,
   markdownEditableBlankLineOffsets,
+  parseMarkdownBlocks,
   parseMarkdownInline,
-  parseResumeMarkdown,
-  parseResumeMarkdownTree,
-  textContentToMarkdown,
+  parseMarkdownTree,
 } from "../src/renderer/src/pages/document-editor/markdown/parser.ts";
+import {
+  contentBlocksToMarkdown,
+  textContentToMarkdown,
+} from "../src/main/document/legacy/markdownSerialization.ts";
 import {
   replaceMarkdownRange,
   replaceMarkdownText,
@@ -75,7 +77,7 @@ test("본문을 페이지네이션 가능한 Markdown 블록으로 분리한다"
   같은 목록 항목의 다음 줄입니다.
 
 # 이제 지원하는 큰 제목입니다.`;
-  const blocks = parseResumeMarkdown(source);
+  const blocks = parseMarkdownBlocks(source);
 
   assert.deepEqual(blocks.map((block) => block.node.type), [
     "paragraph",
@@ -104,7 +106,7 @@ test("본문을 페이지네이션 가능한 Markdown 블록으로 분리한다"
 
 test("인라인 강제 줄바꿈은 제목을 나누지 않고 같은 Markdown 블록에 유지한다", () => {
   const source = "### 첫 줄<br>둘째 줄";
-  const blocks = parseResumeMarkdown(source);
+  const blocks = parseMarkdownBlocks(source);
 
   assert.equal(blocks.length, 1);
   assert.equal(blocks[0].node.type, "heading");
@@ -115,7 +117,7 @@ test("인라인 강제 줄바꿈은 제목을 나누지 않고 같은 Markdown �
 });
 
 test("문단 사이에 추가로 입력한 빈 줄 수를 보존한다", () => {
-  const blocks = parseResumeMarkdown(`첫 문단
+  const blocks = parseMarkdownBlocks(`첫 문단
 
 두 번째 문단
 
@@ -141,7 +143,7 @@ test("공백이 섞인 문단 사이 빈 줄도 편집 가능한 source offset�
 
 test("화면 텍스트를 이스케이프와 밑줄 marker를 제외한 원문 범위에 연결한다", () => {
   const source = "문자 \\*표시\\*와 ++밑줄++";
-  const tree = parseResumeMarkdownTree(source);
+  const tree = parseMarkdownTree(source);
   const node = tree.children[0].children[0];
   const segments = markdownTextSegments(
     source,
@@ -189,7 +191,7 @@ test("Markdown 원문 편집과 인라인 서식을 source range 트랜잭션으
 });
 
 test("CommonMark와 GFM의 기본 블록을 mdast 의미 구조로 보존한다", () => {
-  const tree = parseResumeMarkdownTree(`# H1
+  const tree = parseMarkdownTree(`# H1
 
 ## H2
 
@@ -240,7 +242,7 @@ const value = 1
 });
 
 test("참조 링크와 각주 정의를 본문과 분리해 보존한다", () => {
-  const tree = parseResumeMarkdownTree(`자세한 내용은 [문서][guide]와 각주[^note]를 확인합니다.
+  const tree = parseMarkdownTree(`자세한 내용은 [문서][guide]와 각주[^note]를 확인합니다.
 
 [guide]: https://example.com "가이드"
 [^note]: 보충 설명입니다.`);
@@ -310,7 +312,7 @@ test("v1 성과 상세를 소제목, 문단과 목록 순서로 직렬화한다"
 - 검색 조건을 단순화했습니다.
 - 캐시를 적용했습니다.
 - **응답 시간을 단축했습니다.**`);
-  assert.deepEqual(parseResumeMarkdown(markdown).map((block) => block.node.type), [
+  assert.deepEqual(parseMarkdownBlocks(markdown).map((block) => block.node.type), [
     "heading",
     "paragraph",
     "list",
@@ -318,7 +320,7 @@ test("v1 성과 상세를 소제목, 문단과 목록 순서로 직렬화한다"
 });
 
 test("원문 HTML은 실행하지 않고 렌더러가 텍스트로 다룰 mdast 노드로 유지한다", () => {
-  const blocks = parseResumeMarkdown("<script>alert('x')</script>");
+  const blocks = parseMarkdownBlocks("<script>alert('x')</script>");
   assert.equal(blocks[0].node.type, "html");
   assert.equal(blocks[0].node.value, "<script>alert('x')</script>");
 });

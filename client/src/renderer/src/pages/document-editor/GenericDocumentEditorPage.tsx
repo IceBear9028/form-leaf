@@ -21,7 +21,7 @@ import { DocumentStructurePanel } from "./DocumentStructurePanel.tsx";
 import { PropertyInspector } from "./PropertyInspector.tsx";
 import { RichTextSelectionToolbar } from "./RichTextSelectionToolbar.tsx";
 import { documentSelectableNodeIds, selectNode } from "./documentSelection.ts";
-import { DocumentRenderer } from "./rendering/DocumentRenderer.tsx";
+import { PaginatedDocumentRenderer } from "./rendering/PaginatedDocumentRenderer.tsx";
 import type { DirectTextSelection } from "./rendering/EditableTextValue.tsx";
 import { type SaveState, useGenericDocumentSession } from "./useGenericDocumentSession.ts";
 
@@ -165,22 +165,21 @@ export function GenericDocumentEditorPage({
           <ComponentReusePanel document={session.document} selection={session.selection} onSelectionChange={session.setSelection} onChange={session.updateDocument} />
         </div>
         <main ref={previewRef} className="min-w-0 overflow-auto bg-muted/40 p-8" aria-label="문서 미리보기">
-          <div className="mx-auto min-h-[297mm] w-[210mm] bg-white p-[18mm] text-black shadow-lg">
-            <DocumentRenderer
-              document={session.document}
-              selectedNodeId={session.selection?.nodeId}
-              selectableNodeIds={selectableNodeIds}
-              onSelect={({ nodeId }) => session.setSelection(selectNode(nodeId))}
-              onEditValueChange={commitDirectEdit}
-              onRichTextSelection={setRichTextSelection}
-              richTextSelection={richTextSelection}
-            />
-          </div>
+          <PaginatedDocumentRenderer
+            document={session.document}
+            mode="screen"
+            selectedNodeId={session.selection?.nodeId}
+            selectableNodeIds={selectableNodeIds}
+            onSelect={({ nodeId }) => session.setSelection(selectNode(nodeId))}
+            onEditValueChange={commitDirectEdit}
+            onRichTextSelection={setRichTextSelection}
+            richTextSelection={richTextSelection}
+          />
         </main>
         <PropertyInspector document={session.document} selection={session.selection} onChange={session.updateDocument} />
       </div>
       <div className="document-print-surface">
-        <DocumentRenderer document={session.document} mode="print" />
+        <PaginatedDocumentRenderer document={session.document} mode="print" />
       </div>
       {richTextSelection && <RichTextSelectionToolbar rect={richTextSelection.rect} onFormat={formatRichText} onRemove={removeInlineMark} />}
     </div>

@@ -4,8 +4,10 @@ import { DocumentRepository } from "./document/documentRepository";
 import { ComponentLibraryRepository } from "./document/componentLibraryRepository";
 import { registerDocumentHandlers } from "./registerDocumentHandlers";
 import { registerPdfHandlers } from "./registerPdfHandlers";
+import { LEGACY_APP_DIRECTORY_NAME } from "./document/legacy/legacyPaths";
 
-const legacyUserDataDirectory = join(app.getPath("appData"), "Resume Studio");
+const legacyUserDataDirectory = process.env.DOCUMENT_USER_DATA_DIRECTORY ??
+  join(app.getPath("appData"), LEGACY_APP_DIRECTORY_NAME);
 app.setName("Document");
 app.setPath("userData", legacyUserDataDirectory);
 

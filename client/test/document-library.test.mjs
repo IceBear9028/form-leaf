@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DocumentRepository } from "../src/main/document/documentRepository.ts";
 import { ComponentLibraryRepository } from "../src/main/document/componentLibraryRepository.ts";
-import { createDefaultDocument } from "../src/foundation/content/resume.ts";
+import { createDefaultDocument } from "../src/main/document/legacy/legacyTypes.ts";
 import { createEmptyDocument } from "../src/foundation/documentModel.ts";
 import { addNode } from "../src/foundation/documentTransactions.ts";
 import {
@@ -138,6 +138,7 @@ test("개인 컴포넌트를 백업하며 저장하고 다른 문서에 독립 �
   const componentPackage = exportComponentPackage(component.document, component.componentId);
   const saved = await repository.save({ name: "Reusable", package: componentPackage });
   await repository.save({ id: saved.id, name: "Reusable v2", package: componentPackage });
+  assert.deepEqual((await repository.list()).map((item) => item.name), ["Reusable v2"]);
   const itemPath = join(workspace, "components", `${saved.id}.component.json`);
   assert.equal((await readFile(`${itemPath}.backup`, "utf8")).length > 0, true);
 
@@ -151,7 +152,10 @@ test("개인 컴포넌트를 백업하며 저장하고 다른 문서에 독립 �
   await repository.save({ id: saved.id, name: "변경", package: changedPackage });
   assert.equal(imported.components[importedComponentId].name, "Reusable");
 
-  await writeFile(itemPath, "{broken", "utf8");
+  await writeFile(itemPath, JSON.stringify({
+    ...loaded,
+    package: { ...loaded.package, entryComponentId: "missing" },
+  }), "utf8");
   assert.equal((await new ComponentLibraryRepository(workspace).load(saved.id)).name, "Reusable v2");
   await repository.remove(saved.id);
   assert.deepEqual(await repository.list(), []);

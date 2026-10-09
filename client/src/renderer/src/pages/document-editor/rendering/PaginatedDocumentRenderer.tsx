@@ -1,0 +1,109 @@
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { DocumentData } from "../../../../../foundation/documentModel.ts";
+import type { DirectEditValue, DocumentEditTarget, TextRange } from "../../../../../foundation/documentEditing.ts";
+import { NodeRenderer, type RenderSelectionTarget } from "./NodeRenderer.tsx";
+import type { DirectTextSelection } from "./EditableTextValue.tsx";
+import { collectPaginationUnits, paginate, reconcileVisiblePages, type PaginatedPage } from "./pagination.ts";
+import { buildRenderTree, type RenderContainerNode } from "./renderTree.ts";
+import "./document.css";
+
+type Unit = ReturnType<typeof collectPaginationUnits>[number];
+
+export function PaginatedDocumentRenderer({
+  document,
+  mode,
+  selectedNodeId,
+  selectableNodeIds,
+  onSelect,
+  onEditValueChange,
+  onRichTextSelection,
+  richTextSelection,
+}: {
+  document: DocumentData;
+  mode: "screen" | "print";
+  selectedNodeId?: string;
+  selectableNodeIds?: ReadonlySet<string>;
+  onSelect?: (target: RenderSelectionTarget) => void;
+  onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
+  onRichTextSelection?: (selection?: DirectTextSelection) => void;
+  richTextSelection?: DirectTextSelection;
+}) {
+  const tree = useMemo(() => buildRenderTree(document), [document]);
+  const root = requireContainer(tree);
+  const units = useMemo(() => collectPaginationUnits(tree), [tree]);
+  const [pages, setPages] = useState<PaginatedPage<Unit>[]>(() => [{
+    id: "page-1",
+    units,
+    overflow: false,
+  }]);
+  const measureContentRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    setPages((current) => reconcileVisiblePages(current, units));
+  }, [units]);
+
+  useLayoutEffect(() => {
+    let canceled = false;
+    const measure = () => {
+      if (canceled || !measureContentRef.current) return;
+      const rootElement = measureContentRef.current.querySelector(":scope > .document-node");
+      if (!(rootElement instanceof HTMLElement)) return;
+      const elements = Array.from(rootElement.children).filter(
+        (element): element is HTMLElement => element instanceof HTMLElement && Boolean(element.dataset.measureId),
+      );
+      if (elements.length !== units.length) return;
+      const heights = new Map<string, number>();
+      elements.forEach((element, index) => {
+        const current = element.getBoundingClientRect();
+        const next = elements[index + 1]?.getBoundingClientRect();
+        heights.set(element.dataset.measureId!, next ? next.top - current.top : current.height);
+      });
+      const rootStyle = getComputedStyle(rootElement);
+      const verticalPadding = parseFloat(rootStyle.paddingTop) + parseFloat(rootStyle.paddingBottom);
+      const capacity = Math.max(1, measureContentRef.current.getBoundingClientRect().height - verticalPadding);
+      setPages(paginate(units, heights, capacity));
+    };
+    const schedule = () => requestAnimationFrame(measure);
+    void documentFontsReady().then(schedule);
+    const observer = new ResizeObserver(schedule);
+    if (measureContentRef.current) observer.observe(measureContentRef.current);
+    window.addEventListener("resize", schedule);
+    return () => {
+      canceled = true;
+      observer.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, [document, units]);
+
+  return (
+    <div className={`paginated-document paginated-document--${mode}`} data-document-page-count={pages.length}>
+      {pages.map((page) => (
+        <div className={`document-page document-renderer document-renderer--${mode}`} data-document-page-id={page.id} data-document-page-overflow={page.overflow || undefined} key={page.id}>
+          <NodeRenderer
+            node={{ ...root, children: page.units.map((unit) => unit.node) }}
+            selectedNodeId={selectedNodeId}
+            selectableNodeIds={selectableNodeIds}
+            onSelect={mode === "screen" ? onSelect : undefined}
+            onEditValueChange={mode === "screen" ? onEditValueChange : undefined}
+            onRichTextSelection={mode === "screen" ? onRichTextSelection : undefined}
+            richTextSelection={mode === "screen" ? richTextSelection : undefined}
+          />
+        </div>
+      ))}
+      <div className="document-measure-page" aria-hidden="true">
+        <div className="document-measure-content document-renderer document-renderer--measure" ref={measureContentRef}>
+          <NodeRenderer node={root} measure />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function requireContainer(node: ReturnType<typeof buildRenderTree>): RenderContainerNode {
+  if (node.type !== "container") throw new Error("document root는 container여야 합니다.");
+  return node;
+}
+
+async function documentFontsReady(): Promise<void> {
+  await globalThis.document.fonts.ready;
+}

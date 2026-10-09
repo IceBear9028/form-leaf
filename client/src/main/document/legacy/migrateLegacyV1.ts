@@ -1,8 +1,8 @@
 import {
   contentBlocksToMarkdown,
   textContentToMarkdown,
-} from "../../../foundation/markdownSerialization.ts";
-import { plainText } from "../../../foundation/content/resume.ts";
+} from "./markdownSerialization.ts";
+import { plainText } from "./legacyTypes.ts";
 import type {
   LegacyContentBlock,
   LegacyProfileSection,

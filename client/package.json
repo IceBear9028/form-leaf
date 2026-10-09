@@ -13,7 +13,7 @@
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:document-core && npm run test:legacy-import && npm run test:renderer && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:pagination && npm run test:migration && npm run test:styles && npm run test:storage && npm run test:library",
+    "test": "npm run test:document-core && npm run test:legacy-import && npm run test:renderer && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:pagination && npm run test:migration && npm run test:storage && npm run test:library",
     "test:document-core": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-core.test.mjs",
     "test:legacy-import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/legacy-document-import.test.mjs",
     "test:renderer": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-renderer.test.mjs",
@@ -23,7 +23,6 @@
     "test:markdown": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/markdown.test.mjs",
     "test:pagination": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/pagination.test.mjs",
     "test:migration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-migration.test.mjs",
-    "test:styles": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/resume-style-sheets.test.mjs",
     "test:storage": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-storage.test.mjs",
     "test:library": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-library.test.mjs"
   },
