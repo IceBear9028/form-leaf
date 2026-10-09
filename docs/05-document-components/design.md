@@ -331,7 +331,21 @@ document component
 
 첫 범위에서는 live link를 두지 않는다. library 원본을 수정해도 이미 만들어진 문서가 바뀌지 않아야 PDF 재현성과 로컬 파일 독립성이 유지된다.
 
-template에는 사용자 콘텐츠를 기본으로 포함하지 않는다. 사용자가 명시적으로 예시 값을 포함해 저장하는 기능은 별도 결정으로 둔다.
+package는 사용자가 저장 대상으로 선택한 component definition의 현재 node 값과 prop 기본값을 그대로 포함한다. 범용 core는 어떤 문자열이 사용자 콘텐츠인지 예시인지 판단하지 않는다. document tree에 있는 개별 instance override는 definition dependency가 아니므로 package에 포함하지 않는다.
+
+### 구현된 component 재사용 경계
+
+선택한 document subtree를 component로 만들 때 기존 node ID와 subtree는 definition이 소유하고, 원래 parent의 같은 index에는 새 `component-instance`를 넣는다. renderer가 사용하는 definition 내용은 유지되며 instance별 `props`만 독립적으로 저장한다.
+
+- text, rich-text, Markdown과 image node property를 definition prop으로 노출할 수 있다.
+- 기존 prop의 type과 binding은 제자리에서 바꾸거나 삭제할 수 없고 보관 상태로 전환한다.
+- 보관한 prop의 instance·repeater override는 지우지 않으며 renderer만 적용 대상에서 제외한다.
+- component 이름 변경은 UI draft를 명시적으로 적용할 때만 document transaction으로 반영한다.
+- instance와 repeater item은 override를 기본값으로 되돌릴 수 있다.
+- repeater item은 추가, 복제, 이동과 표시 상태 변경을 지원한다.
+- 모든 transaction은 완성된 document graph를 검증하므로 직접·간접 component cycle은 commit 전에 거부된다.
+
+`ComponentLibraryPackage`는 entry component가 참조하는 component graph와 node·style·asset dependency만 포함한다. 다른 document로 가져올 때 component, prop, node, repeater item, style과 asset ID를 모두 새로 만들고 내부 참조를 함께 바꾼다. 가져온 결과는 원본 package나 원래 document의 이후 변경과 연결되지 않는다. 파일 저장과 IPC는 8단계에서 이 pure export/import 경계 위에 추가한다.
 
 ## 범용 문서 library와 저장
 

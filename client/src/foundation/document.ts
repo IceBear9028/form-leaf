@@ -1,6 +1,7 @@
 import type { ResumeDocument } from "./content/resume.ts";
 
 export * from "./documentModel.ts";
+export * from "./documentComponentOperations.ts";
 export * from "./documentTransactions.ts";
 export * from "./documentValidation.ts";
 

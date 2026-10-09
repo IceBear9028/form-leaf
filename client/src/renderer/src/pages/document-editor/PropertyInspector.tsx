@@ -1,10 +1,23 @@
 import type { KeyboardEvent } from "react";
 import type {
+  ComponentInstanceValue,
+  ComponentPropDefinition,
+  ComponentPropValue,
   DocumentData,
   DocumentNode,
   StyleDefinition,
   WidthValue,
 } from "../../../../foundation/documentModel.ts";
+import {
+  addRepeaterItemFromDefaults,
+  clearComponentInstanceProp,
+  clearRepeaterItemProp,
+  duplicateRepeaterItem,
+  moveRepeaterItem,
+  setComponentInstanceProp,
+  setRepeaterItemProp,
+  setRepeaterItemVisibility,
+} from "../../../../foundation/documentComponentOperations.ts";
 import {
   detachNodeStyle,
   renameNode,
@@ -98,6 +111,29 @@ export function PropertyInspector({
             />
           </Field>
         </InspectorSection>
+      )}
+
+      {node.type === "component-instance" && (
+        <ComponentPropsSection
+          definitions={document.components[node.componentId].propDefinitions}
+          values={node.props}
+          assets={document.assets}
+          onSet={(propId, value) => onChange((current) => setComponentInstanceProp(
+            current,
+            node.id,
+            propId,
+            value,
+          ))}
+          onClear={(propId) => onChange((current) => clearComponentInstanceProp(current, node.id, propId))}
+        />
+      )}
+
+      {node.type === "repeater" && (
+        <RepeaterItemsSection
+          document={document}
+          node={node}
+          onChange={onChange}
+        />
       )}
 
       {node.type === "container" && (
@@ -464,6 +500,242 @@ function ColorField({
       </div>
     </Field>
   );
+}
+
+function ComponentPropsSection({
+  definitions,
+  values,
+  assets,
+  onSet,
+  onClear,
+}: {
+  definitions: ComponentPropDefinition[];
+  values: Record<string, ComponentPropValue>;
+  assets: DocumentData["assets"];
+  onSet: (propId: string, value: ComponentPropValue) => void;
+  onClear: (propId: string) => void;
+}) {
+  return (
+    <InspectorSection title="컴포넌트 값">
+      {definitions.length === 0 && <p className="text-xs text-muted-foreground">노출된 prop이 없습니다.</p>}
+      {definitions.map((definition) => {
+        const overridden = Object.hasOwn(values, definition.id);
+        const value = overridden ? values[definition.id] : definition.defaultValue;
+        return (
+          <div className="space-y-2 rounded-md border border-border bg-background p-2" key={definition.id}>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="truncate font-medium">{definition.name}</span>
+              {definition.status === "archived" ? (
+                <span className="text-[10px] text-muted-foreground">보관됨 · 값 유지</span>
+              ) : overridden ? (
+                <Button type="button" variant="ghost" size="xs" onClick={() => onClear(definition.id)}>기본값</Button>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">기본값</span>
+              )}
+            </div>
+            {definition.status === "active" && (
+              <PropValueEditor
+                definition={definition}
+                value={value}
+                assets={assets}
+                onChange={(next) => onSet(definition.id, next)}
+              />
+            )}
+          </div>
+        );
+      })}
+    </InspectorSection>
+  );
+}
+
+function RepeaterItemsSection({
+  document,
+  node,
+  onChange,
+}: {
+  document: DocumentData;
+  node: Extract<DocumentNode, { type: "repeater" }>;
+  onChange: (change: GenericDocumentChange) => void;
+}) {
+  const definitions = document.components[node.itemComponentId].propDefinitions;
+  return (
+    <InspectorSection title="반복 항목">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={() => onChange((current) => addRepeaterItemFromDefaults(current, node.id).document)}
+      >
+        항목 추가
+      </Button>
+      {node.items.length === 0 && <p className="text-xs text-muted-foreground">반복 항목이 없습니다.</p>}
+      {node.items.map((item, index) => (
+        <details className="rounded-md border border-border bg-background p-2" key={item.id} open={index === 0}>
+          <summary className="cursor-pointer text-xs font-medium">항목 {index + 1}</summary>
+          <div className="mt-3 space-y-3">
+            <div className="flex flex-wrap gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={index === 0}
+                onClick={() => onChange((current) => moveRepeaterItem(current, node.id, item.id, index - 1))}
+              >위로</Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={index === node.items.length - 1}
+                onClick={() => onChange((current) => moveRepeaterItem(current, node.id, item.id, index + 1))}
+              >아래로</Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => onChange((current) => duplicateRepeaterItem(current, node.id, item.id).document)}
+              >복제</Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => onChange((current) => setRepeaterItemVisibility(current, node.id, item.id, !item.visible))}
+              >{item.visible ? "숨기기" : "표시"}</Button>
+            </div>
+            <RepeaterItemProps
+              item={item}
+              definitions={definitions}
+              assets={document.assets}
+              onSet={(propId, value) => onChange((current) => setRepeaterItemProp(
+                current,
+                node.id,
+                item.id,
+                propId,
+                value,
+              ))}
+              onClear={(propId) => onChange((current) => clearRepeaterItemProp(
+                current,
+                node.id,
+                item.id,
+                propId,
+              ))}
+            />
+          </div>
+        </details>
+      ))}
+    </InspectorSection>
+  );
+}
+
+function RepeaterItemProps({
+  item,
+  definitions,
+  assets,
+  onSet,
+  onClear,
+}: {
+  item: ComponentInstanceValue;
+  definitions: ComponentPropDefinition[];
+  assets: DocumentData["assets"];
+  onSet: (propId: string, value: ComponentPropValue) => void;
+  onClear: (propId: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {definitions.map((definition) => {
+        const overridden = Object.hasOwn(item.props, definition.id);
+        const value = overridden ? item.props[definition.id] : definition.defaultValue;
+        return (
+          <div className="space-y-1.5" key={definition.id}>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span>{definition.name}</span>
+              {definition.status === "archived" ? (
+                <span className="text-[10px] text-muted-foreground">보관됨</span>
+              ) : overridden ? (
+                <Button type="button" variant="ghost" size="xs" onClick={() => onClear(definition.id)}>기본값</Button>
+              ) : null}
+            </div>
+            {definition.status === "active" && (
+              <PropValueEditor
+                definition={definition}
+                value={value}
+                assets={assets}
+                onChange={(next) => onSet(definition.id, next)}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PropValueEditor({
+  definition,
+  value,
+  assets,
+  onChange,
+}: {
+  definition: ComponentPropDefinition;
+  value: ComponentPropValue;
+  assets: DocumentData["assets"];
+  onChange: (value: ComponentPropValue) => void;
+}) {
+  if (definition.valueType === "text" || definition.valueType === "markdown") {
+    return (
+      <textarea
+        className="min-h-20 w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        value={String(value)}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    );
+  }
+  if (definition.valueType === "rich-text" && typeof value === "object" && "runs" in value) {
+    return (
+      <textarea
+        className="min-h-20 w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        value={value.runs.map((run) => run.text).join("")}
+        onChange={(event) => onChange({ runs: [{ text: event.target.value }] })}
+      />
+    );
+  }
+  if (definition.valueType === "image" && typeof value === "object" && "alt" in value) {
+    return (
+      <div className="space-y-2">
+        <Input value={value.alt} placeholder="대체 텍스트" onChange={(event) => onChange({ ...value, alt: event.target.value })} />
+        <Select
+          value={value.assetId ?? ""}
+          onChange={(assetId) => {
+            const next = { ...value };
+            if (assetId) next.assetId = assetId;
+            else delete next.assetId;
+            onChange(next);
+          }}
+          options={[
+            { value: "", label: "이미지 없음" },
+            ...Object.values(assets).map((asset) => ({ value: asset.id, label: asset.name || asset.id })),
+          ]}
+        />
+      </div>
+    );
+  }
+  if (definition.valueType === "boolean" && typeof value === "boolean") {
+    return <ToggleField label="값" checked={value} onCheckedChange={onChange} />;
+  }
+  if (definition.valueType === "number" && typeof value === "number") {
+    return (
+      <NumberField
+        label="값"
+        value={value}
+        min={Number.MIN_SAFE_INTEGER}
+        max={Number.MAX_SAFE_INTEGER}
+        onChange={(next) => {
+          if (next !== undefined) onChange(next);
+        }}
+      />
+    );
+  }
+  return <p className="text-xs text-destructive">지원하지 않는 prop 값입니다.</p>;
 }
 
 function isDirectlyEditable(node: DocumentNode): boolean {

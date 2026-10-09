@@ -2,7 +2,7 @@
 
 ## 상태
 
-node tree·inspector 완료·component·repeater 구현 중
+component·repeater 완료·preview 직접 편집 구현 중
 
 ## 제품 원칙
 
