@@ -2,7 +2,7 @@
 
 ## 상태
 
-범용 renderer 완료·node tree·inspector 구현 중
+node tree·inspector 완료·component·repeater 구현 중
 
 ## 제품 원칙
 

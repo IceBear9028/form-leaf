@@ -4,6 +4,7 @@ import type {
   DocumentData,
   DocumentNode,
   NodeId,
+  StyleDefinition,
 } from "./documentModel.ts";
 import { createEntityId } from "./documentModel.ts";
 import { assertDocumentData } from "./documentValidation.ts";
@@ -137,6 +138,106 @@ export function setNodeVisibility(
       [nodeId]: { ...node, visible },
     },
   }, options);
+}
+
+export function renameNode(
+  document: DocumentData,
+  nodeId: NodeId,
+  name: string,
+  options?: DocumentTransactionOptions,
+): DocumentData {
+  return updateNode(document, nodeId, (node) => ({ ...node, name }), options);
+}
+
+export function updateNode(
+  document: DocumentData,
+  nodeId: NodeId,
+  update: (node: DocumentNode) => DocumentNode,
+  options?: DocumentTransactionOptions,
+): DocumentData {
+  assertDocumentData(document);
+  const current = requireNode(document, nodeId);
+  const next = update(clone(current));
+  if (next.id !== current.id) throw new Error("node ID는 변경할 수 없습니다.");
+  if (next.type !== current.type) throw new Error("node type은 변경할 수 없습니다.");
+  return commit({
+    ...document,
+    nodes: { ...document.nodes, [nodeId]: next },
+  }, options);
+}
+
+export function updateNodeStyle(
+  document: DocumentData,
+  nodeId: NodeId,
+  update: (style: StyleDefinition) => StyleDefinition,
+  options?: DocumentTransactionOptions,
+): DocumentData {
+  assertDocumentData(document);
+  const node = requireNode(document, nodeId);
+  const createId = options?.createId ?? createEntityId;
+  const styleId = node.styleId ?? createUniqueId(
+    "style",
+    new Set(Object.keys(document.styles)),
+    createId,
+  );
+  const current: StyleDefinition = node.styleId
+    ? clone(document.styles[node.styleId]!)
+    : { id: styleId, name: node.name ? `${node.name} style` : "Style" };
+  const nextStyle = update(current);
+  if (nextStyle.id !== styleId) throw new Error("style ID는 변경할 수 없습니다.");
+  return commit({
+    ...document,
+    nodes: {
+      ...document.nodes,
+      [nodeId]: { ...node, styleId },
+    },
+    styles: {
+      ...document.styles,
+      [styleId]: nextStyle,
+    },
+  }, options);
+}
+
+export function detachNodeStyle(
+  document: DocumentData,
+  nodeId: NodeId,
+  options?: DocumentTransactionOptions,
+): DocumentData {
+  assertDocumentData(document);
+  const node = requireNode(document, nodeId);
+  if (!node.styleId) return document;
+  const nextNode = clone(node);
+  delete nextNode.styleId;
+  const stillUsed = Object.values(document.nodes).some(
+    (entry) => entry.id !== nodeId && entry.styleId === node.styleId,
+  );
+  const styles = { ...document.styles };
+  if (!stillUsed) delete styles[node.styleId];
+  return commit({
+    ...document,
+    nodes: { ...document.nodes, [nodeId]: nextNode },
+    styles,
+  }, options);
+}
+
+export function findNodeParentId(
+  document: DocumentData,
+  nodeId: NodeId,
+): NodeId | undefined {
+  return findParent(document, nodeId)?.id;
+}
+
+export function collectDocumentTreeNodeIds(document: DocumentData): Set<NodeId> {
+  assertDocumentData(document);
+  const result = new Set<NodeId>();
+  const visit = (nodeId: NodeId) => {
+    if (result.has(nodeId)) return;
+    result.add(nodeId);
+    const node = document.nodes[nodeId];
+    if (node?.type === "container") node.childIds.forEach(visit);
+  };
+  visit(document.rootNodeId);
+  return result;
 }
 
 export function archiveNode(

@@ -283,6 +283,21 @@ Markdown renderer는 CommonMark·GFM 구조, 기존 `++밑줄++` 표시와 각�
 
 현재 pagination unit은 document root의 visible child subtree다. `keepWithNext`, `forcePageBreakBefore`와 단일 unit overflow를 처리하고, 측정 전 page boundary는 stable render ID로 복원한다. 더 작은 block 분할이 필요한 긴 subtree는 renderer를 목적별 분기하지 않고 node 구조와 page-break property로 확장한다.
 
+### 구현된 구조 편집 경계
+
+`DocumentStructurePanel`은 document root에서 도달 가능한 node만 트리로 표시한다. component definition 내부 node는 definition 편집 단계 전까지 document tree의 선택 대상으로 노출하지 않는다.
+
+- 선택은 DOM 위치나 페이지 번호가 아니라 `{ kind: "node", nodeId }`로 저장한다.
+- node 순서나 pagination 결과가 바뀌어도 node가 document tree에 남아 있으면 선택을 유지한다.
+- node를 보관하거나 tree에서 제거하면 session이 선택을 해제한다.
+- preview 내부 component subtree를 클릭하면 definition 내부 node가 아니라 document tree에 있는 instance 또는 repeater node를 선택한다.
+- drag reorder는 같은 parent 안에서만 허용하며 위·아래 버튼으로 같은 동작을 수행할 수 있다.
+- 이름, 표시, 복제, 보관과 복원은 모두 generic transaction을 사용한다.
+
+`PropertyInspector`는 선택 node의 구조화된 property만 편집한다. container의 flow·간격·padding·정렬·폭, image의 alt·asset 참조, 공통 typography와 pagination 규칙을 다룬다. 숫자와 색상은 유효한 값만 transaction에 전달하고 최종 validator가 다시 검증한다. text, rich-text와 Markdown 본문은 7단계 preview 직접 편집과 중복되므로 inspector에 입력란을 만들지 않는다.
+
+새 구조 편집기는 `GenericDocumentEditorHarness`에서 빈 범용 문서로 독립 실행할 수 있다. 기존 앱 route와 저장 session은 8단계 전환 전까지 그대로 유지한다.
+
 ## 직접 편집과 서식
 
 편집 target은 node 또는 component prop의 안정적인 경로로 식별한다.

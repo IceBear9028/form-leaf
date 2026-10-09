@@ -2,9 +2,9 @@
 
 ## 현재 상태
 
-- 상태: 범용 core·레거시 importer·읽기 전용 renderer 완료
-- 현재 단계: 5. node tree·inspector 편집기 구현
-- 완료 커밋: `e6542b4` 계약·계획, `2e80fbe` 범용 core, `04ac9fc` 레거시 importer
+- 상태: 범용 core·레거시 importer·renderer·node tree·inspector 완료
+- 현재 단계: 6. component·repeater 재사용 구현
+- 완료 커밋: `e6542b4` 계약·계획, `2e80fbe` 범용 core, `04ac9fc` 레거시 importer, `325fc4d` 범용 renderer
 - 커밋 정책: 각 계획 단계 완료 후 검증·문서 갱신과 함께 커밋
 
 ## 완료된 작업
@@ -18,20 +18,25 @@
 - raw HTML과 외부 Markdown image를 실행하지 않고 위험 URL protocol을 비활성화한다.
 - root child subtree 기반 pagination unit, keep·break·overflow와 page reconcile을 구현했다.
 - 하나의 node property에 여러 component prop binding을 연결하는 모호한 계약을 validator에서 거부한다.
+- 범용 document selection과 local fixture session을 추가하고 node ID를 기준으로 tree와 preview 선택을 동기화했다.
+- 빈 root에서 container, text, rich-text, Markdown과 image node를 추가할 수 있다.
+- node 이름 변경, 같은 parent 내 drag·버튼 이동, 표시, 복제, 보관과 복원을 구현했다.
+- inspector에서 container layout, image 참조, typography와 pagination을 검증된 transaction으로 편집한다.
+- 직접 편집 대상인 text, rich-text와 Markdown 본문은 inspector에 중복 입력 UI를 두지 않았다.
+- 독립 `GenericDocumentEditorHarness`에 structure panel, preview와 inspector를 연결했으며 앱 route는 변경하지 않았다.
 
 ## 변경 파일
 
-- `client/src/foundation/documentValidation.ts`
-- `client/src/renderer/src/pages/document-editor/rendering/renderTree.ts`
-- `client/src/renderer/src/pages/document-editor/rendering/pagination.ts`
-- `client/src/renderer/src/pages/document-editor/rendering/safeHref.ts`
-- `client/src/renderer/src/pages/document-editor/rendering/styleToCss.ts`
-- `client/src/renderer/src/pages/document-editor/rendering/MarkdownView.tsx`
+- `client/src/foundation/documentTransactions.ts`
+- `client/src/renderer/src/pages/document-editor/documentSelection.ts`
+- `client/src/renderer/src/pages/document-editor/useGenericDocumentSession.ts`
+- `client/src/renderer/src/pages/document-editor/DocumentStructurePanel.tsx`
+- `client/src/renderer/src/pages/document-editor/PropertyInspector.tsx`
+- `client/src/renderer/src/pages/document-editor/GenericDocumentEditorHarness.tsx`
 - `client/src/renderer/src/pages/document-editor/rendering/NodeRenderer.tsx`
 - `client/src/renderer/src/pages/document-editor/rendering/DocumentRenderer.tsx`
 - `client/src/renderer/src/pages/document-editor/rendering/document.css`
-- `client/test/document-core.test.mjs`
-- `client/test/document-renderer.test.mjs`
+- `client/test/document-editor.test.mjs`
 - `client/package.json`
 - `docs/README.md`
 - `docs/05-document-components/README.md`
@@ -43,19 +48,20 @@
 
 | 명령 또는 확인 | 결과 |
 |---|---|
-| `npm run test:renderer` | 통과, 4개 |
-| `npm test` | 통과, 전체 47개 |
+| `npm run test:editor` | 통과, 4개 |
+| `npm test` | 통과, 전체 51개 |
 | `npm run typecheck` | 통과 |
 | `npm run build` | 통과 |
-| generic renderer 목적별 domain token 검색 | 결과 없음 |
-| `git diff --check`와 새 파일 공백 검사 | 통과 |
+| generic editor 목적별 domain token 검색 | 결과 없음 |
+| `git diff --check` | 통과 |
 
 ## 현재 제한
 
 - 새 renderer는 독립 모듈로 구현됐으며 현재 앱 route에는 아직 연결하지 않았다.
 - pagination은 root child subtree를 atomic unit으로 취급한다. 긴 subtree 내부 분할은 이후 실제 측정 결과를 근거로 확장한다.
-- 직접 편집 overlay와 selection은 7단계 범위다.
+- preview node 선택은 구현됐지만 본문 직접 편집 overlay와 inline selection은 7단계 범위다.
+- component definition·instance와 repeater 생성 UI는 6단계 범위다.
 
 ## 다음 작업
 
-범용 `DocumentSelection`과 editor session을 먼저 정의한다. 그 다음 빈 root에서 node 추가·이동·복제·표시·보관을 실행하는 `DocumentStructurePanel`과 선택 node의 container·image·style property를 편집하는 `PropertyInspector`를 fixture harness에 연결한다. 기존 앱 route는 8단계까지 유지한다.
+선택한 document subtree를 component definition으로 옮기고 원래 위치를 instance로 교체하는 pure transaction부터 구현한다. 이어서 prop 노출·보관, instance override, repeater item 편집과 새 ID 기반 library package export/import를 독립 harness에 연결한다. 기존 앱 route는 8단계까지 유지한다.

@@ -5,16 +5,35 @@ import type { RenderTreeNode } from "./renderTree.ts";
 import { safeHref } from "./safeHref.ts";
 import { colorToCss, styleToCss } from "./styleToCss.ts";
 
+export type RenderSelectionTarget = {
+  renderId: string;
+  nodeId: string;
+  nodeType: RenderTreeNode["type"];
+};
+
 export function NodeRenderer({
   node,
   measure = false,
+  selectedNodeId,
+  selectableNodeIds,
+  onSelect,
 }: {
   node: RenderTreeNode;
   measure?: boolean;
+  selectedNodeId?: string;
+  selectableNodeIds?: ReadonlySet<string>;
+  onSelect?: (target: RenderSelectionTarget) => void;
 }) {
   if (!node.visible) return null;
   const isStructure = node.type === "container" || node.type === "component-instance" || node.type === "repeater";
   const style = styleToCss(node.style);
+  const selectable = Boolean(onSelect && selectableNodeIds?.has(node.sourceNodeId));
+  const select = selectable
+    ? (event: { stopPropagation: () => void }) => {
+      event.stopPropagation();
+      onSelect?.({ renderId: node.renderId, nodeId: node.sourceNodeId, nodeType: node.type });
+    }
+    : undefined;
   const attributes = {
     className: `document-node document-node--${node.type}`,
     style: isStructure
@@ -24,20 +43,31 @@ export function NodeRenderer({
     "data-document-node-id": node.sourceNodeId,
     "data-document-node-type": node.type,
     "data-measure-id": measure ? node.renderId : undefined,
+    "data-document-selected": selectedNodeId === node.sourceNodeId ? "true" : undefined,
+    tabIndex: selectable ? 0 : undefined,
+    role: selectable ? "button" : undefined,
+    onClick: select,
+    onKeyDown: selectable
+      ? (event: { key: string; preventDefault: () => void; stopPropagation: () => void }) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        select?.(event);
+      }
+      : undefined,
   };
 
   if (node.type === "container") {
-    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} />)}</div>;
+    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} />)}</div>;
   }
   if (node.type === "component-instance") {
-    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} /></div>;
+    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} /></div>;
   }
   if (node.type === "repeater") {
     return (
       <div {...attributes}>
         {node.items.map((item) => item.visible && (
           <div className="document-repeater-item" data-repeater-item-id={item.id} key={item.id}>
-            <NodeRenderer node={item.child} measure={measure} />
+            <NodeRenderer node={item.child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} />
           </div>
         ))}
       </div>

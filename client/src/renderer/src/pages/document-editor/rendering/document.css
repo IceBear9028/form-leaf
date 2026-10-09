@@ -8,6 +8,15 @@
   display: none;
 }
 
+.document-renderer--screen .document-node[data-document-selected="true"] {
+  outline: 1.5px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.document-renderer--screen .document-node[role="button"] {
+  cursor: default;
+}
+
 .document-node--image img {
   display: block;
   max-width: 100%;
