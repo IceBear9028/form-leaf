@@ -2,7 +2,7 @@
 
 ## 상태
 
-범용 core 완료·레거시 importer 구현 중
+범용 core·레거시 importer 완료·renderer 구현 중
 
 ## 제품 원칙
 

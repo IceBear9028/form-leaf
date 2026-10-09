@@ -2,7 +2,7 @@
 
 ## 설계 상태
 
-범용 `schemaVersion: 3` core와 validation·transaction 구현을 완료했다. 현재 앱은 아직 기존 `WorkspaceDocument`를 사용하며, 다음 단계에서 과거 입력을 범용 문서로 바꾸는 importer를 격리 구현한다.
+범용 `schemaVersion: 3` core와 격리된 legacy importer 구현을 완료했다. 현재 앱은 아직 기존 `WorkspaceDocument`를 사용하며, 다음 단계에서 목적과 무관한 읽기 전용 DOM renderer를 구현한다.
 
 ## 제품 불변 조건
 
@@ -342,9 +342,9 @@ generic renderer      ──X──→ legacy domain types
 generic editor        ──X──→ legacy domain types
 ```
 
-legacy importer만 과거 type string과 입력 구조를 알게 한다. 앱 전환 전에는 기존 화면이 현재 계약을 계속 사용하되, 새 generic core·renderer·editor는 과거 타입을 import하지 않는다. 8단계 앱 전환 후 실제 과거 타입과 validator를 이 폴더에 격리하고 9단계에서 다른 runtime import를 제거한다.
+legacy importer만 과거 type string과 입력 구조를 안다. 현재 앱 전환 전에는 `legacySchema.ts`가 기존 화면과 공유하는 타입 정의를 adapter로 다시 export한다. 8단계 앱 전환 후 실제 과거 타입과 validator를 이 폴더로 이동하고, 9단계에서 다른 runtime import를 제거한다.
 
-importer는 v1을 먼저 v2 내용으로 정규화한 뒤 일반 node·component·repeater·style·asset으로 변환한다. 원본 객체는 수정하지 않으며, 이미지 형식이나 최종 graph가 유효하지 않으면 경로가 포함된 오류로 전체 변환을 중단한다. 변환 이후 runtime은 원본 문서 목적을 알지 못한다.
+`importLegacyDocument`는 v1을 먼저 v2 내용으로 정규화한 뒤 일반 node·component·repeater·style·asset으로 변환한다. 원본 객체는 수정하지 않으며, 이미지 형식이나 최종 graph가 유효하지 않으면 경로가 포함된 오류로 전체 변환을 중단한다. 변환 이후 runtime은 원본 문서 목적을 알지 못한다.
 
 ## 영향받는 코드
 
