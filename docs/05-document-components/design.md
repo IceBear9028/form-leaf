@@ -53,7 +53,7 @@ client/src/renderer/src/pages/document-editor/
 ├─ DocumentStructurePanel.tsx
 ├─ PropertyInspector.tsx
 ├─ ComponentEditor.tsx
-├─ DocumentCanvas.tsx
+├─ DocumentRenderer.tsx
 └─ rendering/
    ├─ NodeRenderer.tsx
    ├─ nodeRegistry.ts
@@ -268,6 +268,20 @@ DocumentData
 - repeater는 같은 component definition으로 item DOM을 반복한다.
 - selection outline과 toolbar는 측정에 영향을 주지 않는 overlay다.
 - PDF는 편집 UI를 제외하고 동일한 document DOM을 출력한다.
+
+### 구현된 render tree 경계
+
+`buildRenderTree`는 validation을 통과한 document graph를 DOM이 바로 소비할 수 있는 tree로 확장한다.
+
+- render path는 node·component·repeater item ID만 사용하며 사용자 이름이나 text에 의존하지 않는다.
+- component instance는 active prop의 override 또는 default value를 binding target에 적용한다.
+- archived prop은 instance value를 보존하지만 renderer override에는 사용하지 않는다.
+- 같은 component를 여러 번 사용해도 instance·item 경로가 포함돼 모든 render ID가 고유하다.
+- screen, hidden measure와 print mode는 모두 같은 `NodeRenderer`를 사용한다.
+
+Markdown renderer는 CommonMark·GFM 구조, 기존 `++밑줄++` 표시와 각주를 읽기 전용 DOM으로 만든다. raw HTML은 실행하지 않고 code text로 표시하며, 외부 Markdown image는 network request를 만들지 않고 alt만 표시한다. 링크는 `http`, `https`, `mailto`, `tel`과 안전한 내부·상대 경로만 활성화한다.
+
+현재 pagination unit은 document root의 visible child subtree다. `keepWithNext`, `forcePageBreakBefore`와 단일 unit overflow를 처리하고, 측정 전 page boundary는 stable render ID로 복원한다. 더 작은 block 분할이 필요한 긴 subtree는 renderer를 목적별 분기하지 않고 node 구조와 page-break property로 확장한다.
 
 ## 직접 편집과 서식
 

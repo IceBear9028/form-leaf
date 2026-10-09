@@ -1,0 +1,75 @@
+.document-renderer,
+.document-renderer * {
+  box-sizing: border-box;
+}
+
+.document-node[hidden],
+.document-repeater-item[hidden] {
+  display: none;
+}
+
+.document-node--image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.document-image-placeholder {
+  display: block;
+  min-height: 24pt;
+  border: 1px dashed currentColor;
+  opacity: 0.45;
+}
+
+.document-markdown > :first-child {
+  margin-top: 0;
+}
+
+.document-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.document-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.document-markdown th,
+.document-markdown td {
+  padding: 3pt 4pt;
+  border: 0.5pt solid currentColor;
+  text-align: left;
+  vertical-align: top;
+}
+
+.document-markdown pre {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.document-markdown-footnotes {
+  margin-top: 8pt;
+  border-top: 0.5pt solid currentColor;
+  font-size: 0.875em;
+}
+
+.document-markdown-raw {
+  user-select: text;
+}
+
+.document-renderer--measure {
+  position: absolute;
+  left: -100000px;
+  top: 0;
+  width: 210mm;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media print {
+  .document-renderer--screen,
+  .document-renderer--measure,
+  .document-image-placeholder {
+    display: none !important;
+  }
+}

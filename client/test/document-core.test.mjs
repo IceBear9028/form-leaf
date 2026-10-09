@@ -340,3 +340,25 @@ test("validator는 임의 CSS와 prop binding 타입 불일치를 허용하지 �
   assert.equal(result.issues.some((issue) => issue.code === "color.hex"), true);
   assert.equal(result.issues.some((issue) => issue.code === "component.prop.binding-value"), true);
 });
+
+test("validator는 같은 node property에 여러 component prop을 연결하지 않는다", () => {
+  let document = addComponentDefinition(
+    emptyDocument(),
+    componentDefinition(),
+    componentNodes(),
+    transactionOptions,
+  );
+  document = structuredClone(document);
+  document.components["component-block"].propDefinitions.push({
+    id: "prop-duplicate",
+    name: "Duplicate",
+    status: "active",
+    valueType: "text",
+    binding: { nodeId: "block-text", property: "text.value" },
+    defaultValue: "Duplicate",
+  });
+
+  const result = validateDocumentData(document);
+  assert.equal(result.valid, false);
+  assert.equal(result.issues.some((issue) => issue.code === "component.prop.binding-duplicate"), true);
+});

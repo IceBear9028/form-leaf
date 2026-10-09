@@ -7,8 +7,8 @@
 | 1 | 계약·전환 정책 확정 | 완료 | 다섯 구현 기본안 승인, 문서 계약 일치 |
 | 2 | 범용 document core 구현 | 완료 | schema·graph·transaction 단위 테스트 통과 |
 | 3 | 레거시 importer 구현 | 완료 | v1/v2를 원본 손상 없이 범용 문서로 변환 |
-| 4 | 읽기 전용 범용 DOM renderer 구현 | 진행 중 | 일반 node fixture의 화면·측정·pagination 일치 |
-| 5 | node tree·inspector 편집기 구현 | 대기 | 빈 문서에서 일반 node 구성·저장 가능 |
+| 4 | 읽기 전용 범용 DOM renderer 구현 | 완료 | 일반 node fixture의 화면·측정·pagination 일치 |
+| 5 | node tree·inspector 편집기 구현 | 진행 중 | 빈 문서에서 일반 node 구성·저장 가능 |
 | 6 | component·repeater 재사용 구현 | 대기 | 문서 내부 definition·instance·반복 구조 동작 |
 | 7 | preview 직접 편집·서식 구현 | 대기 | text·rich-text·Markdown 편집 회귀 통과 |
 | 8 | 저장소·library·IPC와 앱 전환 | 대기 | 새 stack으로 CRUD·재실행·다른 문서 재사용 동작 |

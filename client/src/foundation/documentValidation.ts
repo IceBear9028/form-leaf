@@ -407,6 +407,7 @@ function validateRelations(
     }
     componentRootIds.add(component.rootNodeId);
     const propIds = new Set<string>();
+    const bindingTargets = new Set<string>();
     const subtree = collectStructuralSubtree(component.rootNodeId, nodes);
     component.propDefinitions.forEach((prop, index) => {
       const propPath = `$.components.${component.id}.propDefinitions.${index}`;
@@ -414,6 +415,11 @@ function validateRelations(
         issue("component.prop.duplicate", `${propPath}.id`, "component 안에서 prop ID는 고유해야 합니다.");
       }
       propIds.add(prop.id);
+      const bindingTarget = `${prop.binding.nodeId}:${prop.binding.property}`;
+      if (bindingTargets.has(bindingTarget)) {
+        issue("component.prop.binding-duplicate", `${propPath}.binding`, "하나의 node property에는 하나의 prop만 연결할 수 있습니다.");
+      }
+      bindingTargets.add(bindingTarget);
       if (!subtree.has(prop.binding.nodeId)) {
         issue("component.prop.outside-root", `${propPath}.binding.nodeId`, "binding target은 component subtree 안에 있어야 합니다.");
       } else {
