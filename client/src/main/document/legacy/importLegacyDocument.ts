@@ -189,7 +189,7 @@ class LegacyDocumentBuilder {
         layout: {
           direction: "column",
           gapPt: 0,
-          paddingPt: [23.8, 0, 0, 0],
+          paddingPt: [17.9, 0, 0, 0],
           align: "stretch",
           width: { mode: "fill" },
         },
@@ -254,7 +254,7 @@ class LegacyDocumentBuilder {
       [this.leadStyleId]: {
         id: this.leadStyleId,
         name: "Lead",
-        layout: { gapPt: 16 },
+        layout: { gapPt: 16, paddingPt: [0, 0, 16, 0] },
         typography: { fontSizePt: compact ? 9.2 : 10, lineHeight: compact ? 1.52 : 1.6, color: { kind: "hex", value: "#222222" } },
       },
       [this.listStyleId]: {

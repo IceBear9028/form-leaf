@@ -114,9 +114,10 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
   assert.equal(document.styles["legacy-style-section"].layout.gapPt, 18);
   assert.equal(document.styles["legacy-style-section"].pagination.keepTogether, true);
   assert.equal(document.styles["legacy-style-lead"].layout.gapPt, 16);
+  assert.equal(document.styles["legacy-style-lead"].layout.paddingPt[2], 16);
   assert.equal(document.styles["legacy-style-header-row"].layout.paddingPt[2], 16.2);
   assert.equal(document.styles["legacy-style-aside"].layout.gapPt, 11.25);
-  assert.equal(document.styles["legacy-style-roomy-boundary"].layout.paddingPt[0], 23.8);
+  assert.equal(document.styles["legacy-style-roomy-boundary"].layout.paddingPt[0], 17.9);
   assert.equal(document.styles["legacy-style-roomy-heading-row"].layout.paddingPt[2], 24.5);
   assert.equal(document.styles["legacy-style-split-item"].layout.gapPt, 18.4);
   assert.equal(document.styles["legacy-style-split-item"].layout.paddingPt[2], 13.6);
@@ -258,6 +259,29 @@ test("기존 legacy 범용 graph는 내용과 prop을 보존하며 새 시각 �
   );
 });
 
+test("과거 변환기가 만든 23-style graph도 내용 보존 후 최신 시각 구조로 연다", () => {
+  const fresh = importLegacyDocument(legacyV2Document());
+  const current = generatedVisualV1Graph(fresh);
+  const repeater = current.nodes["legacy-node-section-c-items"];
+  repeater.items[0].props.body = "사용자가 수정한 경력 본문";
+
+  assert.equal(validateDocumentData(current).valid, true);
+
+  const upgraded = upgradeLegacyImportedDocument(current, fresh);
+
+  assert.equal(validateDocumentData(upgraded).valid, true);
+  assert.equal(upgraded.nodes["legacy-node-section-c-2"].styleId, "legacy-style-roomy-boundary");
+  assert.deepEqual(
+    upgraded.nodes["legacy-node-section-c-2"].childIds,
+    ["legacy-node-section-c-heading-row", "legacy-node-section-c-items"],
+  );
+  assert.deepEqual(
+    upgraded.nodes["legacy-node-section-c-item-root"].childIds,
+    ["legacy-node-section-c-item-meta", "legacy-node-section-c-item-content"],
+  );
+  assert.equal(upgraded.nodes["legacy-node-section-c-items"].items[0].props.body, "사용자가 수정한 경력 본문");
+});
+
 test("기존 기본 style이 수정된 legacy graph는 자동 시각 업그레이드로 덮어쓰지 않는다", () => {
   const fresh = importLegacyDocument(legacyV2Document());
   const current = downgradeVisualGraph(fresh);
@@ -341,5 +365,76 @@ function downgradeVisualGraph(fresh) {
     },
   };
   assert.equal(validateDocumentData(current).valid, true);
+  return current;
+}
+
+function generatedVisualV1Graph(fresh) {
+  const current = structuredClone(fresh);
+  const retainedStyleIds = [
+    "legacy-style-root",
+    "legacy-style-section",
+    "legacy-style-section-boundary",
+    "legacy-style-item",
+    "legacy-style-heading",
+    "legacy-style-heading-row",
+    "legacy-style-annotation",
+    "legacy-style-lead",
+    "legacy-style-list",
+    "legacy-style-meta",
+    "legacy-style-content",
+    "legacy-style-title",
+    "legacy-style-accent-title",
+    "legacy-style-compact-text",
+    "legacy-style-header-row",
+    "legacy-style-media",
+    "legacy-style-identity",
+    "legacy-style-role",
+    "legacy-style-name",
+    "legacy-style-aside",
+    "legacy-style-contact-row",
+    "legacy-style-contact-label",
+    "legacy-style-contact-value",
+  ];
+  current.styles = Object.fromEntries(retainedStyleIds.map((id) => [id, structuredClone(fresh.styles[id])]));
+  const compact = current.styles["legacy-style-root"].typography.fontSizePt === 7.5;
+  current.styles["legacy-style-root"].layout.gapPt = compact ? 10 : 13;
+  current.styles["legacy-style-section"].layout.gapPt = compact ? 9 : 12;
+  delete current.styles["legacy-style-section"].pagination;
+  current.styles["legacy-style-heading-row"].pagination = { keepWithNext: true };
+  delete current.styles["legacy-style-lead"].layout;
+  current.styles["legacy-style-header-row"].layout.paddingPt[2] = compact ? 13 : 16;
+  current.styles["legacy-style-aside"].layout.gapPt = 8;
+
+  const fallbackStyleIds = {
+    "legacy-style-roomy-boundary": "legacy-style-section-boundary",
+    "legacy-style-roomy-heading-row": "legacy-style-heading-row",
+    "legacy-style-connected-list": "legacy-style-list",
+    "legacy-style-split-item": "legacy-style-item",
+    "legacy-style-period": "legacy-style-contact-row",
+    "legacy-style-detailed-content": "legacy-style-content",
+    "legacy-style-subtitle": "legacy-style-compact-text",
+    "legacy-style-bullet-body": "legacy-style-compact-text",
+  };
+  Object.values(current.nodes).forEach((node) => {
+    if (!node.styleId) return;
+    const fallback = fallbackStyleIds[node.styleId];
+    if (fallback) node.styleId = fallback;
+    else if (node.styleId === "legacy-style-duration") delete node.styleId;
+  });
+
+  const section = current.nodes["legacy-node-section-c-2"];
+  const headingRow = current.nodes["legacy-node-section-c-heading-row"];
+  section.childIds = [...headingRow.childIds, "legacy-node-section-c-items"];
+  delete current.nodes[headingRow.id];
+
+  const component = current.components["legacy-component-section-c"];
+  const itemRoot = current.nodes[component.rootNodeId];
+  itemRoot.childIds = component.propDefinitions.map((prop) => prop.binding.nodeId);
+  [
+    "legacy-node-section-c-item-meta",
+    "legacy-node-section-c-item-content",
+    "legacy-node-section-c-item-period",
+    "legacy-node-section-c-period-separator",
+  ].forEach((id) => delete current.nodes[id]);
   return current;
 }

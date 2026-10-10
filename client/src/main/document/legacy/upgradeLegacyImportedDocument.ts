@@ -1,5 +1,6 @@
 import type { DocumentData, DocumentNode } from "../../../foundation/documentModel.ts";
 import { validateDocumentData } from "../../../foundation/documentValidation.ts";
+import { isDeepStrictEqual } from "node:util";
 
 const baselineStyleIds = [
   "legacy-style-root",
@@ -8,11 +9,40 @@ const baselineStyleIds = [
   "legacy-style-heading",
 ] as const;
 
+const generatedVisualV1StyleIds = [
+  "legacy-style-root",
+  "legacy-style-section",
+  "legacy-style-section-boundary",
+  "legacy-style-item",
+  "legacy-style-heading",
+  "legacy-style-heading-row",
+  "legacy-style-annotation",
+  "legacy-style-lead",
+  "legacy-style-list",
+  "legacy-style-meta",
+  "legacy-style-content",
+  "legacy-style-title",
+  "legacy-style-accent-title",
+  "legacy-style-compact-text",
+  "legacy-style-header-row",
+  "legacy-style-media",
+  "legacy-style-identity",
+  "legacy-style-role",
+  "legacy-style-name",
+  "legacy-style-aside",
+  "legacy-style-contact-row",
+  "legacy-style-contact-label",
+  "legacy-style-contact-value",
+] as const;
+
 export function upgradeLegacyImportedDocument(
   current: DocumentData,
   freshImport: DocumentData,
 ): DocumentData {
-  if (current.documentId !== freshImport.documentId || !hasBaselineVisualStyles(current)) return current;
+  if (
+    current.documentId !== freshImport.documentId ||
+    (!hasBaselineVisualStyles(current) && !hasGeneratedVisualV1Styles(current, freshImport))
+  ) return current;
 
   const original = current;
   const next = structuredClone(current);
@@ -111,6 +141,40 @@ function hasBaselineVisualStyles(document: DocumentData): boolean {
     item?.layout?.direction === "column" &&
     item.layout.gapPt === (compact ? 3 : 4) &&
     heading?.typography?.fontSizePt === (compact ? 11.25 : 12);
+}
+
+function hasGeneratedVisualV1Styles(current: DocumentData, freshImport: DocumentData): boolean {
+  const currentIds = Object.keys(current.styles).sort();
+  const expectedIds = [...generatedVisualV1StyleIds].sort();
+  if (!sameIds(currentIds, expectedIds)) return false;
+
+  const expected = Object.fromEntries(generatedVisualV1StyleIds.map((styleId) => {
+    const style = freshImport.styles[styleId];
+    return [styleId, style ? structuredClone(style) : undefined];
+  }));
+  if (Object.values(expected).some((style) => style === undefined)) return false;
+
+  const root = expected["legacy-style-root"]!;
+  const compact = root.typography?.fontSizePt === 7.5;
+  if (root.layout) root.layout.gapPt = compact ? 10 : 13;
+
+  const section = expected["legacy-style-section"]!;
+  if (section.layout) section.layout.gapPt = compact ? 9 : 12;
+  delete section.pagination;
+
+  const headingRow = expected["legacy-style-heading-row"]!;
+  headingRow.pagination = { keepWithNext: true };
+
+  const lead = expected["legacy-style-lead"]!;
+  delete lead.layout;
+
+  const headerRow = expected["legacy-style-header-row"]!;
+  if (headerRow.layout?.paddingPt) headerRow.layout.paddingPt[2] = compact ? 13 : 16;
+
+  const aside = expected["legacy-style-aside"]!;
+  if (aside.layout) aside.layout.gapPt = 8;
+
+  return isDeepStrictEqual(current.styles, expected);
 }
 
 function flattenToExistingChildren(
