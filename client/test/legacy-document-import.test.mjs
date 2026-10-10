@@ -60,6 +60,23 @@ function legacyV2Document() {
         }],
       },
       {
+        id: "section-education",
+        type: "timeline",
+        timelineKind: "education",
+        title: "Learning",
+        annotation: "",
+        visible: true,
+        items: [{
+          id: "entry-education",
+          visible: true,
+          period: { start: "2020-01", end: "2020-06" },
+          organization: "Program value",
+          title: text("Course value"),
+          links: [],
+          bodyMarkdown: "",
+        }],
+      },
+      {
         id: "section-d",
         type: "project-group",
         groupKind: "project",
@@ -102,7 +119,7 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
   assert.equal(document.name, source.name);
   assert.equal(document.updatedAt, source.updatedAt);
   assert.equal(document.nodes[document.rootNodeId].childIds.length, source.sections.length);
-  assert.equal(Object.keys(document.components).length, 2);
+  assert.equal(Object.keys(document.components).length, 3);
   assert.equal(Object.keys(document.assets).length, 1);
   assert.equal("sections" in document, false);
   assert.equal("kind" in document, false);
@@ -130,6 +147,30 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
   assert.equal(document.nodes["legacy-node-section-c-period-label"].styleId, "legacy-style-duration");
   assert.equal(document.nodes["legacy-node-section-c-title"].styleId, "legacy-style-subtitle");
   assert.equal(document.nodes["legacy-node-section-c-body"].styleId, "legacy-style-bullet-body");
+  assert.equal(document.nodes["legacy-node-section-education-3"].styleId, "legacy-style-stacked-boundary");
+  assert.equal(document.nodes["legacy-node-section-education-items"].styleId, "legacy-style-spaced-list");
+  assert.equal(document.nodes["legacy-node-section-education-item-root"].styleId, "legacy-style-stacked-item");
+  assert.deepEqual(
+    document.nodes["legacy-node-section-education-item-root"].childIds,
+    [
+      "legacy-node-section-education-item-period",
+      "legacy-node-section-education-item-title",
+      "legacy-node-section-education-period-label",
+      "legacy-node-section-education-links",
+      "legacy-node-section-education-body",
+    ],
+  );
+  assert.deepEqual(
+    document.nodes["legacy-node-section-education-item-title"].childIds,
+    [
+      "legacy-node-section-education-organization",
+      "legacy-node-section-education-title-separator",
+      "legacy-node-section-education-title",
+    ],
+  );
+  assert.equal(document.nodes["legacy-node-section-education-period-label"].visible, false);
+  assert.equal(document.nodes["legacy-node-section-education-links"].visible, false);
+  assert.equal(document.nodes["legacy-node-section-education-body"].visible, false);
   assert.equal(document.nodes["legacy-node-section-a-links"].type, "rich-text");
   assert.deepEqual(
     document.nodes["legacy-node-section-a-links"].value.runs[0].marks.map((mark) => mark.type),
@@ -137,7 +178,7 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
   );
 
   const repeaters = Object.values(document.nodes).filter((node) => node.type === "repeater");
-  assert.equal(repeaters.length, 2);
+  assert.equal(repeaters.length, 3);
   assert.equal(repeaters[0].items[0].visible, false);
   assert.equal(repeaters[0].items[0].props["period-start"], "2024-01");
   assert.equal(repeaters[0].items[0].props["period-end"], "2025-01");
@@ -148,8 +189,10 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
     ["bold", "underline", "link"],
   );
   assert.match(repeaters[0].items[0].props.links, /Website|Detail/);
-  assert.match(repeaters[1].items[0].props.tags, /Tool A/);
-  assert.equal(repeaters[1].items[0].props.body, "Group body");
+  assert.equal(repeaters[1].items[0].props.organization, "Program value");
+  assert.equal(repeaters[1].items[0].props.title.runs[0].text, "Course value");
+  assert.match(repeaters[2].items[0].props.tags, /Tool A/);
+  assert.equal(repeaters[2].items[0].props.body, "Group body");
 
   const markdownSources = Object.values(document.nodes)
     .filter((node) => node.type === "markdown")
@@ -280,6 +323,29 @@ test("과거 변환기가 만든 23-style graph도 내용 보존 후 최신 시�
     ["legacy-node-section-c-item-meta", "legacy-node-section-c-item-content"],
   );
   assert.equal(upgraded.nodes["legacy-node-section-c-items"].items[0].props.body, "사용자가 수정한 경력 본문");
+  assert.equal(
+    upgraded.nodes["legacy-node-section-education-3"].styleId,
+    "legacy-style-stacked-boundary",
+  );
+  assert.deepEqual(
+    upgraded.nodes["legacy-node-section-education-item-root"].childIds,
+    [
+      "legacy-node-section-education-item-period",
+      "legacy-node-section-education-item-title",
+      "legacy-node-section-education-period-label",
+      "legacy-node-section-education-links",
+      "legacy-node-section-education-body",
+    ],
+  );
+  assert.deepEqual(
+    upgraded.nodes["legacy-node-section-education-item-title"].childIds,
+    [
+      "legacy-node-section-education-organization",
+      "legacy-node-section-education-title-separator",
+      "legacy-node-section-education-title",
+    ],
+  );
+  assert.equal(upgraded.nodes["legacy-node-section-education-body"].visible, false);
 });
 
 test("기존 기본 style이 수정된 legacy graph는 자동 시각 업그레이드로 덮어쓰지 않는다", () => {
@@ -310,12 +376,12 @@ test("사용자가 설명을 추가한 profile 링크 Markdown은 rich-text로 �
 
 function downgradeVisualGraph(fresh) {
   const current = structuredClone(fresh);
-  const wrapper = (id) => /-(?:identity|contacts|(?:phone|email|links)-row|heading-row|item-meta|item-content|item-period)$/.test(id);
+  const wrapper = (id) => /-(?:identity|contacts|(?:phone|email|links)-row|heading-row|item-meta|item-content|item-period|item-title)$/.test(id);
   const flatten = (childIds) => childIds.flatMap((id) => {
     const node = current.nodes[id];
     if (!node) return [];
     if (wrapper(id) && node.type === "container") return flatten(node.childIds);
-    if (/-period-separator$/.test(id)) return [];
+    if (/-(?:period|title)-separator$/.test(id)) return [];
     return [id];
   });
   Object.values(current.nodes).forEach((node) => {
@@ -328,7 +394,7 @@ function downgradeVisualGraph(fresh) {
     }
   });
   Object.keys(current.nodes).forEach((id) => {
-    if (wrapper(id) || /-period-separator$/.test(id)) delete current.nodes[id];
+    if (wrapper(id) || /-(?:period|title)-separator$/.test(id)) delete current.nodes[id];
   });
 
   const rootChildren = new Set(current.nodes[current.rootNodeId].childIds);
@@ -407,10 +473,16 @@ function generatedVisualV1Graph(fresh) {
 
   const fallbackStyleIds = {
     "legacy-style-roomy-boundary": "legacy-style-section-boundary",
+    "legacy-style-stacked-boundary": "legacy-style-section-boundary",
     "legacy-style-roomy-heading-row": "legacy-style-heading-row",
+    "legacy-style-stacked-heading-row": "legacy-style-heading-row",
     "legacy-style-connected-list": "legacy-style-list",
+    "legacy-style-spaced-list": "legacy-style-list",
     "legacy-style-split-item": "legacy-style-item",
+    "legacy-style-stacked-item": "legacy-style-item",
     "legacy-style-period": "legacy-style-contact-row",
+    "legacy-style-inline-period": "legacy-style-contact-row",
+    "legacy-style-inline-title": "legacy-style-compact-text",
     "legacy-style-detailed-content": "legacy-style-content",
     "legacy-style-subtitle": "legacy-style-compact-text",
     "legacy-style-bullet-body": "legacy-style-compact-text",
@@ -436,5 +508,41 @@ function generatedVisualV1Graph(fresh) {
     "legacy-node-section-c-item-period",
     "legacy-node-section-c-period-separator",
   ].forEach((id) => delete current.nodes[id]);
+
+  const stackedComponent = current.components["legacy-component-section-education"];
+  const stackedRoot = current.nodes[stackedComponent.rootNodeId];
+  const stackedPeriod = current.nodes["legacy-node-section-education-item-period"];
+  const metaId = "legacy-node-section-education-item-meta";
+  const contentId = "legacy-node-section-education-item-content";
+  current.nodes[metaId] = {
+    id: metaId,
+    type: "container",
+    name: "Meta",
+    visible: true,
+    styleId: "legacy-style-meta",
+    childIds: [
+      stackedPeriod.id,
+      "legacy-node-section-education-period-label",
+      "legacy-node-section-education-links",
+    ],
+  };
+  current.nodes[contentId] = {
+    id: contentId,
+    type: "container",
+    name: "Content",
+    visible: true,
+    styleId: "legacy-style-content",
+    childIds: [
+      "legacy-node-section-education-organization",
+      "legacy-node-section-education-title",
+      "legacy-node-section-education-body",
+    ],
+  };
+  stackedRoot.childIds = [metaId, contentId];
+  current.nodes["legacy-node-section-education-period-label"].visible = true;
+  current.nodes["legacy-node-section-education-links"].visible = true;
+  current.nodes["legacy-node-section-education-body"].visible = true;
+  delete current.nodes["legacy-node-section-education-item-title"];
+  delete current.nodes["legacy-node-section-education-title-separator"];
   return current;
 }

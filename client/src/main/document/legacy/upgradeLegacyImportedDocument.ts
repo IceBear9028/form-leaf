@@ -39,9 +39,11 @@ export function upgradeLegacyImportedDocument(
   current: DocumentData,
   freshImport: DocumentData,
 ): DocumentData {
+  const baselineVisual = hasBaselineVisualStyles(current);
+  const generatedVisualV1 = hasGeneratedVisualV1Styles(current, freshImport);
   if (
     current.documentId !== freshImport.documentId ||
-    (!hasBaselineVisualStyles(current) && !hasGeneratedVisualV1Styles(current, freshImport))
+    (!baselineVisual && !generatedVisualV1)
   ) return current;
 
   const original = current;
@@ -53,6 +55,9 @@ export function upgradeLegacyImportedDocument(
     if (!node || node.type !== freshNode.type) return;
     if (freshNode.styleId) node.styleId = freshNode.styleId;
     else delete node.styleId;
+    if (generatedVisualV1 && !freshNode.visible && hasOnlyEmptyBoundValues(original, nodeId)) {
+      node.visible = false;
+    }
   });
 
   Object.entries(freshImport.nodes).forEach(([nodeId, freshNode]) => {
@@ -64,11 +69,17 @@ export function upgradeLegacyImportedDocument(
     const matchesOriginalComponentOrder = hasOriginalComponentFieldOrder(
       freshImport,
       nodeId,
+      original,
       originalNode.childIds,
     );
     if (!matchesFreshVisualOrder && !matchesOriginalComponentOrder) return;
     freshNode.childIds.forEach((childId) => addMissingSubtree(next, freshImport, childId));
+    const obsoleteGeneratedWrappers = nextNode.childIds.filter((childId) => (
+      !freshNode.childIds.includes(childId) &&
+      isObsoleteGeneratedWrapper(freshImport, next, childId)
+    ));
     nextNode.childIds = [...freshNode.childIds];
+    obsoleteGeneratedWrappers.forEach((childId) => delete next.nodes[childId]);
   });
 
   Object.entries(freshImport.nodes).forEach(([nodeId, freshNode]) => {
@@ -114,15 +125,64 @@ function standaloneMarkdownLinks(source: string): Array<{ label: string; href: s
   }));
 }
 
+function hasOnlyEmptyBoundValues(document: DocumentData, nodeId: string): boolean {
+  const binding = Object.values(document.components).flatMap((component) => (
+    component.propDefinitions
+      .filter((prop) => prop.binding.nodeId === nodeId)
+      .map((prop) => ({ componentId: component.id, propId: prop.id }))
+  ))[0];
+  if (!binding) return false;
+  const values = Object.values(document.nodes).flatMap((node) => (
+    node.type === "repeater" && node.itemComponentId === binding.componentId
+      ? node.items.map((item) => item.props[binding.propId])
+      : []
+  ));
+  return values.length > 0 && values.every((value) => typeof value === "string" && value.trim() === "");
+}
+
 function hasOriginalComponentFieldOrder(
   fresh: DocumentData,
   rootNodeId: string,
+  original: DocumentData,
   childIds: string[],
 ): boolean {
   const component = Object.values(fresh.components).find((entry) => entry.rootNodeId === rootNodeId);
   if (!component) return false;
   const fieldNodeIds = component.propDefinitions.map((prop) => prop.binding.nodeId);
-  return sameIds(childIds, fieldNodeIds);
+  if (sameIds(childIds, fieldNodeIds)) return true;
+
+  const byPropId = new Map(component.propDefinitions.map((prop) => [prop.id, prop.binding.nodeId]));
+  const generatedOrder = [
+    "period-start",
+    "period-end",
+    "period-label",
+    "links",
+    "organization",
+    "title",
+    "tags",
+    "body",
+  ].flatMap((propId) => {
+    const nodeId = byPropId.get(propId);
+    return nodeId ? [nodeId] : [];
+  });
+  if (generatedOrder.length !== fieldNodeIds.length) return false;
+  const fieldSet = new Set(fieldNodeIds);
+  const currentOrder = collectBoundFieldOrder(original, childIds, fieldSet);
+  return sameIds(currentOrder, generatedOrder);
+}
+
+function collectBoundFieldOrder(
+  document: DocumentData,
+  childIds: string[],
+  fieldIds: ReadonlySet<string>,
+): string[] {
+  return childIds.flatMap((childId) => {
+    if (fieldIds.has(childId)) return [childId];
+    const child = document.nodes[childId];
+    return child?.type === "container"
+      ? collectBoundFieldOrder(document, child.childIds, fieldIds)
+      : [];
+  });
 }
 
 function hasBaselineVisualStyles(document: DocumentData): boolean {
@@ -197,6 +257,19 @@ function addMissingSubtree(target: DocumentData, fresh: DocumentData, nodeId: st
   if (!node) return;
   target.nodes[nodeId] = structuredClone(node);
   if (node.type === "container") node.childIds.forEach((childId) => addMissingSubtree(target, fresh, childId));
+}
+
+function isObsoleteGeneratedWrapper(
+  fresh: DocumentData,
+  current: DocumentData,
+  nodeId: string,
+): boolean {
+  if (fresh.nodes[nodeId]) return false;
+  const node = current.nodes[nodeId];
+  return Boolean(
+    node?.type === "container" &&
+    node.childIds.every((childId) => fresh.nodes[childId] !== undefined),
+  );
 }
 
 function sameIds(left: string[], right: string[]): boolean {

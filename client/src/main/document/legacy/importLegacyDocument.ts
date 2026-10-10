@@ -67,22 +67,28 @@ class LegacyDocumentBuilder {
   private readonly sectionStyleId = this.ids.create("style", "section");
   private readonly sectionBoundaryStyleId = this.ids.create("style", "section-boundary");
   private readonly roomyBoundaryStyleId = this.ids.create("style", "roomy-boundary");
+  private readonly stackedBoundaryStyleId = this.ids.create("style", "stacked-boundary");
   private readonly itemStyleId = this.ids.create("style", "item");
   private readonly splitItemStyleId = this.ids.create("style", "split-item");
+  private readonly stackedItemStyleId = this.ids.create("style", "stacked-item");
   private readonly headingStyleId = this.ids.create("style", "heading");
   private readonly headingRowStyleId = this.ids.create("style", "heading-row");
   private readonly roomyHeadingRowStyleId = this.ids.create("style", "roomy-heading-row");
+  private readonly stackedHeadingRowStyleId = this.ids.create("style", "stacked-heading-row");
   private readonly annotationStyleId = this.ids.create("style", "annotation");
   private readonly leadStyleId = this.ids.create("style", "lead");
   private readonly listStyleId = this.ids.create("style", "list");
   private readonly connectedListStyleId = this.ids.create("style", "connected-list");
+  private readonly spacedListStyleId = this.ids.create("style", "spaced-list");
   private readonly metaStyleId = this.ids.create("style", "meta");
   private readonly periodStyleId = this.ids.create("style", "period");
   private readonly durationStyleId = this.ids.create("style", "duration");
+  private readonly inlinePeriodStyleId = this.ids.create("style", "inline-period");
   private readonly contentStyleId = this.ids.create("style", "content");
   private readonly detailedContentStyleId = this.ids.create("style", "detailed-content");
   private readonly titleStyleId = this.ids.create("style", "title");
   private readonly subtitleStyleId = this.ids.create("style", "subtitle");
+  private readonly inlineTitleStyleId = this.ids.create("style", "inline-title");
   private readonly bulletBodyStyleId = this.ids.create("style", "bullet-body");
   private readonly accentTitleStyleId = this.ids.create("style", "accent-title");
   private readonly compactTextStyleId = this.ids.create("style", "compact-text");
@@ -199,6 +205,22 @@ class LegacyDocumentBuilder {
           borderEdges: ["top"],
         },
       },
+      [this.stackedBoundaryStyleId]: {
+        id: this.stackedBoundaryStyleId,
+        name: "Stacked boundary",
+        layout: {
+          direction: "column",
+          gapPt: 0,
+          paddingPt: [17.9, 0, 0, 0],
+          align: "stretch",
+          width: { mode: "fill" },
+        },
+        decoration: {
+          borderColor: { kind: "hex", value: "#D9D9D9" },
+          borderWidthPt: 0.75,
+          borderEdges: ["top"],
+        },
+      },
       [this.itemStyleId]: {
         id: this.itemStyleId,
         name: "Item",
@@ -215,6 +237,12 @@ class LegacyDocumentBuilder {
           align: "start",
           width: { mode: "fill" },
         },
+        pagination: { keepTogether: true },
+      },
+      [this.stackedItemStyleId]: {
+        id: this.stackedItemStyleId,
+        name: "Stacked item",
+        layout: { direction: "column", gapPt: 0, align: "start", width: { mode: "fill" } },
         pagination: { keepTogether: true },
       },
       [this.headingStyleId]: {
@@ -246,6 +274,18 @@ class LegacyDocumentBuilder {
         },
         pagination: { keepTogether: true, keepWithNext: true },
       },
+      [this.stackedHeadingRowStyleId]: {
+        id: this.stackedHeadingRowStyleId,
+        name: "Stacked heading row",
+        layout: {
+          direction: "row",
+          gapPt: 5.5,
+          paddingPt: [0, 0, 19.3, 0],
+          align: "end",
+          width: { mode: "fill" },
+        },
+        pagination: { keepTogether: true, keepWithNext: true },
+      },
       [this.annotationStyleId]: {
         id: this.annotationStyleId,
         name: "Annotation",
@@ -267,6 +307,11 @@ class LegacyDocumentBuilder {
         name: "Connected list",
         layout: { direction: "column", gapPt: 0, align: "stretch", width: { mode: "fill" } },
       },
+      [this.spacedListStyleId]: {
+        id: this.spacedListStyleId,
+        name: "Spaced list",
+        layout: { direction: "column", gapPt: 16.2, align: "stretch", width: { mode: "fill" } },
+      },
       [this.metaStyleId]: {
         id: this.metaStyleId,
         name: "Meta column",
@@ -283,6 +328,12 @@ class LegacyDocumentBuilder {
         id: this.durationStyleId,
         name: "Duration",
         typography: { fontSizePt: 8, lineHeight: 1.75, fontWeight: 700, color: { kind: "hex", value: "#2D3137" } },
+      },
+      [this.inlinePeriodStyleId]: {
+        id: this.inlinePeriodStyleId,
+        name: "Inline period",
+        layout: { direction: "row", gapPt: 3, align: "start", width: { mode: "fill" } },
+        typography: { fontSizePt: 8, lineHeight: 1.25, color: { kind: "hex", value: "#585E66" } },
       },
       [this.contentStyleId]: {
         id: this.contentStyleId,
@@ -305,6 +356,12 @@ class LegacyDocumentBuilder {
         id: this.subtitleStyleId,
         name: "Subtitle",
         typography: { fontSizePt: 8, lineHeight: 1.25, color: { kind: "hex", value: "#4D535B" } },
+      },
+      [this.inlineTitleStyleId]: {
+        id: this.inlineTitleStyleId,
+        name: "Inline title",
+        layout: { direction: "row", gapPt: 3, paddingPt: [3, 0, 0, 0], align: "start", width: { mode: "fill" } },
+        typography: { fontSizePt: 10, lineHeight: 1.2, fontWeight: 730, color: { kind: "hex", value: "#202328" } },
       },
       [this.bulletBodyStyleId]: {
         id: this.bulletBodyStyleId,
@@ -444,19 +501,20 @@ class LegacyDocumentBuilder {
 
   private addTimeline(section: LegacyTimelineSection, sectionIndex: number): void {
     const detailed = section.timelineKind === "career";
+    const stacked = section.timelineKind === "education";
     const containerId = this.addSectionContainer(
       section.id,
       sectionIndex,
       section.title,
       section.visible,
-      detailed ? this.roomyBoundaryStyleId : undefined,
+      detailed ? this.roomyBoundaryStyleId : stacked ? this.stackedBoundaryStyleId : undefined,
     );
     this.addSectionHeader(
       containerId,
       section.id,
       section.title,
       section.annotation,
-      detailed ? this.roomyHeadingRowStyleId : undefined,
+      detailed ? this.roomyHeadingRowStyleId : stacked ? this.stackedHeadingRowStyleId : undefined,
     );
     const component = this.createTimelineComponent(section);
     const repeaterId = this.ids.create("node", `${section.id}-items`);
@@ -465,7 +523,7 @@ class LegacyDocumentBuilder {
       type: "repeater",
       name: `${section.title} items`,
       visible: true,
-      styleId: detailed ? this.connectedListStyleId : this.listStyleId,
+      styleId: detailed ? this.connectedListStyleId : stacked ? this.spacedListStyleId : this.listStyleId,
       itemComponentId: component.id,
       items: section.items.map((item, itemIndex) => ({
         id: this.ids.create("item", `${section.id}-${item.id}-${itemIndex}`),
@@ -498,7 +556,7 @@ class LegacyDocumentBuilder {
 
   private createTimelineComponent(section: LegacyTimelineSection): ComponentDefinition {
     const detailed = section.timelineKind === "career";
-    return this.createItemComponent(section.id, `${section.title} item`, false, true, [
+    const fields = [
       textField("period-start", "Start", ""),
       textField("period-end", "End", ""),
       textField("period-label", "Period label", ""),
@@ -506,7 +564,110 @@ class LegacyDocumentBuilder {
       richTextField("title", "Title", emptyRichText()),
       markdownField("links", "Links", ""),
       markdownField("body", "Body", ""),
-    ], detailed);
+    ];
+    if (section.timelineKind === "education") {
+      return this.createStackedItemComponent(
+        section.id,
+        `${section.title} item`,
+        fields,
+        section.items.some((item) => item.bodyMarkdown.trim().length > 0),
+      );
+    }
+    return this.createItemComponent(section.id, `${section.title} item`, false, true, fields, detailed);
+  }
+
+  private createStackedItemComponent(
+    sourceId: string,
+    name: string,
+    fields: LegacyComponentField[],
+    showBody: boolean,
+  ): ComponentDefinition {
+    const componentId = this.ids.create("component", sourceId);
+    const rootNodeId = this.ids.create("node", `${sourceId}-item-root`);
+    const periodId = this.ids.create("node", `${sourceId}-item-period`);
+    const titleId = this.ids.create("node", `${sourceId}-item-title`);
+    const root: DocumentNode = {
+      id: rootNodeId,
+      type: "container",
+      name,
+      visible: true,
+      styleId: this.stackedItemStyleId,
+      childIds: [periodId, titleId],
+    };
+    const period: DocumentNode = {
+      id: periodId,
+      type: "container",
+      name: "Inline period",
+      visible: true,
+      styleId: this.inlinePeriodStyleId,
+      childIds: [],
+    };
+    const title: DocumentNode = {
+      id: titleId,
+      type: "container",
+      name: "Inline title",
+      visible: true,
+      styleId: this.inlineTitleStyleId,
+      childIds: [],
+    };
+    this.document.nodes[rootNodeId] = root;
+    this.document.nodes[periodId] = period;
+    this.document.nodes[titleId] = title;
+
+    const propDefinitions = fields.map((field) => {
+      const nodeId = this.ids.create("node", `${sourceId}-${field.id}`);
+      const node = field.createNode(nodeId);
+      this.document.nodes[nodeId] = node;
+      if (field.id === "period-start" || field.id === "period-end") {
+        if (field.id === "period-end") {
+          const separatorId = this.ids.create("node", `${sourceId}-period-separator`);
+          this.document.nodes[separatorId] = {
+            id: separatorId,
+            type: "text",
+            name: "Separator",
+            visible: true,
+            value: "~",
+          };
+          period.childIds.push(separatorId);
+        }
+        period.childIds.push(nodeId);
+      } else if (field.id === "organization" || field.id === "title") {
+        if (field.id === "title") {
+          const separatorId = this.ids.create("node", `${sourceId}-title-separator`);
+          this.document.nodes[separatorId] = {
+            id: separatorId,
+            type: "text",
+            name: "Separator",
+            visible: true,
+            value: "-",
+          };
+          title.childIds.push(separatorId);
+        }
+        title.childIds.push(nodeId);
+      } else {
+        if (field.id === "period-label" || field.id === "links" || (field.id === "body" && !showBody)) {
+          node.visible = false;
+        }
+        if (field.id === "body") node.styleId = this.compactTextStyleId;
+        root.childIds.push(nodeId);
+      }
+      return {
+        id: field.id,
+        name: field.name,
+        status: "active" as const,
+        valueType: field.valueType,
+        binding: { nodeId, property: field.bindingProperty } as ComponentPropDefinition["binding"],
+        defaultValue: field.defaultValue,
+      };
+    });
+    const component: ComponentDefinition = {
+      id: componentId,
+      name,
+      rootNodeId,
+      propDefinitions,
+    };
+    this.document.components[componentId] = component;
+    return component;
   }
 
   private createProjectComponent(section: LegacyProjectGroupSection): ComponentDefinition {
