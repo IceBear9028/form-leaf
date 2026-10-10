@@ -48,7 +48,7 @@ export function PropertyInspector({
   const node = selection ? document.nodes[selection.nodeId] : undefined;
   if (!node || node.archivedFrom) {
     return (
-      <aside className="border-l border-border bg-muted/20 p-4" aria-label="Properties">
+      <aside className="border-l border-border bg-background p-4" aria-label="Properties">
         <h2 className="text-sm font-semibold">속성</h2>
         <p className="mt-2 text-xs leading-5 text-muted-foreground">문서나 레이어에서 요소를 선택하세요.</p>
       </aside>
@@ -61,8 +61,8 @@ export function PropertyInspector({
   };
 
   return (
-    <aside className="min-h-0 overflow-y-auto border-l border-border bg-muted/20" aria-label="Properties">
-      <div className="border-b border-border px-4 py-3">
+    <aside className="min-h-0 overflow-y-auto border-l border-border bg-background" aria-label="Properties">
+      <div className="border-b border-border bg-muted/30 px-4 py-3">
         <h2 className="text-sm font-semibold">속성</h2>
         <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{node.type}</p>
       </div>

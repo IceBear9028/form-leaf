@@ -51,8 +51,8 @@ export function DocumentStructurePanel({
   };
 
   return (
-    <aside className="flex min-h-0 flex-col border-r border-border bg-muted/20" aria-label="Document structure">
-      <div className="border-b border-border px-3 py-3">
+    <aside className="flex min-h-0 flex-col border-r border-border bg-background" aria-label="Document structure">
+      <div className="border-b border-border bg-muted/30 px-3 py-3">
         <h2 className="text-sm font-semibold">레이어</h2>
         <p className="mt-1 text-xs text-muted-foreground">이름은 표시용 데이터이며 동작을 바꾸지 않습니다.</p>
       </div>
@@ -69,7 +69,7 @@ export function DocumentStructurePanel({
           onDragEnd={() => setDraggedNodeId(undefined)}
         />
       </div>
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border bg-muted/20 p-3">
         <div className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground">
           <PlusIcon className="size-3.5" aria-hidden="true" /> 요소 추가
         </div>

@@ -3,11 +3,14 @@
   box-sizing: border-box;
 }
 
-.paginated-document--screen {
+.document-page-stack--screen {
   display: flex;
+  width: max-content;
+  margin: 0 auto;
   flex-direction: column;
   align-items: center;
   gap: 16mm;
+  zoom: var(--document-preview-zoom, 1);
 }
 
 .document-page,
@@ -426,6 +429,10 @@
     outline: 0;
     break-after: page;
     page-break-after: always;
+  }
+
+  .document-page-stack--print {
+    display: block;
   }
 
   .paginated-document--print .document-page:last-of-type {

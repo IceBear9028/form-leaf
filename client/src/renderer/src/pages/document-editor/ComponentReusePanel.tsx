@@ -144,8 +144,8 @@ export function ComponentReusePanel({
   };
 
   return (
-    <aside className="flex min-h-0 flex-col border-r border-t border-border bg-muted/20" aria-label="Components">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+    <aside className="flex min-h-0 flex-col border-r border-t border-border bg-background" aria-label="Components">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/30 px-3 py-2">
         <div>
           <h2 className="text-sm font-semibold">컴포넌트</h2>
           <p className="mt-0.5 text-[11px] text-muted-foreground">문서 내부에서 재사용합니다.</p>

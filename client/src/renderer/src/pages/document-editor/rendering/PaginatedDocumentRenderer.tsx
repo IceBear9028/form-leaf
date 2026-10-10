@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { DocumentData } from "../../../../../foundation/documentModel.ts";
 import type { DirectEditValue, DocumentEditTarget, TextRange } from "../../../../../foundation/documentEditing.ts";
 import { NodeRenderer, type RenderSelectionTarget } from "./NodeRenderer.tsx";
@@ -18,6 +18,7 @@ export function PaginatedDocumentRenderer({
   onEditValueChange,
   onRichTextSelection,
   richTextSelection,
+  zoom = 1,
 }: {
   document: DocumentData;
   mode: "screen" | "print";
@@ -27,6 +28,7 @@ export function PaginatedDocumentRenderer({
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
   richTextSelection?: DirectTextSelection;
+  zoom?: number;
 }) {
   const tree = useMemo(() => buildRenderTree(document), [document]);
   const root = requireContainer(tree);
@@ -79,24 +81,29 @@ export function PaginatedDocumentRenderer({
 
   return (
     <div className={`paginated-document paginated-document--${mode}`} data-document-page-count={pages.length}>
-      {pages.map((page, pageIndex) => (
-        <div className={`document-page document-renderer document-renderer--${mode}`} data-document-page-id={page.id} data-document-page-overflow={page.overflow || undefined} key={page.id}>
-          <div className="document-page-content">
-            <NodeRenderer
-              node={{ ...root, children: page.units.map((unit) => unit.node) }}
-              selectedNodeId={selectedNodeId}
-              selectableNodeIds={selectableNodeIds}
-              onSelect={mode === "screen" ? onSelect : undefined}
-              onEditValueChange={mode === "screen" ? onEditValueChange : undefined}
-              onRichTextSelection={mode === "screen" ? onRichTextSelection : undefined}
-              richTextSelection={mode === "screen" ? richTextSelection : undefined}
-            />
+      <div
+        className={`document-page-stack document-page-stack--${mode}`}
+        style={mode === "screen" ? { "--document-preview-zoom": zoom } as CSSProperties : undefined}
+      >
+        {pages.map((page, pageIndex) => (
+          <div className={`document-page document-renderer document-renderer--${mode}`} data-document-page-id={page.id} data-document-page-overflow={page.overflow || undefined} key={page.id}>
+            <div className="document-page-content">
+              <NodeRenderer
+                node={{ ...root, children: page.units.map((unit) => unit.node) }}
+                selectedNodeId={selectedNodeId}
+                selectableNodeIds={selectableNodeIds}
+                onSelect={mode === "screen" ? onSelect : undefined}
+                onEditValueChange={mode === "screen" ? onEditValueChange : undefined}
+                onRichTextSelection={mode === "screen" ? onRichTextSelection : undefined}
+                richTextSelection={mode === "screen" ? richTextSelection : undefined}
+              />
+            </div>
+            <footer className="document-page-footer" aria-label={`${pageIndex + 1}페이지`}>
+              <span>{pageIndex + 1}</span>
+            </footer>
           </div>
-          <footer className="document-page-footer" aria-label={`${pageIndex + 1}페이지`}>
-            <span>{pageIndex + 1}</span>
-          </footer>
-        </div>
-      ))}
+        ))}
+      </div>
       <div className="document-measure-page" aria-hidden="true">
         <div className="document-measure-content" ref={measureContentRef}>
           <div className="document-renderer document-renderer--measure">

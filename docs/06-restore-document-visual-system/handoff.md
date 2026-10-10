@@ -2,10 +2,10 @@
 
 ## 현재 상태
 
-- 상태: 범용 style preset·기본 문서 스타일 복구 완료
-- 현재 단계: 4. editor chrome·preview zoom 복구
-- 작업 트리: 단계 3 구현 및 문서 변경
-- 마지막 커밋: `3b0a603 style: restore document page rendering`
+- 상태: editor chrome·preview zoom 복구 완료
+- 현재 단계: 5. legacy import 시각 호환 보강
+- 작업 트리: 단계 4 구현 및 문서 변경
+- 마지막 커밋: `12ddfcc feat: add generic document style presets`
 
 ## 완료된 작업
 
@@ -19,21 +19,20 @@
 - 새 문서는 빈 root 구조를 유지하면서 일반 preset 값을 포함한 root style로 시작한다.
 - inspector에서 root preset을 적용한 뒤 개별 layout·typography 값을 계속 수정할 수 있다.
 - root의 글자 크기·줄 높이·간격을 Markdown 계층 CSS 변수에도 전달한다.
+- toolbar에 기본 78%, 8% 단위, 50~115% 범위의 preview zoom을 복구했다.
+- screen page stack에만 CSS zoom을 적용해 measurement·print 크기와 페이지 수를 분리했다.
+- 좌우 panel surface와 header, 미리보기 배경·여백을 정돈했다.
 
 ## 변경 파일
 
-- `client/src/foundation/documentStylePresets.ts`
-- `client/src/foundation/documentModel.ts`
-- `client/src/foundation/document.ts`
+- `client/src/renderer/src/pages/document-editor/previewZoom.ts`
+- `client/src/renderer/src/pages/document-editor/GenericDocumentEditorPage.tsx`
+- `client/src/renderer/src/pages/document-editor/DocumentStructurePanel.tsx`
+- `client/src/renderer/src/pages/document-editor/ComponentReusePanel.tsx`
 - `client/src/renderer/src/pages/document-editor/PropertyInspector.tsx`
-- `client/src/renderer/src/pages/document-editor/rendering/styleToCss.ts`
-- `client/test/document-style-presets.test.mjs`
-- `client/test/document-core.test.mjs`
+- `client/src/renderer/src/pages/document-editor/rendering/PaginatedDocumentRenderer.tsx`
+- `client/src/renderer/src/pages/document-editor/rendering/document.css`
 - `client/test/document-editor.test.mjs`
-- `client/test/document-renderer.test.mjs`
-- `client/test/document-component-reuse.test.mjs`
-- `client/package.json`
-- `docs/06-restore-document-visual-system/README.md`
 - `docs/06-restore-document-visual-system/plan.md`
 - `docs/06-restore-document-visual-system/handoff.md`
 
@@ -52,10 +51,14 @@
 | `npm test` | 전체 통과 |
 | 일반→조밀 적용 후 저장 | root style 값과 화면 `7.5pt/1.5/5.5pt` 반영 확인 |
 | 격리 Electron 재실행 | 조밀 style과 계산값 유지 확인 |
+| `npm run test:editor` | zoom 경계 포함 5개 통과 |
+| `npm run test:pagination` | 3개 통과 |
+| zoom Electron smoke | 78→86%에서 화면 폭만 619→683px, 측정 A4 794px·페이지 수 1 유지 |
+| editor snapshot | toolbar, 3개 panel, page surface 배치 확인 |
 
 ## 남은 작업
 
-- 단계 4 editor chrome과 screen-only preview zoom 복구
+- 단계 5 legacy import의 generic layout과 reference 시각 호환 보강
 
 ## 미결정 사항과 위험
 
@@ -64,4 +67,4 @@
 
 ## 다음 세션의 첫 작업
 
-작업 전 toolbar의 50~115% zoom을 범용 editor에 복구하고, 3개 panel의 hierarchy와 spacing을 정돈한다. zoom은 screen preview wrapper에만 적용한다.
+legacy v1/v2 fixture가 생성하는 root, section, item, heading style을 page inset과 맞추고 reference PDF와 비교한다. 목적별 입력 해석은 `main/document/legacy` 밖으로 유출하지 않는다.

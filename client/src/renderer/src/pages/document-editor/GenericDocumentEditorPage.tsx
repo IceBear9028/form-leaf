@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeftIcon, CheckIcon, FileDownIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, FileDownIcon, MinusIcon, PlusIcon } from "lucide-react";
 import type { DocumentData, RichTextMark, RichTextValue } from "../../../../foundation/documentModel.ts";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
 import {
@@ -14,8 +14,10 @@ import {
 } from "../../../../foundation/documentEditing.ts";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { ButtonGroup } from "@/shared/ui/button-group";
 import { Spinner } from "@/shared/ui/spinner";
 import { toast } from "@/shared/ui/toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { ComponentReusePanel } from "./ComponentReusePanel.tsx";
 import { DocumentStructurePanel } from "./DocumentStructurePanel.tsx";
 import { PropertyInspector } from "./PropertyInspector.tsx";
@@ -24,6 +26,12 @@ import { documentSelectableNodeIds, selectNode } from "./documentSelection.ts";
 import { PaginatedDocumentRenderer } from "./rendering/PaginatedDocumentRenderer.tsx";
 import type { DirectTextSelection } from "./rendering/EditableTextValue.tsx";
 import { type SaveState, useGenericDocumentSession } from "./useGenericDocumentSession.ts";
+import {
+  DEFAULT_PREVIEW_ZOOM,
+  MAX_PREVIEW_ZOOM,
+  MIN_PREVIEW_ZOOM,
+  stepPreviewZoom,
+} from "./previewZoom.ts";
 
 export function GenericDocumentEditorPage({
   initialDocument,
@@ -39,6 +47,7 @@ export function GenericDocumentEditorPage({
   const undoRef = useRef<DocumentData[]>([]);
   const redoRef = useRef<DocumentData[]>([]);
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
+  const [zoom, setZoom] = useState(DEFAULT_PREVIEW_ZOOM);
   const [exporting, setExporting] = useState(false);
   const [returning, setReturning] = useState(false);
   const selectableNodeIds = useMemo(() => documentSelectableNodeIds(session.document), [session.document]);
@@ -152,19 +161,58 @@ export function GenericDocumentEditorPage({
           <strong className="truncate text-sm font-medium">{session.document.name || "제목 없는 문서"}</strong>
         </div>
         <SaveIndicator state={session.saveState} onRetry={() => void session.saveNow()} />
-        <div className="justify-self-end [-webkit-app-region:no-drag]">
+        <div className="flex items-center justify-self-end gap-3 [-webkit-app-region:no-drag]">
+          <ButtonGroup aria-label="미리보기 배율">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="축소"
+                    disabled={zoom <= MIN_PREVIEW_ZOOM}
+                    onClick={() => setZoom((value) => stepPreviewZoom(value, -1))}
+                  />
+                }
+              >
+                <MinusIcon aria-hidden="true" />
+              </TooltipTrigger>
+              <TooltipContent>축소</TooltipContent>
+            </Tooltip>
+            <Button type="button" variant="outline" className="w-14 tabular-nums" onClick={() => setZoom(DEFAULT_PREVIEW_ZOOM)}>
+              {Math.round(zoom * 100)}%
+            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="확대"
+                    disabled={zoom >= MAX_PREVIEW_ZOOM}
+                    onClick={() => setZoom((value) => stepPreviewZoom(value, 1))}
+                  />
+                }
+              >
+                <PlusIcon aria-hidden="true" />
+              </TooltipTrigger>
+              <TooltipContent>확대</TooltipContent>
+            </Tooltip>
+          </ButtonGroup>
           <Button type="button" disabled={exporting} onClick={() => void exportPdf()}>
             {exporting ? <Spinner /> : <FileDownIcon aria-hidden="true" />}
             {exporting ? "PDF 준비 중…" : "PDF 내보내기"}
           </Button>
         </div>
       </header>
-      <div className="workspace grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_300px]">
+      <div className="workspace grid min-h-0 flex-1 grid-cols-[288px_minmax(0,1fr)_320px]">
         <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(240px,0.75fr)]">
           <DocumentStructurePanel document={session.document} selection={session.selection} onSelectionChange={session.setSelection} onChange={session.updateDocument} />
           <ComponentReusePanel document={session.document} selection={session.selection} onSelectionChange={session.setSelection} onChange={session.updateDocument} />
         </div>
-        <main ref={previewRef} className="min-w-0 overflow-auto bg-muted/40 p-8" aria-label="문서 미리보기">
+        <main ref={previewRef} className="min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 pb-[100px] pt-[34px] max-[1180px]:px-6" aria-label="문서 미리보기">
           <PaginatedDocumentRenderer
             document={session.document}
             mode="screen"
@@ -174,6 +222,7 @@ export function GenericDocumentEditorPage({
             onEditValueChange={commitDirectEdit}
             onRichTextSelection={setRichTextSelection}
             richTextSelection={richTextSelection}
+            zoom={zoom}
           />
         </main>
         <PropertyInspector document={session.document} selection={session.selection} onChange={session.updateDocument} />

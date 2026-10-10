@@ -16,6 +16,12 @@ import {
   reconcileDocumentSelection,
   selectNode,
 } from "../src/renderer/src/pages/document-editor/documentSelection.ts";
+import {
+  DEFAULT_PREVIEW_ZOOM,
+  MAX_PREVIEW_ZOOM,
+  MIN_PREVIEW_ZOOM,
+  stepPreviewZoom,
+} from "../src/renderer/src/pages/document-editor/previewZoom.ts";
 
 const fixedTime = "2026-10-09T00:00:00.000Z";
 const options = {
@@ -113,4 +119,12 @@ test("preview 선택 대상은 document tree만 포함하고 component 정의 �
   assert.deepEqual([...ids], ["node-root", "node-visible"]);
   assert.equal(ids.has("component-root"), false);
   assert.equal(ids.has("component-text"), false);
+});
+
+test("preview zoom은 8%씩 이동하고 50~115% 범위를 넘지 않는다", () => {
+  assert.equal(stepPreviewZoom(DEFAULT_PREVIEW_ZOOM, -1), 0.7);
+  assert.equal(stepPreviewZoom(DEFAULT_PREVIEW_ZOOM, 1), 0.86);
+  assert.equal(stepPreviewZoom(MIN_PREVIEW_ZOOM, -1), MIN_PREVIEW_ZOOM);
+  assert.equal(stepPreviewZoom(MAX_PREVIEW_ZOOM, 1), MAX_PREVIEW_ZOOM);
+  assert.equal(stepPreviewZoom(1.1, 1), MAX_PREVIEW_ZOOM);
 });
