@@ -59,6 +59,8 @@ export function NodeRenderer({
     "data-document-render-id": node.renderId,
     "data-document-node-id": node.sourceNodeId,
     "data-document-node-type": node.type,
+    "data-markdown-fragment-first": node.type === "markdown" && node.fragment ? String(node.fragment.first) : undefined,
+    "data-markdown-fragment-last": node.type === "markdown" && node.fragment ? String(node.fragment.last) : undefined,
     "data-measure-id": measure ? node.renderId : undefined,
     "data-document-selected": selectedNodeId === node.sourceNodeId ? "true" : undefined,
     tabIndex: selectable && !directlyEditable ? 0 : undefined,
@@ -125,10 +127,11 @@ export function NodeRenderer({
           hostProps={attributes}
           target={node.editTarget}
           source={node.source}
+          fragment={node.fragment}
           onChange={onEditValueChange}
         />
       )
-      : <div {...attributes}><MarkdownView source={node.source} /></div>;
+      : <div {...attributes}><MarkdownView source={node.source} fragment={node.fragment} /></div>;
   }
   return (
     <div {...attributes}>

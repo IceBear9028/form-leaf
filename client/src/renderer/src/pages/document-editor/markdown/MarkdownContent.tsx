@@ -49,25 +49,32 @@ export type MarkdownEditingContext = {
 export function MarkdownContent({
   source,
   context,
+  blockIndexes,
+  showFootnotes = true,
 }: {
   source: string;
   context: MarkdownContext;
+  blockIndexes?: number[];
+  showFootnotes?: boolean;
 }) {
   const generatedId = useId();
   const blocks = parseMarkdownBlocks(source);
+  const renderedBlocks = blockIndexes
+    ? blockIndexes.flatMap((index) => blocks[index] ? [blocks[index]] : [])
+    : blocks;
   const footnotes = getFootnotes(blocks);
   const renderContext = createRenderContext(blocks, `markdown-${generatedId.replaceAll(":", "")}`);
 
   return (
     <div className={`markdown-body markdown-body--${context}`}>
-      {blocks.map((block) => (
+      {renderedBlocks.map((block) => (
         <MarkdownBlockView
           key={block.id}
           block={block}
           renderContext={renderContext}
         />
       ))}
-      {footnotes.length > 0 && (
+      {showFootnotes && footnotes.length > 0 && (
         <MarkdownFootnotes footnotes={footnotes} renderContext={renderContext} />
       )}
     </div>

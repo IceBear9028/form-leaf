@@ -36,6 +36,11 @@ export type RenderRichTextNode = RenderNodeBase & {
 export type RenderMarkdownNode = RenderNodeBase & {
   type: "markdown";
   source: string;
+  fragment?: {
+    blockIndexes: number[];
+    first: boolean;
+    last: boolean;
+  };
 };
 
 export type RenderImageNode = RenderNodeBase & {

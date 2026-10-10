@@ -1,4 +1,11 @@
-import type { RenderContainerNode, RenderRepeaterNode, RenderTreeNode } from "./renderTree.ts";
+import { parseMarkdownBlocks } from "../markdown/parser.ts";
+import type {
+  RenderComponentNode,
+  RenderContainerNode,
+  RenderMarkdownNode,
+  RenderRepeaterNode,
+  RenderTreeNode,
+} from "./renderTree.ts";
 
 export type PaginationUnit = {
   id: string;
@@ -22,13 +29,64 @@ export function collectPaginationUnits(root: RenderTreeNode): PaginationUnit[] {
 function splitPaginationNode(node: RenderTreeNode): PaginationUnit[] {
   if (!node.visible) return [];
   if (node.style?.pagination?.keepTogether) return [unitFromNode(node)];
-  if (node.type !== "container" && node.type !== "repeater") return [unitFromNode(node)];
+  if (node.type === "markdown") return splitMarkdown(node);
+  if (node.type === "component-instance") return splitComponent(node);
   if (node.type === "repeater") return splitRepeater(node);
+  if (node.type !== "container") return [unitFromNode(node)];
 
   const childUnits = node.children.flatMap(splitPaginationNode);
   if (!childUnits.length) return [unitFromNode(node)];
   return childUnits.map((unit, index) => {
     const wrapper = wrapContainerUnit(node, unit, index);
+    return {
+      ...unit,
+      id: wrapper.renderId,
+      node: wrapper,
+      forcePageBreakBefore: index === 0
+        ? node.style?.pagination?.forcePageBreakBefore ?? unit.forcePageBreakBefore
+        : unit.forcePageBreakBefore,
+    };
+  });
+}
+
+function splitMarkdown(node: RenderMarkdownNode): PaginationUnit[] {
+  const blocks = parseMarkdownBlocks(node.source);
+  const visibleBlockIndexes = blocks.flatMap((block, index) => (
+    block.node.type === "definition" || block.node.type === "footnoteDefinition" ? [] : [index]
+  ));
+  if (visibleBlockIndexes.length <= 1) return [unitFromNode(node)];
+  return visibleBlockIndexes.map((blockIndex, fragmentIndex) => {
+    const block = blocks[blockIndex];
+    const fragment: RenderMarkdownNode = {
+      ...node,
+      renderId: `${node.renderId}/markdown-block:${block.id}`,
+      style: fragmentIndex === 0 ? node.style : continuationStyle(node.style),
+      fragment: {
+        blockIndexes: [blockIndex],
+        first: fragmentIndex === 0,
+        last: fragmentIndex === visibleBlockIndexes.length - 1,
+      },
+    };
+    return {
+      ...unitFromNode(fragment),
+      keepWithNext: block.node.type === "heading" || node.style?.pagination?.keepWithNext,
+      forcePageBreakBefore: fragmentIndex === 0
+        ? node.style?.pagination?.forcePageBreakBefore
+        : undefined,
+    };
+  });
+}
+
+function splitComponent(node: RenderComponentNode): PaginationUnit[] {
+  const childUnits = splitPaginationNode(node.child);
+  if (childUnits.length <= 1) return [unitFromNode(node)];
+  return childUnits.map((unit, index) => {
+    const wrapper: RenderComponentNode = {
+      ...node,
+      renderId: `${node.renderId}/page-unit:${unit.id}`,
+      style: index === 0 ? node.style : continuationStyle(node.style),
+      child: unit.node,
+    };
     return {
       ...unit,
       id: wrapper.renderId,
@@ -53,21 +111,29 @@ function unitFromNode(node: RenderTreeNode): PaginationUnit {
 function splitRepeater(node: RenderRepeaterNode): PaginationUnit[] {
   const visibleItems = node.items.filter((item) => item.visible);
   if (!visibleItems.length) return [unitFromNode(node)];
-  return visibleItems.map((item, index) => {
-    const wrapper: RenderRepeaterNode = {
-      ...node,
-      renderId: `${node.renderId}/page-item:${item.id}`,
-      style: index === 0 ? node.style : continuationStyle(node.style),
-      items: [item],
-    };
-    return {
-      id: wrapper.renderId,
-      node: wrapper,
-      keepTogether: item.child.style?.pagination?.keepTogether ?? true,
-      keepWithNext: item.child.style?.pagination?.keepWithNext,
-      forcePageBreakBefore: index === 0 ? node.style?.pagination?.forcePageBreakBefore : undefined,
-    };
+  const result: PaginationUnit[] = [];
+  visibleItems.forEach((item, itemIndex) => {
+    const childUnits = item.child.style?.pagination?.keepTogether
+      ? [unitFromNode(item.child)]
+      : splitPaginationNode(item.child);
+    childUnits.forEach((unit, unitIndex) => {
+      const wrapper: RenderRepeaterNode = {
+        ...node,
+        renderId: `${node.renderId}/page-item:${item.id}/unit:${unit.id}`,
+        style: result.length === 0 ? node.style : continuationStyle(node.style),
+        items: [{ ...item, child: unit.node }],
+      };
+      result.push({
+        ...unit,
+        id: wrapper.renderId,
+        node: wrapper,
+        forcePageBreakBefore: itemIndex === 0 && unitIndex === 0
+          ? node.style?.pagination?.forcePageBreakBefore ?? unit.forcePageBreakBefore
+          : unit.forcePageBreakBefore,
+      });
+    });
   });
+  return result;
 }
 
 function wrapContainerUnit(

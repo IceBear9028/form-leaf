@@ -31,16 +31,19 @@ import {
   MarkdownFootnotesContent,
 } from "../markdown/MarkdownContent.tsx";
 import { MarkdownSelectionToolbar } from "../markdown/MarkdownSelectionToolbar.tsx";
+import type { RenderMarkdownNode } from "./renderTree.ts";
 
 export function EditableMarkdownValue({
   hostProps,
   target,
   source,
+  fragment,
   onChange,
 }: {
   hostProps: HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string | undefined>;
   target: DocumentEditTarget;
   source: string;
+  fragment?: RenderMarkdownNode["fragment"];
   onChange: (target: DocumentEditTarget, value: string, selection: TextRange) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -48,6 +51,9 @@ export function EditableMarkdownValue({
   const pendingSelectionRef = useRef<MarkdownSourceRange | undefined>(undefined);
   const [selection, setSelection] = useState<MarkdownDomSelection>();
   const blocks = parseMarkdownBlocks(source);
+  const renderedBlocks = fragment
+    ? fragment.blockIndexes.flatMap((index) => blocks[index] ? [blocks[index]] : [])
+    : blocks;
   const sourceId = editTargetSourceId(target);
   sourceRef.current = source;
 
@@ -192,7 +198,7 @@ export function EditableMarkdownValue({
 
   return (
     <div {...hostProps} ref={rootRef} data-document-edit-target="true">
-      {blocks.length ? blocks.map((block) => (
+      {renderedBlocks.length ? renderedBlocks.map((block) => (
         <MarkdownBlockContent
           key={block.id}
           block={block}
@@ -233,7 +239,9 @@ export function EditableMarkdownValue({
           }}
         />
       )}
-      <MarkdownFootnotesContent documentBlocks={blocks} context="document" idPrefix={`markdown-${sourceId}`} />
+      {(!fragment || fragment.last) && (
+        <MarkdownFootnotesContent documentBlocks={blocks} context="document" idPrefix={`markdown-${sourceId}`} />
+      )}
       {selection && (
         <MarkdownSelectionToolbar rect={selection.rect} onFormat={applyFormat} onLink={applyLink} />
       )}

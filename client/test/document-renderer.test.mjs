@@ -239,6 +239,97 @@ test("분할 가능한 중첩 container는 시각 wrapper를 보존한 paginatio
   assert.equal(units[1].node.style.decoration.borderEdges, undefined);
 });
 
+test("repeater 내부 Markdown은 원본을 유지하며 블록 단위 pagination unit으로 나눈다", () => {
+  const markdown = {
+    renderId: "node:body",
+    sourceNodeId: "body",
+    type: "markdown",
+    name: "Body",
+    visible: true,
+    source: "First paragraph\n\n## Detail\n\nLast paragraph",
+  };
+  const tree = {
+    renderId: "node:root",
+    sourceNodeId: "root",
+    type: "container",
+    name: "Root",
+    visible: true,
+    children: [{
+      renderId: "node:list",
+      sourceNodeId: "list",
+      type: "repeater",
+      name: "List",
+      visible: true,
+      componentId: "component-item",
+      items: [{
+        id: "item-a",
+        visible: true,
+        child: {
+          renderId: "node:list/item:item-a/root",
+          sourceNodeId: "item-root",
+          type: "container",
+          name: "Item",
+          visible: true,
+          children: [markdown],
+        },
+      }],
+    }],
+  };
+
+  const units = collectPaginationUnits(tree);
+  assert.equal(units.length, 3);
+  const fragments = units.map((unit) => {
+    assert.equal(unit.node.type, "repeater");
+    const itemRoot = unit.node.items[0].child;
+    assert.equal(itemRoot.type, "container");
+    const child = itemRoot.children[0];
+    assert.equal(child.type, "markdown");
+    return child;
+  });
+  assert.deepEqual(fragments.map((fragment) => fragment.fragment.blockIndexes), [[0], [1], [2]]);
+  assert.equal(fragments.every((fragment) => fragment.source === markdown.source), true);
+  assert.deepEqual(fragments.map((fragment) => [fragment.fragment.first, fragment.fragment.last]), [
+    [true, false],
+    [false, false],
+    [false, true],
+  ]);
+  assert.equal(units[1].keepWithNext, true);
+});
+
+test("component instance와 원자 콘텐츠는 wrapper를 유지하며 서로 다른 unit으로 나뉜다", () => {
+  const tree = {
+    renderId: "node:root",
+    sourceNodeId: "root",
+    type: "container",
+    name: "Root",
+    visible: true,
+    children: [{
+      renderId: "node:instance",
+      sourceNodeId: "instance",
+      type: "component-instance",
+      name: "Instance",
+      visible: true,
+      componentId: "component-a",
+      child: {
+        renderId: "node:instance/root",
+        sourceNodeId: "component-root",
+        type: "container",
+        name: "Component root",
+        visible: true,
+        children: [
+          { renderId: "node:text", sourceNodeId: "text", type: "text", name: "Text", visible: true, value: "Text" },
+          { renderId: "node:image", sourceNodeId: "image", type: "image", name: "Image", visible: true, alt: "Image" },
+        ],
+      },
+    }],
+  };
+
+  const units = collectPaginationUnits(tree);
+  assert.equal(units.length, 2);
+  assert.equal(units.every((unit) => unit.node.type === "component-instance"), true);
+  assert.deepEqual(units.map((unit) => unit.node.child.children[0].type), ["text", "image"]);
+});
+
 test("link renderer는 실행 가능한 위험 protocol을 허용하지 않는다", () => {
   assert.equal(safeHref("https://example.com"), "https://example.com");
   assert.equal(safeHref("mailto:user@example.com"), "mailto:user@example.com");

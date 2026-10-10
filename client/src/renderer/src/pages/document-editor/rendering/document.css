@@ -123,6 +123,10 @@
   display: none;
 }
 
+.document-node--markdown[data-markdown-fragment-last="false"] {
+  padding-bottom: var(--markdown-block-gap);
+}
+
 .document-renderer--screen .document-node[data-document-selected="true"] {
   outline: 1.5px solid #1768e5;
   outline-offset: 2px;
