@@ -58,3 +58,13 @@ test("root style 값은 Markdown 계층에도 같은 밀도로 전달된다", ()
   assert.equal(css["--markdown-h1-size"], "15pt");
   assert.equal(css["--markdown-code-size"], "6.9375pt");
 });
+
+test("Markdown 목록 항목 간격을 CSS 변수로 전달한다", () => {
+  const css = styleToCss({
+    id: "style-list",
+    name: "List",
+    markdown: { listItemGapPt: 4 },
+  });
+
+  assert.equal(css["--markdown-list-gap"], "4pt");
+});

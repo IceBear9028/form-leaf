@@ -253,7 +253,7 @@ function validateStyle(value: unknown, path: string, issue: IssueWriter): value 
     return false;
   }
   let valid = true;
-  rejectUnknownKeys(value, ["id", "name", "layout", "typography", "decoration", "pagination"], path, issue);
+  rejectUnknownKeys(value, ["id", "name", "layout", "typography", "markdown", "decoration", "pagination"], path, issue);
   valid = requireNonEmptyString(value.id, `${path}.id`, issue) && valid;
   valid = requireString(value.name, `${path}.name`, issue) && valid;
   if (value.layout !== undefined) {
@@ -304,6 +304,18 @@ function validateStyle(value: unknown, path: string, issue: IssueWriter): value 
         }
       }
       if (typography.color !== undefined) valid = validateColor(typography.color, `${path}.typography.color`, issue) && valid;
+    }
+  }
+  if (value.markdown !== undefined) {
+    if (!isRecord(value.markdown)) {
+      issue("style.markdown", `${path}.markdown`, "markdown은 객체여야 합니다.");
+      valid = false;
+    } else {
+      const markdown = value.markdown;
+      rejectUnknownKeys(markdown, ["listItemGapPt"], `${path}.markdown`, issue);
+      if (markdown.listItemGapPt !== undefined) {
+        valid = requireNonNegativeNumber(markdown.listItemGapPt, `${path}.markdown.listItemGapPt`, issue) && valid;
+      }
     }
   }
   if (value.decoration !== undefined) {

@@ -308,6 +308,22 @@ export function PropertyInspector({
         />
       </InspectorSection>
 
+      {node.type === "markdown" && (
+        <InspectorSection title="Markdown">
+          <NumberField
+            label="목록 항목 간격 (pt)"
+            value={style?.markdown?.listItemGapPt}
+            min={0}
+            onChange={(listItemGapPt) => changeStyle((current) => {
+              const markdown = { ...current.markdown };
+              if (listItemGapPt === undefined) delete markdown.listItemGapPt;
+              else markdown.listItemGapPt = listItemGapPt;
+              return { ...current, markdown };
+            })}
+          />
+        </InspectorSection>
+      )}
+
       <InspectorSection title="페이지">
         <ToggleField
           label="한 덩어리로 유지"

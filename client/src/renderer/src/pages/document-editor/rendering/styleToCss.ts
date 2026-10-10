@@ -74,6 +74,9 @@ export function styleToCss(style?: StyleDefinition): CSSProperties | undefined {
       setCssVariable(css, "--markdown-text", color);
     }
   }
+  if (style.markdown?.listItemGapPt !== undefined) {
+    setCssVariable(css, "--markdown-list-gap", `${style.markdown.listItemGapPt}pt`);
+  }
   const decoration = style.decoration;
   if (decoration) {
     if (decoration.background) css.backgroundColor = colorToCss(decoration.background);

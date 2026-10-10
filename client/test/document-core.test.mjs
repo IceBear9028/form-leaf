@@ -101,6 +101,9 @@ test("모든 범용 node와 검증된 style·asset을 목적 이름 없이 검�
           fontWeight: 400,
           color: { kind: "hex", value: "#112233" },
         },
+        markdown: {
+          listItemGapPt: 4,
+        },
         decoration: {
           background: { kind: "token", token: "surface.default" },
           borderWidthPt: 1,
@@ -180,6 +183,16 @@ test("모든 범용 node와 검증된 style·asset을 목적 이름 없이 검�
     node.name = `Layer ${index}`;
   });
   assert.equal(validateDocumentData(renamed).valid, true);
+});
+
+test("Markdown 목록 항목 간격은 음수가 아닌 pt 값만 허용한다", () => {
+  const document = emptyDocument();
+  document.styles["node-root"].markdown = { listItemGapPt: -1 };
+
+  const result = validateDocumentData(document);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.issues.some((issue) => issue.path === "$.styles.node-root.markdown.listItemGapPt"), true);
 });
 
 test("node transaction은 추가·이동·복제·숨김·보관·복원을 불변 방식으로 처리한다", () => {

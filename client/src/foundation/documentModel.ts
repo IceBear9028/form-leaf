@@ -157,6 +157,9 @@ export type StyleDefinition = {
     fontWeight?: number;
     color?: ColorValue;
   };
+  markdown?: {
+    listItemGapPt?: number;
+  };
   decoration?: {
     background?: ColorValue;
     borderColor?: ColorValue;
