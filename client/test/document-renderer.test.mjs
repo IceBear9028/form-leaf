@@ -184,6 +184,61 @@ test("root child를 pagination unit으로 만들고 keep·break·overflow를 적
   assert.deepEqual(reconciled[0].units.map((unit) => unit.id), nextUnits.map((unit) => unit.id));
 });
 
+test("분할 가능한 중첩 container는 시각 wrapper를 보존한 pagination unit으로 나눈다", () => {
+  const tree = {
+    renderId: "node:root",
+    sourceNodeId: "root",
+    type: "container",
+    name: "Root",
+    visible: true,
+    children: [{
+      renderId: "node:section",
+      sourceNodeId: "section",
+      type: "container",
+      name: "Section",
+      visible: true,
+      style: {
+        layout: { paddingPt: [8, 6, 4, 6] },
+        decoration: {
+          borderWidthPt: 1,
+          borderColor: { kind: "hex", value: "#000000" },
+          borderEdges: ["top"],
+        },
+      },
+      children: [
+        {
+          renderId: "node:first",
+          sourceNodeId: "first",
+          type: "text",
+          name: "First",
+          visible: true,
+          value: "First",
+        },
+        {
+          renderId: "node:second",
+          sourceNodeId: "second",
+          type: "text",
+          name: "Second",
+          visible: true,
+          value: "Second",
+        },
+      ],
+    }],
+  };
+
+  const units = collectPaginationUnits(tree);
+
+  assert.equal(units.length, 2);
+  assert.notEqual(units[0].id, units[1].id);
+  assert.equal(units[0].node.sourceNodeId, "section");
+  assert.equal(units[0].node.children[0].sourceNodeId, "first");
+  assert.equal(units[1].node.children[0].sourceNodeId, "second");
+  assert.deepEqual(units[0].node.style.layout.paddingPt, [8, 6, 4, 6]);
+  assert.deepEqual(units[1].node.style.layout.paddingPt, [0, 6, 4, 6]);
+  assert.equal(units[1].node.style.decoration.borderWidthPt, undefined);
+  assert.equal(units[1].node.style.decoration.borderEdges, undefined);
+});
+
 test("link renderer는 실행 가능한 위험 protocol을 허용하지 않는다", () => {
   assert.equal(safeHref("https://example.com"), "https://example.com");
   assert.equal(safeHref("mailto:user@example.com"), "mailto:user@example.com");

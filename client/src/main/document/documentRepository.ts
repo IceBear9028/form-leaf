@@ -25,6 +25,7 @@ import {
   type DocumentPaths,
 } from "./documentPaths.ts";
 import { importLegacyDocument } from "./legacy/importLegacyDocument.ts";
+import { upgradeLegacyImportedDocument } from "./legacy/upgradeLegacyImportedDocument.ts";
 import {
   createLegacyDocumentPaths,
   LEGACY_DOCUMENT_SUFFIX,
@@ -91,7 +92,7 @@ export class DocumentRepository {
       }
       const document = await this.readDocument(this.paths.activeDocument(id));
       if (document.documentId !== id) throw new Error("문서 ID와 저장 파일이 일치하지 않습니다.");
-      return document;
+      return await this.upgradeLegacyVisuals(id, document);
     });
   }
 
@@ -288,6 +289,22 @@ export class DocumentRepository {
       }
     }
     return [...new Set(paths)].sort();
+  }
+
+  private async upgradeLegacyVisuals(id: string, document: DocumentData): Promise<DocumentData> {
+    for (const source of await this.legacyDocumentPaths()) {
+      try {
+        const imported = await readJsonWithBackup(
+          source,
+          importLegacyDocument,
+          "이전 문서 파일을 찾을 수 없습니다.",
+        );
+        if (imported.documentId === id) return upgradeLegacyImportedDocument(document, imported);
+      } catch {
+        // 현재 범용 문서는 legacy 원본을 읽을 수 없어도 그대로 열 수 있어야 한다.
+      }
+    }
+    return document;
   }
 
   private async reconcileIndex(index: DocumentLibraryIndex): Promise<DocumentLibraryIndex> {

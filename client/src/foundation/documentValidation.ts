@@ -262,7 +262,7 @@ function validateStyle(value: unknown, path: string, issue: IssueWriter): value 
       valid = false;
     } else {
       const layout = value.layout;
-      rejectUnknownKeys(layout, ["direction", "gapPt", "paddingPt", "align", "width"], `${path}.layout`, issue);
+      rejectUnknownKeys(layout, ["direction", "gapPt", "paddingPt", "align", "justify", "width", "heightPt", "grow"], `${path}.layout`, issue);
       if (layout.direction !== undefined && layout.direction !== "row" && layout.direction !== "column") {
         issue("style.layout.direction", `${path}.layout.direction`, "direction은 row 또는 column이어야 합니다.");
         valid = false;
@@ -278,7 +278,13 @@ function validateStyle(value: unknown, path: string, issue: IssueWriter): value 
         issue("style.layout.align", `${path}.layout.align`, "align 값이 올바르지 않습니다.");
         valid = false;
       }
+      if (layout.justify !== undefined && !["start", "center", "end", "between"].includes(String(layout.justify))) {
+        issue("style.layout.justify", `${path}.layout.justify`, "justify 값이 올바르지 않습니다.");
+        valid = false;
+      }
       if (layout.width !== undefined) valid = validateWidth(layout.width, `${path}.layout.width`, issue) && valid;
+      if (layout.heightPt !== undefined) valid = requirePositiveNumber(layout.heightPt, `${path}.layout.heightPt`, issue) && valid;
+      if (layout.grow !== undefined) valid = requireNonNegativeNumber(layout.grow, `${path}.layout.grow`, issue) && valid;
     }
   }
   if (value.typography !== undefined) {
@@ -306,10 +312,19 @@ function validateStyle(value: unknown, path: string, issue: IssueWriter): value 
       valid = false;
     } else {
       const decoration = value.decoration;
-      rejectUnknownKeys(decoration, ["background", "borderColor", "borderWidthPt", "radiusPt"], `${path}.decoration`, issue);
+      rejectUnknownKeys(decoration, ["background", "borderColor", "borderWidthPt", "borderEdges", "radiusPt"], `${path}.decoration`, issue);
       if (decoration.background !== undefined) valid = validateColor(decoration.background, `${path}.decoration.background`, issue) && valid;
       if (decoration.borderColor !== undefined) valid = validateColor(decoration.borderColor, `${path}.decoration.borderColor`, issue) && valid;
       if (decoration.borderWidthPt !== undefined) valid = requireNonNegativeNumber(decoration.borderWidthPt, `${path}.decoration.borderWidthPt`, issue) && valid;
+      if (decoration.borderEdges !== undefined) {
+        const allowedEdges = ["top", "right", "bottom", "left"];
+        if (!Array.isArray(decoration.borderEdges) ||
+          !decoration.borderEdges.every((edge) => allowedEdges.includes(String(edge))) ||
+          new Set(decoration.borderEdges).size !== decoration.borderEdges.length) {
+          issue("style.decoration.border-edges", `${path}.decoration.borderEdges`, "borderEdges는 중복 없는 border 방향 배열이어야 합니다.");
+          valid = false;
+        }
+      }
       if (decoration.radiusPt !== undefined) valid = requireNonNegativeNumber(decoration.radiusPt, `${path}.decoration.radiusPt`, issue) && valid;
     }
   }

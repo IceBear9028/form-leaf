@@ -68,12 +68,20 @@ export function PaginatedDocumentRenderer({
       setPages(paginate(units, heights, capacity));
     };
     const schedule = () => requestAnimationFrame(measure);
+    const initialFrame = requestAnimationFrame(measure);
     void documentFontsReady().then(schedule);
     const observer = new ResizeObserver(schedule);
-    if (measureContentRef.current) observer.observe(measureContentRef.current);
+    if (measureContentRef.current) {
+      observer.observe(measureContentRef.current);
+      const rootElement = measureContentRef.current.querySelector(
+        ":scope > .document-renderer--measure > .document-node",
+      );
+      if (rootElement) observer.observe(rootElement);
+    }
     window.addEventListener("resize", schedule);
     return () => {
       canceled = true;
+      cancelAnimationFrame(initialFrame);
       observer.disconnect();
       window.removeEventListener("resize", schedule);
     };
@@ -107,7 +115,7 @@ export function PaginatedDocumentRenderer({
       <div className="document-measure-page" aria-hidden="true">
         <div className="document-measure-content" ref={measureContentRef}>
           <div className="document-renderer document-renderer--measure">
-            <NodeRenderer node={root} measure />
+            <NodeRenderer node={{ ...root, children: units.map((unit) => unit.node) }} measure />
           </div>
         </div>
       </div>

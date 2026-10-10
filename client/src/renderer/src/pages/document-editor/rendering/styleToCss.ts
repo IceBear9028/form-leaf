@@ -18,9 +18,27 @@ export function styleToCss(style?: StyleDefinition): CSSProperties | undefined {
       css.padding = layout.paddingPt.map((value) => `${value}pt`).join(" ");
     }
     if (layout.align) css.alignItems = layout.align === "start" ? "flex-start" : layout.align === "end" ? "flex-end" : layout.align;
+    if (layout.justify) {
+      css.justifyContent = layout.justify === "start"
+        ? "flex-start"
+        : layout.justify === "end"
+          ? "flex-end"
+          : layout.justify === "between"
+            ? "space-between"
+            : layout.justify;
+    }
     if (layout.width?.mode === "auto") css.width = "auto";
     if (layout.width?.mode === "fill") css.width = "100%";
-    if (layout.width?.mode === "fixed") css.width = `${layout.width.valuePt}pt`;
+    if (layout.width?.mode === "fixed") {
+      css.width = `${layout.width.valuePt}pt`;
+      css.flexShrink = 0;
+    }
+    if (layout.heightPt !== undefined) css.height = `${layout.heightPt}pt`;
+    if (layout.grow !== undefined) {
+      css.flexGrow = layout.grow;
+      css.flexBasis = 0;
+      css.minWidth = 0;
+    }
   }
   const typography = style.typography;
   if (typography) {
@@ -62,7 +80,15 @@ export function styleToCss(style?: StyleDefinition): CSSProperties | undefined {
     if (decoration.borderColor) css.borderColor = colorToCss(decoration.borderColor);
     if (decoration.borderWidthPt !== undefined) {
       css.borderStyle = "solid";
-      css.borderWidth = `${decoration.borderWidthPt}pt`;
+      if (decoration.borderEdges?.length) {
+        css.borderWidth = 0;
+        decoration.borderEdges.forEach((edge) => {
+          const property = `border${edge[0].toUpperCase()}${edge.slice(1)}Width` as keyof CSSProperties;
+          (css as Record<string, string | number | undefined>)[property] = `${decoration.borderWidthPt}pt`;
+        });
+      } else {
+        css.borderWidth = `${decoration.borderWidthPt}pt`;
+      }
     }
     if (decoration.radiusPt !== undefined) css.borderRadius = `${decoration.radiusPt}pt`;
   }

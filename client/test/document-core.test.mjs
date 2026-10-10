@@ -89,7 +89,10 @@ test("모든 범용 node와 검증된 style·asset을 목적 이름 없이 검�
           gapPt: 8,
           paddingPt: [12, 12, 12, 12],
           align: "stretch",
+          justify: "between",
           width: { mode: "fill" },
+          heightPt: 24,
+          grow: 1,
         },
         typography: {
           fontFamily: "Inter",
@@ -101,6 +104,7 @@ test("모든 범용 node와 검증된 style·asset을 목적 이름 없이 검�
         decoration: {
           background: { kind: "token", token: "surface.default" },
           borderWidthPt: 1,
+          borderEdges: ["top", "bottom"],
           radiusPt: 4,
         },
         pagination: { keepTogether: true },

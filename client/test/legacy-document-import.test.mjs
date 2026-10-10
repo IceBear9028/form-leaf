@@ -5,6 +5,7 @@ import {
   importLegacyDocument,
   LegacyDocumentImportError,
 } from "../src/main/document/legacy/importLegacyDocument.ts";
+import { upgradeLegacyImportedDocument } from "../src/main/document/legacy/upgradeLegacyImportedDocument.ts";
 
 const text = (value, marks, href) => ({
   runs: [{
@@ -193,3 +194,93 @@ test("지원하지 않는 이미지나 입력 형식은 위치를 포함한 오�
     (error) => error instanceof LegacyDocumentImportError && error.path === "$",
   );
 });
+
+test("기존 legacy 범용 graph는 내용과 prop을 보존하며 새 시각 구조로 연다", () => {
+  const fresh = importLegacyDocument(legacyV2Document());
+  const current = downgradeVisualGraph(fresh);
+  const body = Object.values(current.nodes).find((node) => node.type === "markdown" && node.name === "Body");
+  body.source = "사용자가 수정한 본문";
+  const repeater = Object.values(current.nodes).find((node) => node.type === "repeater" && node.items.length);
+  repeater.items[0].props.body = "사용자가 수정한 prop";
+  const snapshot = structuredClone(current);
+
+  const upgraded = upgradeLegacyImportedDocument(current, fresh);
+
+  assert.deepEqual(current, snapshot);
+  assert.equal(validateDocumentData(upgraded).valid, true);
+  assert.equal(Object.keys(upgraded.styles).length > 4, true);
+  assert.equal(upgraded.styles["legacy-style-root"].layout.paddingPt, undefined);
+  assert.equal(upgraded.nodes[body.id].source, "사용자가 수정한 본문");
+  assert.equal(upgraded.nodes[repeater.id].items[0].props.body, "사용자가 수정한 prop");
+  assert.equal(Object.values(upgraded.nodes).some((node) => node.name === "Identity"), true);
+  assert.equal(Object.values(upgraded.nodes).some((node) => node.name === "Meta"), true);
+  assert.equal(Object.values(upgraded.nodes).some((node) => node.name === "Content"), true);
+});
+
+test("기존 기본 style이 수정된 legacy graph는 자동 시각 업그레이드로 덮어쓰지 않는다", () => {
+  const fresh = importLegacyDocument(legacyV2Document());
+  const current = downgradeVisualGraph(fresh);
+  current.styles["legacy-style-root"].layout.gapPt = 99;
+
+  assert.equal(upgradeLegacyImportedDocument(current, fresh), current);
+});
+
+function downgradeVisualGraph(fresh) {
+  const current = structuredClone(fresh);
+  const wrapper = (id) => /-(?:identity|contacts|(?:phone|email|links)-row|heading-row|item-meta|item-content|item-period)$/.test(id);
+  const flatten = (childIds) => childIds.flatMap((id) => {
+    const node = current.nodes[id];
+    if (!node) return [];
+    if (wrapper(id) && node.type === "container") return flatten(node.childIds);
+    if (/-period-separator$/.test(id)) return [];
+    return [id];
+  });
+  Object.values(current.nodes).forEach((node) => {
+    if (node.type === "container") node.childIds = flatten(node.childIds);
+  });
+  Object.values(current.components).forEach((component) => {
+    const root = current.nodes[component.rootNodeId];
+    if (root?.type === "container") {
+      root.childIds = component.propDefinitions.map((prop) => prop.binding.nodeId);
+    }
+  });
+  Object.keys(current.nodes).forEach((id) => {
+    if (wrapper(id) || /-period-separator$/.test(id)) delete current.nodes[id];
+  });
+
+  const rootChildren = new Set(current.nodes[current.rootNodeId].childIds);
+  Object.values(current.nodes).forEach((node) => {
+    delete node.styleId;
+    if (node.id === current.rootNodeId) node.styleId = "legacy-style-root";
+    else if (rootChildren.has(node.id)) node.styleId = "legacy-style-section";
+    else if (node.id.endsWith("-item-root")) node.styleId = "legacy-style-item";
+    else if (node.name === "Heading") node.styleId = "legacy-style-heading";
+  });
+  current.styles = {
+    "legacy-style-root": {
+      id: "legacy-style-root",
+      name: "Document",
+      layout: { direction: "column", gapPt: 10, paddingPt: [24, 28, 24, 28], align: "stretch", width: { mode: "fill" } },
+      typography: { fontFamily: "Pretendard", fontSizePt: 7.5, lineHeight: 1.5, fontWeight: 400, color: { kind: "hex", value: "#000000" } },
+    },
+    "legacy-style-section": {
+      id: "legacy-style-section",
+      name: "Section",
+      layout: { direction: "column", gapPt: 5.5, align: "stretch", width: { mode: "fill" } },
+    },
+    "legacy-style-item": {
+      id: "legacy-style-item",
+      name: "Item",
+      layout: { direction: "column", gapPt: 3, align: "stretch", width: { mode: "fill" } },
+      pagination: { keepTogether: true },
+    },
+    "legacy-style-heading": {
+      id: "legacy-style-heading",
+      name: "Heading",
+      typography: { fontSizePt: 11.25, lineHeight: 1.25, fontWeight: 600, color: { kind: "hex", value: "#000000" } },
+      pagination: { keepWithNext: true },
+    },
+  };
+  assert.equal(validateDocumentData(current).valid, true);
+  return current;
+}

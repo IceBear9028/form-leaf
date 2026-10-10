@@ -145,7 +145,10 @@ export type StyleDefinition = {
     gapPt?: number;
     paddingPt?: [number, number, number, number];
     align?: "start" | "center" | "end" | "stretch";
+    justify?: "start" | "center" | "end" | "between";
     width?: WidthValue;
+    heightPt?: number;
+    grow?: number;
   };
   typography?: {
     fontFamily?: string;
@@ -158,6 +161,7 @@ export type StyleDefinition = {
     background?: ColorValue;
     borderColor?: ColorValue;
     borderWidthPt?: number;
+    borderEdges?: Array<"top" | "right" | "bottom" | "left">;
     radiusPt?: number;
   };
   pagination?: {
