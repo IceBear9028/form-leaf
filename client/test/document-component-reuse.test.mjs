@@ -172,7 +172,10 @@ test("component package import는 dependency의 모든 ID를 새로 만들고 �
   let source = emptyDocument("source");
   source = {
     ...source,
-    styles: { "style-source": { id: "style-source", name: "Source", typography: { fontSizePt: 12 } } },
+    styles: {
+      ...source.styles,
+      "style-source": { id: "style-source", name: "Source", typography: { fontSizePt: 12 } },
+    },
     assets: {
       "asset-source": {
         id: "asset-source",
@@ -228,7 +231,7 @@ test("component package import는 dependency의 모든 ID를 새로 만들고 �
 
   assert.equal(Object.keys(imported.document.components).length, 2);
   assert.equal(Object.keys(imported.document.nodes).length, 3);
-  assert.equal(Object.keys(imported.document.styles).length, 1);
+  assert.equal(Object.keys(imported.document.styles).length, 2);
   assert.equal(Object.keys(imported.document.assets).length, 1);
   assert.notEqual(imported.componentId, "component-entry");
   assert.equal(imported.document.components["component-entry"], undefined);

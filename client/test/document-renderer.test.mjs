@@ -29,6 +29,7 @@ function createFixture() {
   document = {
     ...document,
     styles: {
+      ...document.styles,
       "style-heading": {
         id: "style-heading",
         name: "Heading",

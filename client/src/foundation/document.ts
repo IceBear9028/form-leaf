@@ -1,6 +1,7 @@
 import type { DocumentData } from "./documentModel.ts";
 
 export * from "./documentModel.ts";
+export * from "./documentStylePresets.ts";
 export * from "./documentComponentOperations.ts";
 export * from "./documentEditing.ts";
 export * from "./documentTransactions.ts";

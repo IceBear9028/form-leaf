@@ -67,9 +67,11 @@ test("새 범용 문서는 빈 root container만 가진 유효한 schemaVersion 
   assert.equal(document.schemaVersion, 3);
   assert.equal(document.rootNodeId, "node-root");
   assert.deepEqual(document.nodes[document.rootNodeId].childIds, []);
+  assert.equal(document.nodes[document.rootNodeId].styleId, "node-root");
   assert.equal(isDocumentData(document), true);
   assert.deepEqual(document.components, {});
-  assert.deepEqual(document.styles, {});
+  assert.equal(document.styles["node-root"].name, "일반");
+  assert.equal(document.styles["node-root"].typography.fontSizePt, 8);
   assert.deepEqual(document.assets, {});
 });
 
@@ -78,6 +80,7 @@ test("모든 범용 node와 검증된 style·asset을 목적 이름 없이 검�
   document = {
     ...document,
     styles: {
+      ...document.styles,
       "style-1": {
         id: "style-1",
         name: "Primary",

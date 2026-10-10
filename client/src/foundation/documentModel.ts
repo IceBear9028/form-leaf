@@ -1,3 +1,8 @@
+import {
+  createDocumentStyleFromPreset,
+  DEFAULT_DOCUMENT_STYLE_PRESET_ID,
+} from "./documentStylePresets.ts";
+
 export const DOCUMENT_SCHEMA_VERSION = 3 as const;
 
 export type NodeId = string;
@@ -200,6 +205,7 @@ export function createEmptyDocument(
 ): DocumentData {
   const createId = options.createId ?? createEntityId;
   const rootNodeId = createId("node");
+  const rootStyleId = createId("style");
   return {
     schemaVersion: DOCUMENT_SCHEMA_VERSION,
     documentId: options.documentId ?? createId("document"),
@@ -211,11 +217,14 @@ export function createEmptyDocument(
         type: "container",
         name: "Root",
         visible: true,
+        styleId: rootStyleId,
         childIds: [],
       },
     },
     components: {},
-    styles: {},
+    styles: {
+      [rootStyleId]: createDocumentStyleFromPreset(DEFAULT_DOCUMENT_STYLE_PRESET_ID, rootStyleId),
+    },
     assets: {},
     updatedAt: options.now ?? new Date().toISOString(),
   };

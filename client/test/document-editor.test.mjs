@@ -87,7 +87,8 @@ test("유효하지 않은 style 값은 문서에 반영되지 않는다", () => 
     /gapPt/,
   );
   assert.equal(original.nodes["node-a"].styleId, undefined);
-  assert.deepEqual(original.styles, {});
+  assert.equal(Object.keys(original.styles).length, 1);
+  assert.equal(original.styles[original.nodes[original.rootNodeId].styleId].name, "일반");
 });
 
 test("preview 선택 대상은 document tree만 포함하고 component 정의 내부는 제외한다", () => {

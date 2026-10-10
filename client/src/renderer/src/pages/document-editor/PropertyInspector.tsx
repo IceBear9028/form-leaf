@@ -9,6 +9,11 @@ import type {
   WidthValue,
 } from "../../../../foundation/documentModel.ts";
 import {
+  applyDocumentStylePreset,
+  DOCUMENT_STYLE_PRESETS,
+  matchesDocumentStylePreset,
+} from "../../../../foundation/documentStylePresets.ts";
+import {
   addRepeaterItemFromDefaults,
   clearComponentInstanceProp,
   clearRepeaterItemProp,
@@ -80,6 +85,26 @@ export function PropertyInspector({
           </p>
         )}
       </InspectorSection>
+
+      {node.id === document.rootNodeId && (
+        <InspectorSection title="문서 스타일">
+          <p className="text-xs leading-5 text-muted-foreground">
+            글자 크기, 줄 높이와 내용 간격을 한 번에 적용합니다. 적용 후 각 속성을 따로 바꿀 수 있습니다.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {DOCUMENT_STYLE_PRESETS.map((preset) => (
+              <Button
+                type="button"
+                variant={matchesDocumentStylePreset(style, preset.id) ? "secondary" : "outline"}
+                key={preset.id}
+                onClick={() => changeStyle((current) => applyDocumentStylePreset(current, preset.id))}
+              >
+                {preset.name}
+              </Button>
+            ))}
+          </div>
+        </InspectorSection>
+      )}
 
       {node.type === "image" && (
         <InspectorSection title="이미지">

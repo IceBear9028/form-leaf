@@ -43,9 +43,9 @@
 
 ## 완료 조건
 
-- [ ] 작업 전 기준과 동일한 A4 여백·기본 typography·페이지 footer가 복구된다.
-- [ ] 모든 Markdown 요소가 범용 stylesheet로 일관되게 표시된다.
-- [ ] 일반·조밀한 preset이 사용자 내용이나 문서 목적과 무관하게 적용된다.
+- [x] 작업 전 기준과 동일한 A4 여백·기본 typography·페이지 footer가 복구된다.
+- [x] 모든 Markdown 요소가 범용 stylesheet로 일관되게 표시된다.
+- [x] 일반·조밀한 preset이 사용자 내용이나 문서 목적과 무관하게 적용된다.
 - [ ] 기존 generic document를 손상시키지 않고 새 시각 시스템에서 연다.
 - [ ] screen과 print의 페이지 수와 줄바꿈이 일치한다.
 - [ ] reference PDF와 같은 배율의 시각 비교에서 주요 계층과 간격이 회복된다.

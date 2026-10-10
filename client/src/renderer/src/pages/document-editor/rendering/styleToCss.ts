@@ -10,7 +10,10 @@ export function styleToCss(style?: StyleDefinition): CSSProperties | undefined {
       css.display = "flex";
       css.flexDirection = layout.direction;
     }
-    if (layout.gapPt !== undefined) css.gap = `${layout.gapPt}pt`;
+    if (layout.gapPt !== undefined) {
+      css.gap = `${layout.gapPt}pt`;
+      setCssVariable(css, "--markdown-block-gap", `${layout.gapPt}pt`);
+    }
     if (layout.paddingPt) {
       css.padding = layout.paddingPt.map((value) => `${value}pt`).join(" ");
     }
@@ -21,11 +24,37 @@ export function styleToCss(style?: StyleDefinition): CSSProperties | undefined {
   }
   const typography = style.typography;
   if (typography) {
-    if (typography.fontFamily) css.fontFamily = typography.fontFamily;
-    if (typography.fontSizePt !== undefined) css.fontSize = `${typography.fontSizePt}pt`;
-    if (typography.lineHeight !== undefined) css.lineHeight = typography.lineHeight;
+    if (typography.fontFamily) {
+      css.fontFamily = typography.fontFamily;
+      setCssVariable(css, "--markdown-font-family", typography.fontFamily);
+    }
+    if (typography.fontSizePt !== undefined) {
+      const size = typography.fontSizePt;
+      css.fontSize = `${size}pt`;
+      setCssVariable(css, "--markdown-body-size", `${size}pt`);
+      setCssVariable(css, "--markdown-lead-size", `${size}pt`);
+      setCssVariable(css, "--markdown-list-size", `${size}pt`);
+      setCssVariable(css, "--markdown-code-size", `${size * 0.925}pt`);
+      setCssVariable(css, "--markdown-table-size", `${size * 0.925}pt`);
+      setCssVariable(css, "--markdown-h1-size", `${size * 2}pt`);
+      setCssVariable(css, "--markdown-h2-size", `${size * 1.5}pt`);
+      setCssVariable(css, "--markdown-h3-size", `${size * 1.25}pt`);
+      setCssVariable(css, "--markdown-h4-size", `${size}pt`);
+      setCssVariable(css, "--markdown-h5-size", `${size * 0.88}pt`);
+      setCssVariable(css, "--markdown-h6-size", `${size * 0.8533}pt`);
+    }
+    if (typography.lineHeight !== undefined) {
+      css.lineHeight = typography.lineHeight;
+      setCssVariable(css, "--markdown-body-line-height", String(typography.lineHeight));
+      setCssVariable(css, "--markdown-lead-line-height", String(typography.lineHeight));
+      setCssVariable(css, "--markdown-list-line-height", String(typography.lineHeight));
+    }
     if (typography.fontWeight !== undefined) css.fontWeight = typography.fontWeight;
-    if (typography.color) css.color = colorToCss(typography.color);
+    if (typography.color) {
+      const color = colorToCss(typography.color);
+      css.color = color;
+      setCssVariable(css, "--markdown-text", color);
+    }
   }
   const decoration = style.decoration;
   if (decoration) {
@@ -40,6 +69,10 @@ export function styleToCss(style?: StyleDefinition): CSSProperties | undefined {
   if (style.pagination?.keepTogether) css.breakInside = "avoid";
   if (style.pagination?.forcePageBreakBefore) css.breakBefore = "page";
   return css;
+}
+
+function setCssVariable(css: CSSProperties, name: `--${string}`, value: string): void {
+  (css as Record<string, string | number | undefined>)[name] = value;
 }
 
 export function colorToCss(color: ColorValue): string {
