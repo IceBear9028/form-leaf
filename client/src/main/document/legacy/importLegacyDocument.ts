@@ -134,14 +134,13 @@ class LegacyDocumentBuilder {
 
   private createStyles(compact: boolean): Record<string, StyleDefinition> {
     const bodySize = compact ? 7.5 : 8;
-    const sectionGap = compact ? 9 : 12;
     return {
       [this.rootStyleId]: {
         id: this.rootStyleId,
         name: "Document",
         layout: {
           direction: "column",
-          gapPt: compact ? 10 : 13,
+          gapPt: 0,
           align: "stretch",
           width: { mode: "fill" },
         },
@@ -156,14 +155,15 @@ class LegacyDocumentBuilder {
       [this.sectionStyleId]: {
         id: this.sectionStyleId,
         name: "Section",
-        layout: { direction: "column", gapPt: sectionGap, align: "stretch", width: { mode: "fill" } },
+        layout: { direction: "column", gapPt: 18, align: "stretch", width: { mode: "fill" } },
+        pagination: { keepTogether: true },
       },
       [this.sectionBoundaryStyleId]: {
         id: this.sectionBoundaryStyleId,
         name: "Section with rule",
         layout: {
           direction: "column",
-          gapPt: sectionGap,
+          gapPt: compact ? 9 : 12,
           paddingPt: [compact ? 14 : 18, 0, 0, 0],
           align: "stretch",
           width: { mode: "fill" },
@@ -205,6 +205,7 @@ class LegacyDocumentBuilder {
       [this.leadStyleId]: {
         id: this.leadStyleId,
         name: "Lead",
+        layout: { gapPt: 16 },
         typography: { fontSizePt: compact ? 9.2 : 10, lineHeight: compact ? 1.52 : 1.6, color: { kind: "hex", value: "#222222" } },
       },
       [this.listStyleId]: {

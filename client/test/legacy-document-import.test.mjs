@@ -110,6 +110,10 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
 
   const rootChildren = document.nodes[document.rootNodeId].childIds.map((id) => document.nodes[id]);
   assert.equal(rootChildren[1].visible, false);
+  assert.equal(document.styles["legacy-style-root"].layout.gapPt, 0);
+  assert.equal(document.styles["legacy-style-section"].layout.gapPt, 18);
+  assert.equal(document.styles["legacy-style-section"].pagination.keepTogether, true);
+  assert.equal(document.styles["legacy-style-lead"].layout.gapPt, 16);
   assert.equal(document.styles["legacy-style-header-row"].layout.paddingPt[2], 16.2);
   assert.equal(document.styles["legacy-style-aside"].layout.gapPt, 11.25);
   assert.equal(document.nodes["legacy-node-section-a-links"].type, "rich-text");
