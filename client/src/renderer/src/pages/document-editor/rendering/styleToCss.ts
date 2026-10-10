@@ -39,6 +39,11 @@ export function styleToCss(style?: StyleDefinition): CSSProperties | undefined {
       css.flexBasis = 0;
       css.minWidth = 0;
     }
+    if (layout.position) css.position = layout.position;
+    if (layout.topPt !== undefined) css.top = `${layout.topPt}pt`;
+    if (layout.rightPt !== undefined) css.right = `${layout.rightPt}pt`;
+    if (layout.bottomPt !== undefined) css.bottom = `${layout.bottomPt}pt`;
+    if (layout.leftPt !== undefined) css.left = `${layout.leftPt}pt`;
   }
   const typography = style.typography;
   if (typography) {

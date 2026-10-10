@@ -149,6 +149,11 @@ export type StyleDefinition = {
     width?: WidthValue;
     heightPt?: number;
     grow?: number;
+    position?: "relative" | "absolute";
+    topPt?: number;
+    rightPt?: number;
+    bottomPt?: number;
+    leftPt?: number;
   };
   typography?: {
     fontFamily?: string;

@@ -93,6 +93,9 @@ test("모든 범용 node와 검증된 style·asset을 목적 이름 없이 검�
           width: { mode: "fill" },
           heightPt: 24,
           grow: 1,
+          position: "absolute",
+          topPt: 2,
+          leftPt: -4,
         },
         typography: {
           fontFamily: "Inter",

@@ -239,6 +239,39 @@ export function PropertyInspector({
               }}
             />
           )}
+          <Field label="위치 방식">
+            <Select
+              value={style?.layout?.position ?? "flow"}
+              onChange={(position) => changeStyle((current) => {
+                const layout = { ...current.layout };
+                if (position === "flow") delete layout.position;
+                else layout.position = position as NonNullable<StyleDefinition["layout"]>["position"];
+                return { ...current, layout };
+              })}
+              options={[
+                { value: "flow", label: "기본 흐름" },
+                { value: "relative", label: "상대 위치" },
+                { value: "absolute", label: "절대 위치" },
+              ]}
+            />
+          </Field>
+          {style?.layout?.position && (
+            <>
+              {(["topPt", "rightPt", "bottomPt", "leftPt"] as const).map((property) => (
+                <NumberField
+                  key={property}
+                  label={`${{ topPt: "위", rightPt: "오른쪽", bottomPt: "아래", leftPt: "왼쪽" }[property]} (pt)`}
+                  value={style.layout?.[property]}
+                  onChange={(value) => changeStyle((current) => {
+                    const layout = { ...current.layout };
+                    if (value === undefined) delete layout[property];
+                    else layout[property] = value;
+                    return { ...current, layout };
+                  })}
+                />
+              ))}
+            </>
+          )}
         </InspectorSection>
       )}
 
@@ -432,7 +465,7 @@ function NumberField({
 }: {
   label: string;
   value?: number;
-  min: number;
+  min?: number;
   max?: number;
   step?: number;
   onChange: (value?: number) => void;
@@ -454,7 +487,7 @@ function NumberField({
             return;
           }
           const next = Number(source);
-          if (!Number.isFinite(next) || next < min || (max !== undefined && next > max)) {
+          if (!Number.isFinite(next) || (min !== undefined && next < min) || (max !== undefined && next > max)) {
             event.currentTarget.value = value === undefined ? "" : String(value);
             return;
           }

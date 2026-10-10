@@ -262,7 +262,12 @@ function validateStyle(value: unknown, path: string, issue: IssueWriter): value 
       valid = false;
     } else {
       const layout = value.layout;
-      rejectUnknownKeys(layout, ["direction", "gapPt", "paddingPt", "align", "justify", "width", "heightPt", "grow"], `${path}.layout`, issue);
+      rejectUnknownKeys(
+        layout,
+        ["direction", "gapPt", "paddingPt", "align", "justify", "width", "heightPt", "grow", "position", "topPt", "rightPt", "bottomPt", "leftPt"],
+        `${path}.layout`,
+        issue,
+      );
       if (layout.direction !== undefined && layout.direction !== "row" && layout.direction !== "column") {
         issue("style.layout.direction", `${path}.layout.direction`, "direction은 row 또는 column이어야 합니다.");
         valid = false;
@@ -285,6 +290,16 @@ function validateStyle(value: unknown, path: string, issue: IssueWriter): value 
       if (layout.width !== undefined) valid = validateWidth(layout.width, `${path}.layout.width`, issue) && valid;
       if (layout.heightPt !== undefined) valid = requirePositiveNumber(layout.heightPt, `${path}.layout.heightPt`, issue) && valid;
       if (layout.grow !== undefined) valid = requireNonNegativeNumber(layout.grow, `${path}.layout.grow`, issue) && valid;
+      if (layout.position !== undefined && layout.position !== "relative" && layout.position !== "absolute") {
+        issue("style.layout.position", `${path}.layout.position`, "position은 relative 또는 absolute여야 합니다.");
+        valid = false;
+      }
+      for (const offset of ["topPt", "rightPt", "bottomPt", "leftPt"] as const) {
+        if (layout[offset] !== undefined && !isFiniteNumber(layout[offset])) {
+          issue("style.layout.offset", `${path}.layout.${offset}`, "위치 offset은 유한한 pt 값이어야 합니다.");
+          valid = false;
+        }
+      }
     }
   }
   if (value.typography !== undefined) {

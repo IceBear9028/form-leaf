@@ -15,9 +15,30 @@ import {
   reconcileVisiblePages,
 } from "../src/renderer/src/pages/document-editor/rendering/pagination.ts";
 import { safeHref } from "../src/renderer/src/pages/document-editor/rendering/safeHref.ts";
+import { styleToCss } from "../src/renderer/src/pages/document-editor/rendering/styleToCss.ts";
 
 const now = "2026-10-09T00:00:00.000Z";
 const options = { now: () => now };
+
+test("범용 style의 위치와 offset을 CSS 좌표로 변환한다", () => {
+  assert.deepEqual(styleToCss({
+    id: "positioned",
+    name: "Positioned",
+    layout: {
+      position: "absolute",
+      topPt: 2,
+      rightPt: -3,
+      bottomPt: 4.5,
+      leftPt: 0,
+    },
+  }), {
+    position: "absolute",
+    top: "2pt",
+    right: "-3pt",
+    bottom: "4.5pt",
+    left: "0pt",
+  });
+});
 
 function createFixture() {
   let document = createEmptyDocument({
