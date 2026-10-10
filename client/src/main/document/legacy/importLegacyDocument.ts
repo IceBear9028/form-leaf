@@ -242,7 +242,7 @@ class LegacyDocumentBuilder {
       [this.headerRowStyleId]: {
         id: this.headerRowStyleId,
         name: "Header row",
-        layout: { direction: "row", gapPt: 16, align: "center", width: { mode: "fill" }, paddingPt: [0, 0, compact ? 13 : 16, 0] },
+        layout: { direction: "row", gapPt: 16, align: "center", width: { mode: "fill" }, paddingPt: [0, 0, 16.2, 0] },
         pagination: { keepTogether: true, keepWithNext: true },
       },
       [this.mediaStyleId]: {
@@ -269,7 +269,7 @@ class LegacyDocumentBuilder {
       [this.asideStyleId]: {
         id: this.asideStyleId,
         name: "Aside",
-        layout: { direction: "column", gapPt: 8, paddingPt: [0.6, 0, 0, 16], width: { mode: "fixed", valuePt: 187 } },
+        layout: { direction: "column", gapPt: 11.25, paddingPt: [0.6, 0, 0, 16], width: { mode: "fixed", valuePt: 187 } },
         decoration: { borderColor: { kind: "hex", value: "#D9D9D9" }, borderWidthPt: 0.75, borderEdges: ["left"] },
       },
       [this.contactRowStyleId]: {
@@ -333,11 +333,11 @@ class LegacyDocumentBuilder {
     if (section.links.length) {
       const rowId = this.addContainerChild(contactsId, `${section.id}-links-row`, "Links", this.contactRowStyleId);
       this.addTextChild(rowId, `${section.id}-links-label`, "Label", "WebSite", this.contactLabelStyleId);
-      this.addMarkdownChild(
+      this.addRichTextChild(
         rowId,
         `${section.id}-links`,
         "Links",
-        linksToInlineMarkdown(section.links),
+        linksToRichText(section.links),
         this.contactValueStyleId,
       );
     }
@@ -558,6 +558,11 @@ class LegacyDocumentBuilder {
     this.addChild(parentId, { id, type: "markdown", name, visible: true, ...(styleId ? { styleId } : {}), source });
   }
 
+  private addRichTextChild(parentId: string, sourceId: string, name: string, value: RichTextValue, styleId?: string): void {
+    const id = this.ids.create("node", sourceId);
+    this.addChild(parentId, { id, type: "rich-text", name, visible: true, ...(styleId ? { styleId } : {}), value });
+  }
+
   private addContainerChild(parentId: string, sourceId: string, name: string, styleId: string): string {
     const id = this.ids.create("node", sourceId);
     this.addChild(parentId, { id, type: "container", name, visible: true, styleId, childIds: [] });
@@ -659,6 +664,21 @@ function emptyRichText(): RichTextValue {
 
 function linksToInlineMarkdown(links: LegacyLink[]): string {
   return links.map((link) => `[${escapeMarkdownText(link.label)}](<${escapeMarkdownUrl(link.href)}>)`).join(" · ");
+}
+
+function linksToRichText(links: LegacyLink[]): RichTextValue {
+  return {
+    runs: links.flatMap((link, index) => [
+      ...(index ? [{ text: " · " }] : []),
+      {
+        text: link.label,
+        marks: [
+          { type: "underline" as const },
+          { type: "link" as const, href: link.href },
+        ],
+      },
+    ]),
+  };
 }
 
 function inlineListToMarkdown(items: string[]): string {

@@ -41,8 +41,47 @@ export function upgradeLegacyImportedDocument(
     nextNode.childIds = [...freshNode.childIds];
   });
 
+  Object.entries(freshImport.nodes).forEach(([nodeId, freshNode]) => {
+    const originalNode = original.nodes[nodeId];
+    if (
+      originalNode?.type !== "markdown" ||
+      freshNode.type !== "rich-text" ||
+      freshNode.styleId !== "legacy-style-contact-value"
+    ) return;
+    const links = standaloneMarkdownLinks(originalNode.source);
+    if (!links?.length) return;
+    next.nodes[nodeId] = {
+      ...structuredClone(freshNode),
+      name: originalNode.name,
+      visible: originalNode.visible,
+      value: {
+        runs: links.flatMap((link, index) => [
+          ...(index ? [{ text: " · " }] : []),
+          {
+            text: link.label,
+            marks: [
+              { type: "underline" as const },
+              { type: "link" as const, href: link.href },
+            ],
+          },
+        ]),
+      },
+    };
+  });
+
   const validation = validateDocumentData(next);
   return validation.valid ? next : current;
+}
+
+function standaloneMarkdownLinks(source: string): Array<{ label: string; href: string }> | undefined {
+  const pattern = /\[([^\]]+)\]\((?:<([^>]+)>|([^)]+))\)/g;
+  const matches = [...source.matchAll(pattern)];
+  const remainder = source.replace(pattern, "").replace(/[\s*·-]/g, "");
+  if (remainder || !matches.length) return undefined;
+  return matches.map((match) => ({
+    label: (match[1] ?? "").replace(/^\+\+|\+\+$/g, "").replaceAll("\\", ""),
+    href: match[2] ?? match[3] ?? "",
+  }));
 }
 
 function hasOriginalComponentFieldOrder(

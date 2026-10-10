@@ -110,6 +110,13 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
 
   const rootChildren = document.nodes[document.rootNodeId].childIds.map((id) => document.nodes[id]);
   assert.equal(rootChildren[1].visible, false);
+  assert.equal(document.styles["legacy-style-header-row"].layout.paddingPt[2], 16.2);
+  assert.equal(document.styles["legacy-style-aside"].layout.gapPt, 11.25);
+  assert.equal(document.nodes["legacy-node-section-a-links"].type, "rich-text");
+  assert.deepEqual(
+    document.nodes["legacy-node-section-a-links"].value.runs[0].marks.map((mark) => mark.type),
+    ["underline", "link"],
+  );
 
   const repeaters = Object.values(document.nodes).filter((node) => node.type === "repeater");
   assert.equal(repeaters.length, 2);
@@ -198,6 +205,13 @@ test("지원하지 않는 이미지나 입력 형식은 위치를 포함한 오�
 test("기존 legacy 범용 graph는 내용과 prop을 보존하며 새 시각 구조로 연다", () => {
   const fresh = importLegacyDocument(legacyV2Document());
   const current = downgradeVisualGraph(fresh);
+  current.nodes["legacy-node-section-a-links"] = {
+    id: "legacy-node-section-a-links",
+    type: "markdown",
+    name: "Links",
+    visible: true,
+    source: "- [Website](<https://example.com/a>)",
+  };
   const body = Object.values(current.nodes).find((node) => node.type === "markdown" && node.name === "Body");
   body.source = "사용자가 수정한 본문";
   const repeater = Object.values(current.nodes).find((node) => node.type === "repeater" && node.items.length);
@@ -212,6 +226,12 @@ test("기존 legacy 범용 graph는 내용과 prop을 보존하며 새 시각 �
   assert.equal(upgraded.styles["legacy-style-root"].layout.paddingPt, undefined);
   assert.equal(upgraded.nodes[body.id].source, "사용자가 수정한 본문");
   assert.equal(upgraded.nodes[repeater.id].items[0].props.body, "사용자가 수정한 prop");
+  assert.equal(upgraded.nodes["legacy-node-section-a-links"].type, "rich-text");
+  assert.equal(upgraded.nodes["legacy-node-section-a-links"].value.runs[0].text, "Website");
+  assert.deepEqual(
+    upgraded.nodes["legacy-node-section-a-links"].value.runs[0].marks.map((mark) => mark.type),
+    ["underline", "link"],
+  );
   assert.equal(Object.values(upgraded.nodes).some((node) => node.name === "Identity"), true);
   assert.equal(Object.values(upgraded.nodes).some((node) => node.name === "Meta"), true);
   assert.equal(Object.values(upgraded.nodes).some((node) => node.name === "Content"), true);
@@ -223,6 +243,24 @@ test("기존 기본 style이 수정된 legacy graph는 자동 시각 업그레�
   current.styles["legacy-style-root"].layout.gapPt = 99;
 
   assert.equal(upgradeLegacyImportedDocument(current, fresh), current);
+});
+
+test("사용자가 설명을 추가한 profile 링크 Markdown은 rich-text로 자동 치환하지 않는다", () => {
+  const fresh = importLegacyDocument(legacyV2Document());
+  const current = downgradeVisualGraph(fresh);
+  current.nodes["legacy-node-section-a-links"] = {
+    id: "legacy-node-section-a-links",
+    type: "markdown",
+    name: "Links",
+    visible: true,
+    source: "내 링크\n\n- [Website](<https://example.com/a>)",
+  };
+
+  const upgraded = upgradeLegacyImportedDocument(current, fresh);
+
+  assert.equal(validateDocumentData(upgraded).valid, true);
+  assert.equal(upgraded.nodes["legacy-node-section-a-links"].type, "markdown");
+  assert.equal(upgraded.nodes["legacy-node-section-a-links"].source, current.nodes["legacy-node-section-a-links"].source);
 });
 
 function downgradeVisualGraph(fresh) {
