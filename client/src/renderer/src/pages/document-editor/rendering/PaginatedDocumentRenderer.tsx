@@ -46,7 +46,9 @@ export function PaginatedDocumentRenderer({
     let canceled = false;
     const measure = () => {
       if (canceled || !measureContentRef.current) return;
-      const rootElement = measureContentRef.current.querySelector(":scope > .document-node");
+      const rootElement = measureContentRef.current.querySelector(
+        ":scope > .document-renderer--measure > .document-node",
+      );
       if (!(rootElement instanceof HTMLElement)) return;
       const elements = Array.from(rootElement.children).filter(
         (element): element is HTMLElement => element instanceof HTMLElement && Boolean(element.dataset.measureId),
@@ -77,22 +79,29 @@ export function PaginatedDocumentRenderer({
 
   return (
     <div className={`paginated-document paginated-document--${mode}`} data-document-page-count={pages.length}>
-      {pages.map((page) => (
+      {pages.map((page, pageIndex) => (
         <div className={`document-page document-renderer document-renderer--${mode}`} data-document-page-id={page.id} data-document-page-overflow={page.overflow || undefined} key={page.id}>
-          <NodeRenderer
-            node={{ ...root, children: page.units.map((unit) => unit.node) }}
-            selectedNodeId={selectedNodeId}
-            selectableNodeIds={selectableNodeIds}
-            onSelect={mode === "screen" ? onSelect : undefined}
-            onEditValueChange={mode === "screen" ? onEditValueChange : undefined}
-            onRichTextSelection={mode === "screen" ? onRichTextSelection : undefined}
-            richTextSelection={mode === "screen" ? richTextSelection : undefined}
-          />
+          <div className="document-page-content">
+            <NodeRenderer
+              node={{ ...root, children: page.units.map((unit) => unit.node) }}
+              selectedNodeId={selectedNodeId}
+              selectableNodeIds={selectableNodeIds}
+              onSelect={mode === "screen" ? onSelect : undefined}
+              onEditValueChange={mode === "screen" ? onEditValueChange : undefined}
+              onRichTextSelection={mode === "screen" ? onRichTextSelection : undefined}
+              richTextSelection={mode === "screen" ? richTextSelection : undefined}
+            />
+          </div>
+          <footer className="document-page-footer" aria-label={`${pageIndex + 1}페이지`}>
+            <span>{pageIndex + 1}</span>
+          </footer>
         </div>
       ))}
       <div className="document-measure-page" aria-hidden="true">
-        <div className="document-measure-content document-renderer document-renderer--measure" ref={measureContentRef}>
-          <NodeRenderer node={root} measure />
+        <div className="document-measure-content" ref={measureContentRef}>
+          <div className="document-renderer document-renderer--measure">
+            <NodeRenderer node={root} measure />
+          </div>
         </div>
       </div>
     </div>

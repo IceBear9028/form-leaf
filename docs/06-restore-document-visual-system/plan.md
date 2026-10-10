@@ -5,8 +5,8 @@
 | 단계 | 작업 | 상태 | 검증 |
 |---|---|---|---|
 | 1 | 시각 회귀 기준과 복구 계약 확정 | 완료 | 기준 커밋·PDF와 현재 구현의 차이 기록 |
-| 2 | A4 surface·Markdown·페이지 footer 복구 | 진행 중 | screen·measure·print 공통 CSS와 snapshot 확인 |
-| 3 | 범용 style preset·기본 문서 스타일 복구 | 대기 | 일반·조밀 preset 저장·재실행 회귀 |
+| 2 | A4 surface·Markdown·페이지 footer 복구 | 완료 | screen·measure·print 공통 CSS와 격리 Electron snapshot 확인 |
+| 3 | 범용 style preset·기본 문서 스타일 복구 | 진행 중 | 일반·조밀 preset 저장·재실행 회귀 |
 | 4 | editor chrome·preview zoom 복구 | 대기 | 50~115% zoom과 panel usability 확인 |
 | 5 | legacy import 시각 호환 보강 | 대기 | 기존 v1/v2 fixture와 reference PDF 비교 |
 | 6 | 전체 시각·기능 회귀 검증 | 대기 | 전체 검사와 격리 Electron smoke 통과 |
