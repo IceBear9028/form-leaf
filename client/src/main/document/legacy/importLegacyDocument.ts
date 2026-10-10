@@ -66,15 +66,24 @@ class LegacyDocumentBuilder {
   private readonly rootStyleId = this.ids.create("style", "root");
   private readonly sectionStyleId = this.ids.create("style", "section");
   private readonly sectionBoundaryStyleId = this.ids.create("style", "section-boundary");
+  private readonly roomyBoundaryStyleId = this.ids.create("style", "roomy-boundary");
   private readonly itemStyleId = this.ids.create("style", "item");
+  private readonly splitItemStyleId = this.ids.create("style", "split-item");
   private readonly headingStyleId = this.ids.create("style", "heading");
   private readonly headingRowStyleId = this.ids.create("style", "heading-row");
+  private readonly roomyHeadingRowStyleId = this.ids.create("style", "roomy-heading-row");
   private readonly annotationStyleId = this.ids.create("style", "annotation");
   private readonly leadStyleId = this.ids.create("style", "lead");
   private readonly listStyleId = this.ids.create("style", "list");
+  private readonly connectedListStyleId = this.ids.create("style", "connected-list");
   private readonly metaStyleId = this.ids.create("style", "meta");
+  private readonly periodStyleId = this.ids.create("style", "period");
+  private readonly durationStyleId = this.ids.create("style", "duration");
   private readonly contentStyleId = this.ids.create("style", "content");
+  private readonly detailedContentStyleId = this.ids.create("style", "detailed-content");
   private readonly titleStyleId = this.ids.create("style", "title");
+  private readonly subtitleStyleId = this.ids.create("style", "subtitle");
+  private readonly bulletBodyStyleId = this.ids.create("style", "bullet-body");
   private readonly accentTitleStyleId = this.ids.create("style", "accent-title");
   private readonly compactTextStyleId = this.ids.create("style", "compact-text");
   private readonly headerRowStyleId = this.ids.create("style", "header-row");
@@ -174,10 +183,38 @@ class LegacyDocumentBuilder {
           borderEdges: ["top"],
         },
       },
+      [this.roomyBoundaryStyleId]: {
+        id: this.roomyBoundaryStyleId,
+        name: "Roomy boundary",
+        layout: {
+          direction: "column",
+          gapPt: 0,
+          paddingPt: [23.8, 0, 0, 0],
+          align: "stretch",
+          width: { mode: "fill" },
+        },
+        decoration: {
+          borderColor: { kind: "hex", value: "#D9D9D9" },
+          borderWidthPt: 0.75,
+          borderEdges: ["top"],
+        },
+      },
       [this.itemStyleId]: {
         id: this.itemStyleId,
         name: "Item",
         layout: { direction: "row", gapPt: 0, align: "start", width: { mode: "fill" } },
+        pagination: { keepTogether: true },
+      },
+      [this.splitItemStyleId]: {
+        id: this.splitItemStyleId,
+        name: "Split item",
+        layout: {
+          direction: "row",
+          gapPt: 18.4,
+          paddingPt: [0, 0, 13.6, 0],
+          align: "start",
+          width: { mode: "fill" },
+        },
         pagination: { keepTogether: true },
       },
       [this.headingStyleId]: {
@@ -195,7 +232,19 @@ class LegacyDocumentBuilder {
         id: this.headingRowStyleId,
         name: "Heading row",
         layout: { direction: "row", gapPt: 5.5, align: "end", width: { mode: "fill" } },
-        pagination: { keepWithNext: true },
+        pagination: { keepTogether: true, keepWithNext: true },
+      },
+      [this.roomyHeadingRowStyleId]: {
+        id: this.roomyHeadingRowStyleId,
+        name: "Roomy heading row",
+        layout: {
+          direction: "row",
+          gapPt: 5.5,
+          paddingPt: [0, 0, 24.5, 0],
+          align: "end",
+          width: { mode: "fill" },
+        },
+        pagination: { keepTogether: true, keepWithNext: true },
       },
       [this.annotationStyleId]: {
         id: this.annotationStyleId,
@@ -213,11 +262,27 @@ class LegacyDocumentBuilder {
         name: "Item list",
         layout: { direction: "column", gapPt: compact ? 10 : 13, align: "stretch", width: { mode: "fill" } },
       },
+      [this.connectedListStyleId]: {
+        id: this.connectedListStyleId,
+        name: "Connected list",
+        layout: { direction: "column", gapPt: 0, align: "stretch", width: { mode: "fill" } },
+      },
       [this.metaStyleId]: {
         id: this.metaStyleId,
         name: "Meta column",
         layout: { direction: "column", gapPt: 0, align: "start", width: { mode: "fixed", valuePt: 88 } },
         typography: { fontSizePt: 8, lineHeight: 1.75, fontWeight: 600, color: { kind: "hex", value: "#5E6671" } },
+      },
+      [this.periodStyleId]: {
+        id: this.periodStyleId,
+        name: "Period",
+        layout: { direction: "row", gapPt: 4, align: "start", width: { mode: "fill" } },
+        typography: { fontSizePt: 8, lineHeight: 1.75, fontWeight: 680, color: { kind: "hex", value: "#4B535E" } },
+      },
+      [this.durationStyleId]: {
+        id: this.durationStyleId,
+        name: "Duration",
+        typography: { fontSizePt: 8, lineHeight: 1.75, fontWeight: 700, color: { kind: "hex", value: "#2D3137" } },
       },
       [this.contentStyleId]: {
         id: this.contentStyleId,
@@ -225,10 +290,28 @@ class LegacyDocumentBuilder {
         layout: { direction: "column", gapPt: compact ? 4.5 : 6, paddingPt: [0, 0, 0, 23], width: { mode: "fill" }, grow: 1 },
         decoration: { borderColor: { kind: "hex", value: "#D9D9D9" }, borderWidthPt: 0.75, borderEdges: ["left"] },
       },
+      [this.detailedContentStyleId]: {
+        id: this.detailedContentStyleId,
+        name: "Detailed content",
+        layout: { direction: "column", gapPt: 6, paddingPt: [0, 0, 0, 23], width: { mode: "fill" }, grow: 1 },
+        decoration: { borderColor: { kind: "hex", value: "#D9D9D9" }, borderWidthPt: 0.75, borderEdges: ["left"] },
+      },
       [this.titleStyleId]: {
         id: this.titleStyleId,
         name: "Item title",
         typography: { fontSizePt: 10, lineHeight: 1.2, fontWeight: 740, color: { kind: "hex", value: "#222222" } },
+      },
+      [this.subtitleStyleId]: {
+        id: this.subtitleStyleId,
+        name: "Subtitle",
+        typography: { fontSizePt: 8, lineHeight: 1.25, color: { kind: "hex", value: "#4D535B" } },
+      },
+      [this.bulletBodyStyleId]: {
+        id: this.bulletBodyStyleId,
+        name: "Bullet body",
+        layout: { paddingPt: [6.4, 0, 0, 0] },
+        typography: { fontSizePt: 8, lineHeight: 1.25, color: { kind: "hex", value: "#343940" } },
+        markdown: { listItemGapPt: 4 },
       },
       [this.accentTitleStyleId]: {
         id: this.accentTitleStyleId,
@@ -349,7 +432,7 @@ class LegacyDocumentBuilder {
     sectionIndex: number,
   ): void {
     const containerId = this.addSectionContainer(section.id, sectionIndex, section.title, section.visible);
-    this.addSectionHeader(containerId, `${section.id}-heading`, section.title);
+    this.addSectionHeader(containerId, section.id, section.title);
     this.addMarkdownChild(
       containerId,
       `${section.id}-body`,
@@ -360,8 +443,21 @@ class LegacyDocumentBuilder {
   }
 
   private addTimeline(section: LegacyTimelineSection, sectionIndex: number): void {
-    const containerId = this.addSectionContainer(section.id, sectionIndex, section.title, section.visible);
-    this.addSectionHeader(containerId, `${section.id}-heading`, section.title, section.annotation);
+    const detailed = section.timelineKind === "career";
+    const containerId = this.addSectionContainer(
+      section.id,
+      sectionIndex,
+      section.title,
+      section.visible,
+      detailed ? this.roomyBoundaryStyleId : undefined,
+    );
+    this.addSectionHeader(
+      containerId,
+      section.id,
+      section.title,
+      section.annotation,
+      detailed ? this.roomyHeadingRowStyleId : undefined,
+    );
     const component = this.createTimelineComponent(section);
     const repeaterId = this.ids.create("node", `${section.id}-items`);
     this.addChild(containerId, {
@@ -369,7 +465,7 @@ class LegacyDocumentBuilder {
       type: "repeater",
       name: `${section.title} items`,
       visible: true,
-      styleId: this.listStyleId,
+      styleId: detailed ? this.connectedListStyleId : this.listStyleId,
       itemComponentId: component.id,
       items: section.items.map((item, itemIndex) => ({
         id: this.ids.create("item", `${section.id}-${item.id}-${itemIndex}`),
@@ -382,7 +478,7 @@ class LegacyDocumentBuilder {
 
   private addProjectGroup(section: LegacyProjectGroupSection, sectionIndex: number): void {
     const containerId = this.addSectionContainer(section.id, sectionIndex, section.title, section.visible);
-    this.addSectionHeader(containerId, `${section.id}-heading`, section.title);
+    this.addSectionHeader(containerId, section.id, section.title);
     const component = this.createProjectComponent(section);
     this.addChild(containerId, {
       id: this.ids.create("node", `${section.id}-items`),
@@ -401,6 +497,7 @@ class LegacyDocumentBuilder {
   }
 
   private createTimelineComponent(section: LegacyTimelineSection): ComponentDefinition {
+    const detailed = section.timelineKind === "career";
     return this.createItemComponent(section.id, `${section.title} item`, false, true, [
       textField("period-start", "Start", ""),
       textField("period-end", "End", ""),
@@ -409,7 +506,7 @@ class LegacyDocumentBuilder {
       richTextField("title", "Title", emptyRichText()),
       markdownField("links", "Links", ""),
       markdownField("body", "Body", ""),
-    ]);
+    ], detailed);
   }
 
   private createProjectComponent(section: LegacyProjectGroupSection): ComponentDefinition {
@@ -431,6 +528,7 @@ class LegacyDocumentBuilder {
     accentTitle: boolean,
     organizationInContent: boolean,
     fields: LegacyComponentField[],
+    detailed = false,
   ): ComponentDefinition {
     const componentId = this.ids.create("component", sourceId);
     const rootNodeId = this.ids.create("node", `${sourceId}-item-root`);
@@ -439,7 +537,7 @@ class LegacyDocumentBuilder {
       type: "container",
       name,
       visible: true,
-      styleId: this.itemStyleId,
+      styleId: detailed ? this.splitItemStyleId : this.itemStyleId,
       childIds: [],
     };
     this.document.nodes[rootNodeId] = root;
@@ -458,7 +556,7 @@ class LegacyDocumentBuilder {
       type: "container",
       name: "Content",
       visible: true,
-      styleId: this.contentStyleId,
+      styleId: detailed ? this.detailedContentStyleId : this.contentStyleId,
       childIds: [],
     };
     root.childIds.push(metaId, contentId);
@@ -468,7 +566,7 @@ class LegacyDocumentBuilder {
       type: "container",
       name: "Period",
       visible: true,
-      styleId: this.contactRowStyleId,
+      styleId: detailed ? this.periodStyleId : this.contactRowStyleId,
       childIds: [],
     };
     const meta = this.document.nodes[metaId];
@@ -477,12 +575,14 @@ class LegacyDocumentBuilder {
     const propDefinitions: ComponentPropDefinition[] = fields.map((field) => {
       const nodeId = this.ids.create("node", `${sourceId}-${field.id}`);
       const node = field.createNode(nodeId);
-      const styleId = field.id === "organization" && organizationInContent
+      const styleId = field.id === "period-label" && detailed
+        ? this.durationStyleId
+        : field.id === "organization" && organizationInContent
         ? this.titleStyleId
         : field.id === "title"
-          ? accentTitle ? this.accentTitleStyleId : this.compactTextStyleId
+          ? accentTitle ? this.accentTitleStyleId : detailed ? this.subtitleStyleId : this.compactTextStyleId
         : field.id === "body" || field.id === "tags" || field.id === "links"
-          ? this.compactTextStyleId
+          ? field.id === "body" && detailed ? this.bulletBodyStyleId : this.compactTextStyleId
           : undefined;
       if (styleId) node.styleId = styleId;
       this.document.nodes[nodeId] = node;
@@ -528,6 +628,7 @@ class LegacyDocumentBuilder {
     sectionIndex: number,
     name: string,
     visible: boolean,
+    styleId?: string,
   ): string {
     const id = this.ids.create("node", `${sourceId}-${sectionIndex}`);
     this.addChild(this.rootNodeId, {
@@ -535,15 +636,21 @@ class LegacyDocumentBuilder {
       type: "container",
       name,
       visible,
-      styleId: sectionIndex <= 1 ? this.sectionStyleId : this.sectionBoundaryStyleId,
+      styleId: styleId ?? (sectionIndex <= 1 ? this.sectionStyleId : this.sectionBoundaryStyleId),
       childIds: [],
     });
     return id;
   }
 
-  private addSectionHeader(parentId: string, sourceId: string, value: string, annotation?: string): void {
-    const rowId = this.addContainerChild(parentId, `${sourceId}-row`, "Heading row", this.headingRowStyleId);
-    this.addTextChild(rowId, sourceId, "Heading", value, this.headingStyleId);
+  private addSectionHeader(
+    parentId: string,
+    sourceId: string,
+    value: string,
+    annotation?: string,
+    rowStyleId = this.headingRowStyleId,
+  ): void {
+    const rowId = this.addContainerChild(parentId, `${sourceId}-heading-row`, "Heading row", rowStyleId);
+    this.addTextChild(rowId, `${sourceId}-heading`, "Heading", value, this.headingStyleId);
     if (annotation !== undefined) {
       this.addTextChild(rowId, `${sourceId}-annotation`, "Annotation", annotation, this.annotationStyleId);
     }
