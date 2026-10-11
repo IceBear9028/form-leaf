@@ -239,39 +239,13 @@ export function PropertyInspector({
               }}
             />
           )}
-          <Field label="위치 방식">
-            <Select
-              value={style?.layout?.position ?? "flow"}
-              onChange={(position) => changeStyle((current) => {
-                const layout = { ...current.layout };
-                if (position === "flow") delete layout.position;
-                else layout.position = position as NonNullable<StyleDefinition["layout"]>["position"];
-                return { ...current, layout };
-              })}
-              options={[
-                { value: "flow", label: "기본 흐름" },
-                { value: "relative", label: "상대 위치" },
-                { value: "absolute", label: "절대 위치" },
-              ]}
-            />
-          </Field>
-          {style?.layout?.position && (
-            <>
-              {(["topPt", "rightPt", "bottomPt", "leftPt"] as const).map((property) => (
-                <NumberField
-                  key={property}
-                  label={`${{ topPt: "위", rightPt: "오른쪽", bottomPt: "아래", leftPt: "왼쪽" }[property]} (pt)`}
-                  value={style.layout?.[property]}
-                  onChange={(value) => changeStyle((current) => {
-                    const layout = { ...current.layout };
-                    if (value === undefined) delete layout[property];
-                    else layout[property] = value;
-                    return { ...current, layout };
-                  })}
-                />
-              ))}
-            </>
-          )}
+          <PositionFields style={style} onChange={changeStyle} />
+        </InspectorSection>
+      )}
+
+      {node.type !== "container" && (
+        <InspectorSection title="위치">
+          <PositionFields style={style} onChange={changeStyle} />
         </InspectorSection>
       )}
 
@@ -531,6 +505,60 @@ function PaddingFields({
         ))}
       </div>
     </div>
+  );
+}
+
+function PositionFields({
+  style,
+  onChange,
+}: {
+  style?: StyleDefinition;
+  onChange: (update: (style: StyleDefinition) => StyleDefinition) => void;
+}) {
+  const position = style?.layout?.position;
+  return (
+    <>
+      <Field label="배치 방식">
+        <Select
+          value={position ?? "flow"}
+          onChange={(value) => onChange((current) => {
+            const layout = { ...current.layout };
+            if (value === "flow") {
+              delete layout.position;
+              delete layout.topPt;
+              delete layout.rightPt;
+              delete layout.bottomPt;
+              delete layout.leftPt;
+            } else {
+              layout.position = value as NonNullable<StyleDefinition["layout"]>["position"];
+            }
+            return { ...current, layout };
+          })}
+          options={[
+            { value: "flow", label: "Auto Layout" },
+            { value: "relative", label: "상대 위치" },
+            { value: "absolute", label: "자유 위치" },
+          ]}
+        />
+      </Field>
+      {position && (
+        <div className="grid grid-cols-2 gap-2">
+          {(["topPt", "rightPt", "bottomPt", "leftPt"] as const).map((property) => (
+            <NumberField
+              key={property}
+              label={`${{ topPt: "위", rightPt: "오른쪽", bottomPt: "아래", leftPt: "왼쪽" }[property]} (pt)`}
+              value={style?.layout?.[property]}
+              onChange={(value) => onChange((current) => {
+                const layout = { ...current.layout };
+                if (value === undefined) delete layout[property];
+                else layout[property] = value;
+                return { ...current, layout };
+              })}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
