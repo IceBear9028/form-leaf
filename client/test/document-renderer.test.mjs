@@ -164,6 +164,18 @@ test("render tree는 component와 repeater prop을 stable path에 적용한다",
   assert.equal(new Set(renderIds).size, renderIds.length);
 });
 
+test("component 원본은 document tree와 분리해 편집 가능한 root로 렌더한다", () => {
+  const document = createFixture();
+  const tree = buildRenderTree(document, "component-root");
+
+  assert.equal(tree.type, "container");
+  assert.equal(tree.sourceNodeId, "component-root");
+  assert.equal(tree.children.length, 1);
+  assert.equal(tree.children[0].sourceNodeId, "component-label");
+  assert.equal(tree.children[0].value, "Definition value");
+  assert.deepEqual(tree.children[0].editTarget, { kind: "node", nodeId: "component-label" });
+});
+
 test("사용자 이름을 바꿔도 render path와 출력 값은 달라지지 않는다", () => {
   const document = createFixture();
   const first = buildRenderTree(document);

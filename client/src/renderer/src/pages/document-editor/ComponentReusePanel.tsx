@@ -320,6 +320,28 @@ function ComponentDefinitionEditor({
   );
 }
 
+export function ComponentDefinitionPanel({
+  document,
+  componentId,
+  onChange,
+}: {
+  document: DocumentData;
+  componentId: string;
+  onChange: (change: GenericDocumentChange) => void;
+}) {
+  const component = document.components[componentId];
+  if (!component) return null;
+  return (
+    <aside className="min-h-0 overflow-y-auto border-r border-t border-border bg-background p-3" aria-label="Component definition">
+      <div className="mb-3">
+        <h2 className="text-sm font-semibold">컴포넌트 설정</h2>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">인스턴스에서 바꿀 값을 속성으로 노출합니다.</p>
+      </div>
+      <ComponentDefinitionEditor document={document} component={component} onChange={onChange} />
+    </aside>
+  );
+}
+
 function collectBindableNodes(
   document: DocumentData,
   component: ComponentDefinition,

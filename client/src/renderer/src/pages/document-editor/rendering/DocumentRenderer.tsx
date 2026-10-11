@@ -9,6 +9,7 @@ import "./document.css";
 
 export function DocumentRenderer({
   document,
+  rootNodeId,
   mode = "screen",
   className,
   selectedNodeId,
@@ -19,6 +20,7 @@ export function DocumentRenderer({
   richTextSelection,
 }: {
   document: DocumentData;
+  rootNodeId?: string;
   mode?: "screen" | "measure" | "print";
   className?: string;
   selectedNodeId?: string;
@@ -28,7 +30,7 @@ export function DocumentRenderer({
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
   richTextSelection?: DirectTextSelection;
 }) {
-  const tree = useMemo(() => buildRenderTree(document), [document]);
+  const tree = useMemo(() => buildRenderTree(document, rootNodeId), [document, rootNodeId]);
   return (
     <div
       className={["document-renderer", `document-renderer--${mode}`, className].filter(Boolean).join(" ")}

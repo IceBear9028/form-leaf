@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeftIcon, CheckIcon, FileDownIcon, MinusIcon, PlusIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, FileDownIcon, MinusIcon, PlusIcon, SaveIcon, XIcon } from "lucide-react";
 import type { DocumentData, RichTextMark, RichTextValue } from "../../../../foundation/documentModel.ts";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
 import {
@@ -18,11 +18,13 @@ import { ButtonGroup } from "@/shared/ui/button-group";
 import { Spinner } from "@/shared/ui/spinner";
 import { toast } from "@/shared/ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
-import { ComponentReusePanel } from "./ComponentReusePanel.tsx";
+import { DocumentComponentNavigator } from "./DocumentComponentNavigator.tsx";
+import { ComponentDefinitionPanel } from "./ComponentReusePanel.tsx";
 import { DocumentStructurePanel } from "./DocumentStructurePanel.tsx";
 import { PropertyInspector } from "./PropertyInspector.tsx";
 import { RichTextSelectionToolbar } from "./RichTextSelectionToolbar.tsx";
-import { documentSelectableNodeIds, selectNode } from "./documentSelection.ts";
+import { selectNode, type DocumentSelection } from "./documentSelection.ts";
+import { DocumentRenderer } from "./rendering/DocumentRenderer.tsx";
 import { PaginatedDocumentRenderer } from "./rendering/PaginatedDocumentRenderer.tsx";
 import type { DirectTextSelection } from "./rendering/EditableTextValue.tsx";
 import { type SaveState, useGenericDocumentSession } from "./useGenericDocumentSession.ts";
@@ -50,7 +52,7 @@ export function GenericDocumentEditorPage({
   const [zoom, setZoom] = useState(DEFAULT_PREVIEW_ZOOM);
   const [exporting, setExporting] = useState(false);
   const [returning, setReturning] = useState(false);
-  const selectableNodeIds = useMemo(() => documentSelectableNodeIds(session.document), [session.document]);
+  const [editingComponentId, setEditingComponentId] = useState<string>();
 
   const commitDirectEdit = (target: DocumentEditTarget, value: DirectEditValue, _selection: TextRange) => {
     const next = updateDocumentEditValue(session.document, target, value);
@@ -150,6 +152,22 @@ export function GenericDocumentEditorPage({
     }
   };
 
+  if (editingComponentId && session.document.components[editingComponentId]) {
+    return (
+      <ComponentEditorScreen
+        key={editingComponentId}
+        sourceDocument={session.document}
+        componentId={editingComponentId}
+        onCancel={() => setEditingComponentId(undefined)}
+        onSave={(document) => {
+          session.updateDocument(document);
+          session.setSelection(undefined);
+          setEditingComponentId(undefined);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-shell flex h-full flex-col bg-background text-foreground">
       <header className="app-toolbar relative z-20 grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center gap-5 border-b border-border bg-background px-5 [-webkit-app-region:drag]">
@@ -207,25 +225,18 @@ export function GenericDocumentEditorPage({
           </Button>
         </div>
       </header>
-      <div className="workspace grid min-h-0 flex-1 grid-cols-[288px_minmax(0,1fr)_320px]">
-        <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(240px,0.75fr)]">
-          <DocumentStructurePanel document={session.document} selection={session.selection} onSelectionChange={session.setSelection} onChange={session.updateDocument} />
-          <ComponentReusePanel document={session.document} selection={session.selection} onSelectionChange={session.setSelection} onChange={session.updateDocument} />
-        </div>
+      <div className="workspace grid min-h-0 flex-1 grid-cols-[264px_minmax(0,1fr)]">
+        <DocumentComponentNavigator document={session.document} onEditComponent={setEditingComponentId} />
         <main ref={previewRef} className="min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 pb-[100px] pt-[34px] max-[1180px]:px-6" aria-label="문서 미리보기">
           <PaginatedDocumentRenderer
             document={session.document}
             mode="screen"
-            selectedNodeId={session.selection?.nodeId}
-            selectableNodeIds={selectableNodeIds}
-            onSelect={({ nodeId }) => session.setSelection(selectNode(nodeId))}
             onEditValueChange={commitDirectEdit}
             onRichTextSelection={setRichTextSelection}
             richTextSelection={richTextSelection}
             zoom={zoom}
           />
         </main>
-        <PropertyInspector document={session.document} selection={session.selection} onChange={session.updateDocument} />
       </div>
       <div className="document-print-surface">
         <PaginatedDocumentRenderer document={session.document} mode="print" />
@@ -233,6 +244,125 @@ export function GenericDocumentEditorPage({
       {richTextSelection && <RichTextSelectionToolbar rect={richTextSelection.rect} onFormat={formatRichText} onRemove={removeInlineMark} />}
     </div>
   );
+}
+
+function ComponentEditorScreen({
+  sourceDocument,
+  componentId,
+  onCancel,
+  onSave,
+}: {
+  sourceDocument: DocumentData;
+  componentId: string;
+  onCancel: () => void;
+  onSave: (document: DocumentData) => void;
+}) {
+  const [draft, setDraft] = useState<DocumentData>(() => structuredClone(sourceDocument));
+  const component = draft.components[componentId];
+  const [selection, setSelection] = useState<DocumentSelection | undefined>(() => selectNode(component.rootNodeId));
+  const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
+  const selectableNodeIds = useMemoComponentNodeIds(draft, component.rootNodeId);
+
+  const updateDraft = (change: DocumentData | ((current: DocumentData) => DocumentData)) => {
+    setDraft((current) => typeof change === "function" ? change(current) : change);
+  };
+
+  useEffect(() => {
+    setSelection((current) => (
+      current && selectableNodeIds.has(current.nodeId) && !draft.nodes[current.nodeId]?.archivedFrom
+        ? current
+        : selectNode(component.rootNodeId)
+    ));
+  }, [component.rootNodeId, draft, selectableNodeIds]);
+
+  const commitDirectEdit = (target: DocumentEditTarget, value: DirectEditValue, _selection: TextRange) => {
+    setDraft((current) => updateDocumentEditValue(current, target, value));
+  };
+
+  const formatRichText = (mark: RichTextMark) => {
+    if (!richTextSelection) return;
+    const current = readDocumentEditValue(draft, richTextSelection.target);
+    if (!isRichTextValue(current)) return;
+    const value = mark.type === "link" || mark.type === "color"
+      ? setRichTextMark(current, richTextSelection.range, mark)
+      : toggleRichTextMark(current, richTextSelection.range, mark);
+    commitDirectEdit(richTextSelection.target, value, richTextSelection.range);
+  };
+
+  const removeInlineMark = (type: RichTextMark["type"]) => {
+    if (!richTextSelection) return;
+    const current = readDocumentEditValue(draft, richTextSelection.target);
+    if (!isRichTextValue(current)) return;
+    commitDirectEdit(
+      richTextSelection.target,
+      removeRichTextMark(current, richTextSelection.range, type),
+      richTextSelection.range,
+    );
+  };
+
+  return (
+    <div className="app-shell flex h-full flex-col bg-background text-foreground">
+      <header className="app-toolbar relative z-20 grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center gap-5 border-b border-border bg-background px-5 [-webkit-app-region:drag]">
+        <div className="flex min-w-0 items-center gap-3 [-webkit-app-region:no-drag]">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            <ArrowLeftIcon aria-hidden="true" /> 콘텐츠로
+          </Button>
+          <div className="min-w-0">
+            <strong className="block truncate text-sm font-medium">{component.name || "이름 없는 컴포넌트"}</strong>
+            <span className="block text-[11px] text-muted-foreground">공통 컴포넌트 원본</span>
+          </div>
+        </div>
+        <Badge variant="secondary" className="[-webkit-app-region:no-drag]">컴포넌트 편집</Badge>
+        <div className="flex items-center justify-self-end gap-2 [-webkit-app-region:no-drag]">
+          <Button type="button" variant="outline" onClick={onCancel}><XIcon aria-hidden="true" /> 취소</Button>
+          <Button type="button" onClick={() => onSave(draft)}><SaveIcon aria-hidden="true" /> 변경사항 저장</Button>
+        </div>
+      </header>
+      <div className="workspace grid min-h-0 flex-1 grid-cols-[288px_minmax(0,1fr)_320px]">
+        <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(220px,0.72fr)]">
+          <DocumentStructurePanel
+            document={draft}
+            rootNodeId={component.rootNodeId}
+            selection={selection}
+            onSelectionChange={setSelection}
+            onChange={updateDraft}
+          />
+          <ComponentDefinitionPanel document={draft} componentId={componentId} onChange={updateDraft} />
+        </div>
+        <main className="min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 py-[34px] max-[1180px]:px-6" aria-label="컴포넌트 미리보기">
+          <div className="document-page mx-auto h-auto min-h-[180px] overflow-visible shadow-[0_8px_28px_rgb(43_53_68_/_13%),0_1px_3px_rgb(43_53_68_/_12%)]">
+            <DocumentRenderer
+              document={draft}
+              rootNodeId={component.rootNodeId}
+              mode="screen"
+              selectedNodeId={selection?.nodeId}
+              selectableNodeIds={selectableNodeIds}
+              onSelect={({ nodeId }) => setSelection(selectNode(nodeId))}
+              onEditValueChange={commitDirectEdit}
+              onRichTextSelection={setRichTextSelection}
+              richTextSelection={richTextSelection}
+            />
+          </div>
+        </main>
+        <PropertyInspector document={draft} selection={selection} onChange={updateDraft} />
+      </div>
+      {richTextSelection && <RichTextSelectionToolbar rect={richTextSelection.rect} onFormat={formatRichText} onRemove={removeInlineMark} />}
+    </div>
+  );
+}
+
+function useMemoComponentNodeIds(document: DocumentData, rootNodeId: string): ReadonlySet<string> {
+  return useMemo(() => {
+    const ids = new Set<string>();
+    const visit = (nodeId: string) => {
+      if (ids.has(nodeId)) return;
+      ids.add(nodeId);
+      const node = document.nodes[nodeId];
+      if (node?.type === "container") node.childIds.forEach(visit);
+    };
+    visit(rootNodeId);
+    return ids;
+  }, [document, rootNodeId]);
 }
 
 function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => void }) {

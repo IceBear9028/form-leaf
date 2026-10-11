@@ -30,21 +30,25 @@ type AddableNodeType = "container" | "text" | "rich-text" | "markdown" | "image"
 
 export function DocumentStructurePanel({
   document,
+  rootNodeId = document.rootNodeId,
   selection,
   onSelectionChange,
   onChange,
 }: {
   document: DocumentData;
+  rootNodeId?: string;
   selection?: DocumentSelection;
   onSelectionChange: (selection?: DocumentSelection) => void;
   onChange: (change: GenericDocumentChange) => void;
 }) {
   const [draggedNodeId, setDraggedNodeId] = useState<string>();
-  const root = document.nodes[document.rootNodeId];
-  const archived = Object.values(document.nodes).filter((node) => node.archivedFrom);
+  const root = document.nodes[rootNodeId];
+  const archived = rootNodeId === document.rootNodeId
+    ? Object.values(document.nodes).filter((node) => node.archivedFrom)
+    : [];
 
   const add = (type: AddableNodeType) => {
-    const parentId = insertionParentId(document, selection?.nodeId);
+    const parentId = insertionParentId(document, selection?.nodeId, rootNodeId);
     const node = createNode(type);
     onChange((current) => addNode(current, parentId, node));
     onSelectionChange(selectNode(node.id));
@@ -61,6 +65,7 @@ export function DocumentStructurePanel({
           depth={0}
           document={document}
           node={root}
+          scopeRootNodeId={rootNodeId}
           selection={selection}
           onSelectionChange={onSelectionChange}
           onChange={onChange}
@@ -118,6 +123,7 @@ export function DocumentStructurePanel({
 function TreeRow({
   document,
   node,
+  scopeRootNodeId,
   depth,
   selection,
   onSelectionChange,
@@ -128,6 +134,7 @@ function TreeRow({
 }: {
   document: DocumentData;
   node: DocumentNode;
+  scopeRootNodeId: string;
   depth: number;
   selection?: DocumentSelection;
   onSelectionChange: (selection?: DocumentSelection) => void;
@@ -137,7 +144,7 @@ function TreeRow({
   onDragEnd: () => void;
 }) {
   const selected = selection?.nodeId === node.id;
-  const isRoot = node.id === document.rootNodeId;
+  const isRoot = node.id === scopeRootNodeId;
   const parentId = findNodeParentId(document, node.id);
   const siblings = parentId && document.nodes[parentId]?.type === "container"
     ? document.nodes[parentId].childIds
@@ -220,6 +227,7 @@ function TreeRow({
           key={childId}
           document={document}
           node={document.nodes[childId]}
+          scopeRootNodeId={scopeRootNodeId}
           depth={depth + 1}
           selection={selection}
           onSelectionChange={onSelectionChange}
@@ -262,11 +270,11 @@ function IconButton({
   );
 }
 
-function insertionParentId(document: DocumentData, selectedId?: string): string {
-  if (!selectedId) return document.rootNodeId;
+function insertionParentId(document: DocumentData, selectedId: string | undefined, rootNodeId: string): string {
+  if (!selectedId) return rootNodeId;
   const selected = document.nodes[selectedId];
   if (selected?.type === "container" && !selected.archivedFrom) return selected.id;
-  return findNodeParentId(document, selectedId) ?? document.rootNodeId;
+  return findNodeParentId(document, selectedId) ?? rootNodeId;
 }
 
 function createNode(type: AddableNodeType): DocumentNode {

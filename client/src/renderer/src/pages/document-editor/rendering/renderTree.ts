@@ -76,9 +76,12 @@ export type RenderTreeNode =
   | RenderComponentNode
   | RenderRepeaterNode;
 
-export function buildRenderTree(document: DocumentData): RenderTreeNode {
+export function buildRenderTree(
+  document: DocumentData,
+  rootNodeId: string = document.rootNodeId,
+): RenderTreeNode {
   assertDocumentData(document);
-  return resolveNode(document, document.rootNodeId, `node:${document.rootNodeId}`, new Map(), true);
+  return resolveNode(document, rootNodeId, `node:${rootNodeId}`, new Map(), true);
 }
 
 type RenderOverride = {
