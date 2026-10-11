@@ -23,6 +23,7 @@ import { Spinner } from "@/shared/ui/spinner";
 import { toast } from "@/shared/ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { DocumentComponentNavigator } from "./DocumentComponentNavigator.tsx";
+import { ComponentDirectManipulationOverlay } from "./ComponentDirectManipulationOverlay.tsx";
 import { ComponentDefinitionPanel } from "./ComponentReusePanel.tsx";
 import { DocumentStructurePanel } from "./DocumentStructurePanel.tsx";
 import { PropertyInspector } from "./PropertyInspector.tsx";
@@ -265,6 +266,7 @@ function ComponentEditorScreen({
   const component = draft.components[componentId];
   const [selection, setSelection] = useState<DocumentSelection | undefined>(() => selectNode(component.rootNodeId));
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
+  const componentCanvasRef = useRef<HTMLDivElement>(null);
   const selectableNodeIds = useMemoComponentNodeIds(draft, component.rootNodeId);
 
   const updateDraft = (change: DocumentData | ((current: DocumentData) => DocumentData)) => {
@@ -334,7 +336,11 @@ function ComponentEditorScreen({
           <ComponentDefinitionPanel document={draft} componentId={componentId} onChange={updateDraft} />
         </div>
         <main className="min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 py-[34px] max-[1180px]:px-6" aria-label="컴포넌트 미리보기">
-          <div className="document-page mx-auto h-auto min-h-[180px] overflow-visible shadow-[0_8px_28px_rgb(43_53_68_/_13%),0_1px_3px_rgb(43_53_68_/_12%)]">
+          <div className="mx-auto mb-3 flex w-fit items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm">
+            요소 선택 후 파란 핸들을 드래그하세요.
+            <span className="font-medium text-foreground">Auto Layout은 순서 · 절대 위치는 좌표</span>
+          </div>
+          <div ref={componentCanvasRef} className="document-page mx-auto h-auto min-h-[180px] overflow-visible shadow-[0_8px_28px_rgb(43_53_68_/_13%),0_1px_3px_rgb(43_53_68_/_12%)]">
             <DocumentRenderer
               document={draft}
               rootNodeId={component.rootNodeId}
@@ -345,6 +351,13 @@ function ComponentEditorScreen({
               onEditValueChange={commitDirectEdit}
               onRichTextSelection={setRichTextSelection}
               richTextSelection={richTextSelection}
+            />
+            <ComponentDirectManipulationOverlay
+              canvasRef={componentCanvasRef}
+              document={draft}
+              selection={selection}
+              componentRootNodeId={component.rootNodeId}
+              onChange={updateDraft}
             />
           </div>
         </main>

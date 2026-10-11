@@ -22,6 +22,12 @@ import {
   MIN_PREVIEW_ZOOM,
   stepPreviewZoom,
 } from "../src/renderer/src/pages/document-editor/previewZoom.ts";
+import {
+  autoLayoutDropPosition,
+  childInsertionIndex,
+  pixelsToPoints,
+  roundLayoutPoint,
+} from "../src/renderer/src/pages/document-editor/componentDirectManipulation.ts";
 
 const fixedTime = "2026-10-09T00:00:00.000Z";
 const options = {
@@ -127,4 +133,29 @@ test("preview zoom은 8%씩 이동하고 50~115% 범위를 넘지 않는다", ()
   assert.equal(stepPreviewZoom(MIN_PREVIEW_ZOOM, -1), MIN_PREVIEW_ZOOM);
   assert.equal(stepPreviewZoom(MAX_PREVIEW_ZOOM, 1), MAX_PREVIEW_ZOOM);
   assert.equal(stepPreviewZoom(1.1, 1), MAX_PREVIEW_ZOOM);
+});
+
+test("component Auto Layout drag는 포인터 위치를 형제 삽입 위치로 변환한다", () => {
+  const rects = [
+    { start: 10, end: 30 },
+    { start: 40, end: 60 },
+    { start: 70, end: 90 },
+  ];
+  assert.equal(autoLayoutDropPosition(5, rects), 0);
+  assert.equal(autoLayoutDropPosition(35, rects), 1);
+  assert.equal(autoLayoutDropPosition(95, rects), 3);
+
+  assert.equal(
+    childInsertionIndex(["a", "dragged", "hidden", "b", "c"], "dragged", ["a", "b", "c"], 2),
+    3,
+  );
+  assert.equal(
+    childInsertionIndex(["a", "dragged", "b"], "dragged", ["a", "b"], 0),
+    0,
+  );
+});
+
+test("component 자유 배치 drag는 CSS pixel 이동량을 pt 좌표로 변환한다", () => {
+  assert.equal(pixelsToPoints(96), 72);
+  assert.equal(roundLayoutPoint(pixelsToPoints(13)), 9.8);
 });
