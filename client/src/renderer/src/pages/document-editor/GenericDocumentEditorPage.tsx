@@ -337,8 +337,8 @@ function ComponentEditorScreen({
         </div>
         <main className="min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 py-[34px] max-[1180px]:px-6" aria-label="컴포넌트 미리보기">
           <div className="mx-auto mb-3 flex w-fit items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm">
-            요소 선택 후 파란 핸들을 드래그하세요.
-            <span className="font-medium text-foreground">Auto Layout은 순서 · 절대 위치는 좌표</span>
+            요소를 선택한 뒤 파란 영역을 그대로 드래그하세요.
+            <span className="font-medium text-foreground">Auto Layout은 즉시 재배치 · 자유 위치는 좌표 이동</span>
           </div>
           <div ref={componentCanvasRef} className="document-page mx-auto h-auto min-h-[180px] overflow-visible shadow-[0_8px_28px_rgb(43_53_68_/_13%),0_1px_3px_rgb(43_53_68_/_12%)]">
             <DocumentRenderer
@@ -357,6 +357,7 @@ function ComponentEditorScreen({
               document={draft}
               selection={selection}
               componentRootNodeId={component.rootNodeId}
+              onSelectionChange={(nodeId) => setSelection(selectNode(nodeId))}
               onChange={updateDraft}
             />
           </div>
