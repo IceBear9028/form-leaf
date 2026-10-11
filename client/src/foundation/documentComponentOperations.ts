@@ -144,6 +144,104 @@ export function applyComponentDefinitionDraft(
   }, options);
 }
 
+export function createComponentDocumentDraft(
+  document: DocumentData,
+  componentId: string,
+  options?: Pick<DocumentTransactionOptions, "createId">,
+): DocumentData {
+  assertDocumentData(document);
+  const component = requireComponent(document, componentId);
+  const draft = structuredClone(document);
+  const ownedNodeIds = collectComponentOwnedNodeIds(draft, component.rootNodeId);
+  const outsideStyleIds = new Set(
+    Object.values(draft.nodes)
+      .filter((node) => !ownedNodeIds.has(node.id) && node.styleId)
+      .map((node) => node.styleId!),
+  );
+  const createId = options?.createId ?? createEntityId;
+  const usedStyleIds = new Set(Object.keys(draft.styles));
+  const localizedStyles = new Map<string, string>();
+
+  ownedNodeIds.forEach((nodeId) => {
+    const node = draft.nodes[nodeId];
+    if (!node?.styleId || !outsideStyleIds.has(node.styleId)) return;
+    const sourceStyleId = node.styleId;
+    let localStyleId = localizedStyles.get(sourceStyleId);
+    if (!localStyleId) {
+      localStyleId = createUniqueId("style", usedStyleIds, createId);
+      localizedStyles.set(sourceStyleId, localStyleId);
+      draft.styles[localStyleId] = {
+        ...structuredClone(draft.styles[sourceStyleId]),
+        id: localStyleId,
+      };
+    }
+    draft.nodes[nodeId] = { ...node, styleId: localStyleId };
+  });
+
+  assertDocumentData(draft);
+  return draft;
+}
+
+export function applyComponentDocumentDraft(
+  document: DocumentData,
+  componentId: string,
+  draft: DocumentData,
+  options?: DocumentTransactionOptions,
+): DocumentData {
+  assertDocumentData(document);
+  assertDocumentData(draft);
+  if (draft.documentId !== document.documentId) throw new Error("다른 문서의 component draft는 적용할 수 없습니다.");
+  const currentComponent = requireComponent(document, componentId);
+  const draftComponent = requireComponent(draft, componentId);
+  if (draftComponent.rootNodeId !== currentComponent.rootNodeId) {
+    throw new Error("component root는 변경할 수 없습니다.");
+  }
+  assertExistingPropsPreserved(currentComponent, draftComponent);
+
+  const currentNodeIds = collectComponentOwnedNodeIds(document, currentComponent.rootNodeId);
+  const draftNodeIds = collectComponentOwnedNodeIds(draft, draftComponent.rootNodeId);
+  draftNodeIds.forEach((nodeId) => {
+    if (!currentNodeIds.has(nodeId) && document.nodes[nodeId]) {
+      throw new Error(`component 밖에서 사용 중인 node ID입니다: ${nodeId}`);
+    }
+  });
+
+  const nodes = { ...document.nodes };
+  currentNodeIds.forEach((nodeId) => delete nodes[nodeId]);
+  draftNodeIds.forEach((nodeId) => {
+    nodes[nodeId] = structuredClone(draft.nodes[nodeId]);
+  });
+
+  const styles = { ...document.styles };
+  const draftStyleIds = new Set<string>();
+  draftNodeIds.forEach((nodeId) => {
+    const styleId = nodes[nodeId]?.styleId;
+    if (!styleId) return;
+    const style = draft.styles[styleId];
+    if (!style) throw new Error(`component style을 찾을 수 없습니다: ${styleId}`);
+    draftStyleIds.add(styleId);
+    styles[styleId] = structuredClone(style);
+  });
+
+  const referencedStyleIds = new Set(
+    Object.values(nodes).flatMap((node) => node.styleId ? [node.styleId] : []),
+  );
+  currentNodeIds.forEach((nodeId) => {
+    const styleId = document.nodes[nodeId]?.styleId;
+    if (styleId && !referencedStyleIds.has(styleId) && !draftStyleIds.has(styleId)) delete styles[styleId];
+  });
+
+  return finalize({
+    ...document,
+    nodes,
+    styles,
+    components: {
+      ...document.components,
+      [componentId]: structuredClone(draftComponent),
+    },
+  }, options);
+}
+
 export function setComponentInstanceProp(
   document: DocumentData,
   instanceNodeId: NodeId,
@@ -573,6 +671,38 @@ function collectStructuralSubtree(document: DocumentData, rootNodeId: NodeId): S
   };
   visit(rootNodeId);
   return result;
+}
+
+function collectComponentOwnedNodeIds(document: DocumentData, rootNodeId: NodeId): Set<NodeId> {
+  const result = collectStructuralSubtree(document, rootNodeId);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    Object.values(document.nodes).forEach((node) => {
+      if (!node.archivedFrom || result.has(node.id) || !result.has(node.archivedFrom.parentId)) return;
+      collectStructuralSubtree(document, node.id).forEach((nodeId) => {
+        if (!result.has(nodeId)) {
+          result.add(nodeId);
+          changed = true;
+        }
+      });
+    });
+  }
+  return result;
+}
+
+function assertExistingPropsPreserved(
+  current: ComponentDefinition,
+  draft: ComponentDefinition,
+): void {
+  const draftProps = new Map(draft.propDefinitions.map((prop) => [prop.id, prop]));
+  current.propDefinitions.forEach((prop) => {
+    const next = draftProps.get(prop.id);
+    if (!next) throw new Error("기존 prop은 삭제하지 않고 보관해야 합니다.");
+    if (next.valueType !== prop.valueType || !sameBinding(next.binding, prop.binding)) {
+      throw new Error("기존 prop의 type과 binding은 변경할 수 없습니다.");
+    }
+  });
 }
 
 function collectRepeaterItemIds(document: DocumentData): Set<string> {

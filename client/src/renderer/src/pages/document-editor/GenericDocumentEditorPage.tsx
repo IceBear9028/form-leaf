@@ -12,6 +12,10 @@ import {
   type DocumentEditTarget,
   type TextRange,
 } from "../../../../foundation/documentEditing.ts";
+import {
+  applyComponentDocumentDraft,
+  createComponentDocumentDraft,
+} from "../../../../foundation/documentComponentOperations.ts";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { ButtonGroup } from "@/shared/ui/button-group";
@@ -160,7 +164,7 @@ export function GenericDocumentEditorPage({
         componentId={editingComponentId}
         onCancel={() => setEditingComponentId(undefined)}
         onSave={(document) => {
-          session.updateDocument(document);
+          session.updateDocument((current) => applyComponentDocumentDraft(current, editingComponentId, document));
           session.setSelection(undefined);
           setEditingComponentId(undefined);
         }}
@@ -257,7 +261,7 @@ function ComponentEditorScreen({
   onCancel: () => void;
   onSave: (document: DocumentData) => void;
 }) {
-  const [draft, setDraft] = useState<DocumentData>(() => structuredClone(sourceDocument));
+  const [draft, setDraft] = useState<DocumentData>(() => createComponentDocumentDraft(sourceDocument, componentId));
   const component = draft.components[componentId];
   const [selection, setSelection] = useState<DocumentSelection | undefined>(() => selectNode(component.rootNodeId));
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();

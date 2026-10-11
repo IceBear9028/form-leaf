@@ -5,9 +5,11 @@ import {
   addComponentInstance,
   addNode,
   addRepeaterItemFromDefaults,
+  applyComponentDocumentDraft,
   applyComponentDefinitionDraft,
   archiveComponentProp,
   createComponentFromSubtree,
+  createComponentDocumentDraft,
   createEmptyDocument,
   duplicateRepeaterItem,
   exposeComponentProp,
@@ -17,6 +19,7 @@ import {
   setComponentInstanceProp,
   setRepeaterItemProp,
   setRepeaterItemVisibility,
+  updateNodeStyle,
 } from "../src/foundation/document.ts";
 import { buildRenderTree } from "../src/renderer/src/pages/document-editor/rendering/renderTree.ts";
 
@@ -92,6 +95,91 @@ test("노출한 prop은 instance마다 독립적이고 보관해도 override 값
   assert.equal(document.components[converted.componentId].name, "Renamed block");
   assert.equal(document.nodes[converted.instanceNodeId].props[exposed.propId], "First");
   assert.equal(document.nodes["instance-second"].props[exposed.propId], "Second");
+});
+
+test("component draft 저장은 원본 구조와 style만 반영하고 연결된 instance 값은 보존한다", () => {
+  const options = optionsFactory();
+  let document = emptyDocument();
+  const sharedStyleId = document.nodes[document.rootNodeId].styleId;
+  const sharedFontWeight = document.styles[sharedStyleId].typography?.fontWeight;
+  document = addComponentDefinition(document, {
+    id: "component-label",
+    name: "Label",
+    rootNodeId: "component-label-root",
+    propDefinitions: [{
+      id: "prop-label",
+      name: "Label",
+      status: "active",
+      valueType: "text",
+      binding: { nodeId: "component-label-root", property: "text.value" },
+      defaultValue: "Default",
+    }],
+  }, {
+    "component-label-root": {
+      ...textNode("component-label-root", "Default"),
+      styleId: sharedStyleId,
+    },
+  }, options);
+  document = addComponentInstance(document, document.rootNodeId, {
+    id: "instance-first",
+    type: "component-instance",
+    name: "First",
+    visible: true,
+    componentId: "component-label",
+    props: { "prop-label": "First value" },
+  }, undefined, options);
+  document = addComponentInstance(document, document.rootNodeId, {
+    id: "instance-second",
+    type: "component-instance",
+    name: "Second",
+    visible: true,
+    componentId: "component-label",
+    props: { "prop-label": "Second value" },
+  }, undefined, options);
+  document = addNode(document, document.rootNodeId, {
+    id: "repeater-labels",
+    type: "repeater",
+    name: "Labels",
+    visible: true,
+    itemComponentId: "component-label",
+    items: [{
+      id: "item-third",
+      componentId: "component-label",
+      visible: true,
+      props: { "prop-label": "Third value" },
+    }],
+  }, undefined, options);
+
+  let draft = createComponentDocumentDraft(document, "component-label", options);
+  const localizedStyleId = draft.nodes["component-label-root"].styleId;
+  assert.notEqual(localizedStyleId, sharedStyleId);
+  draft = updateNodeStyle(draft, "component-label-root", (style) => ({
+    ...style,
+    typography: { ...style.typography, fontWeight: 700 },
+  }), options);
+  draft.components["component-label"].name = "Changed label";
+
+  assert.equal(document.components["component-label"].name, "Label");
+  assert.equal(document.styles[sharedStyleId].typography?.fontWeight, sharedFontWeight);
+
+  const concurrent = structuredClone(document);
+  concurrent.nodes[concurrent.rootNodeId].name = "Preserved outside change";
+  const saved = applyComponentDocumentDraft(concurrent, "component-label", draft, options);
+  const tree = buildRenderTree(saved);
+
+  assert.equal(saved.nodes[saved.rootNodeId].name, "Preserved outside change");
+  assert.equal(saved.styles[sharedStyleId].typography?.fontWeight, sharedFontWeight);
+  assert.equal(saved.styles[localizedStyleId].typography.fontWeight, 700);
+  assert.equal(saved.components["component-label"].name, "Changed label");
+  assert.equal(saved.nodes["instance-first"].props["prop-label"], "First value");
+  assert.equal(saved.nodes["instance-second"].props["prop-label"], "Second value");
+  assert.equal(saved.nodes["repeater-labels"].items[0].props["prop-label"], "Third value");
+  assert.equal(tree.children[0].child.value, "First value");
+  assert.equal(tree.children[1].child.value, "Second value");
+  assert.equal(tree.children[2].items[0].child.value, "Third value");
+  assert.equal(tree.children[0].child.style.typography.fontWeight, 700);
+  assert.equal(tree.children[1].child.style.typography.fontWeight, 700);
+  assert.equal(tree.children[2].items[0].child.style.typography.fontWeight, 700);
 });
 
 test("repeater item은 추가·override·복제·이동·숨김을 독립적으로 처리한다", () => {
