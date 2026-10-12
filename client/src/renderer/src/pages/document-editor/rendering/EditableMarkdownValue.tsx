@@ -219,7 +219,7 @@ export function EditableMarkdownValue({
           suppressContentEditableWarning
           role="textbox"
           aria-label="Markdown 입력"
-          data-placeholder="Markdown 입력"
+          data-placeholder="텍스트 입력"
           onBeforeInput={(event) => {
             event.preventDefault();
             const text = event.nativeEvent.inputType === "insertParagraph"

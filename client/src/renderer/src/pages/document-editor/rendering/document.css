@@ -148,7 +148,7 @@
 }
 
 .document-renderer--screen [data-document-edit-target="true"]:empty::before,
-.document-renderer--screen .document-empty-editable:empty:focus::before {
+.document-renderer--screen .document-empty-editable:empty::before {
   color: color-mix(in srgb, currentColor 45%, transparent);
   content: attr(data-placeholder);
   pointer-events: none;

@@ -223,7 +223,8 @@ component 메뉴의 `내 라이브러리에 저장`을 사용한다.
 ## 빈 상태
 
 - 빈 document root에는 `+ 요소 추가`와 `내 라이브러리에서 가져오기`만 안내한다.
-- 빈 text·rich-text·Markdown node는 편집 위치를 알리는 placeholder를 화면에 표시한다.
+- 빈 text·rich-text·Markdown node는 선택하거나 포커스하기 전에도 편집 위치를 알리는 `텍스트 입력` placeholder를 화면에 표시한다.
+- placeholder는 편집 UI일 뿐 실제 node 값이나 component prop 기본값으로 저장하지 않으며 PDF에도 출력하지 않는다.
 - 빈 image node는 선택 가능한 placeholder를 표시한다.
 - 빈 repeater는 출력 공간을 강제로 만들지 않고 선택했을 때 `첫 항목 추가` action을 보여준다.
 - 모든 placeholder와 선택 UI는 PDF에서 숨긴다.
