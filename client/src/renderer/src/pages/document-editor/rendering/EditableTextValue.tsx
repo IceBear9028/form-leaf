@@ -56,10 +56,13 @@ export function EditableTextValue({
       documentEditTargetKey(selectionToRestore.target) === documentEditTargetKey(target)
       ? selectionToRestore.range
       : undefined;
-    const pending = pendingSelectionRef.current ?? external;
+    const editedSelection = pendingSelectionRef.current;
+    const pending = editedSelection ?? external;
     if (!root || !pending || !restoreTextSelection(root, pending)) return;
     pendingSelectionRef.current = undefined;
-    if (typeof value !== "string") emitRichSelection(root, target, onRichTextSelection);
+    if (editedSelection && typeof value !== "string") {
+      emitRichSelection(root, target, onRichTextSelection);
+    }
   }, [onRichTextSelection, selectionToRestore, source, target, value]);
 
   const commitReplacement = (range: TextRange, replacement: string) => {

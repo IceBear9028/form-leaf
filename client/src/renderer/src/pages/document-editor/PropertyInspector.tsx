@@ -1,4 +1,23 @@
 import type { KeyboardEvent } from "react";
+import {
+  AlignCenterVerticalIcon,
+  AlignEndVerticalIcon,
+  AlignHorizontalJustifyCenterIcon,
+  AlignHorizontalJustifyEndIcon,
+  AlignHorizontalJustifyStartIcon,
+  AlignHorizontalSpaceBetweenIcon,
+  AlignStartVerticalIcon,
+  AlignVerticalJustifyCenterIcon,
+  AlignVerticalJustifyEndIcon,
+  AlignVerticalJustifyStartIcon,
+  AlignVerticalSpaceBetweenIcon,
+  ArrowDownIcon,
+  ArrowRightIcon,
+  CrosshairIcon,
+  MoveIcon,
+  Rows3Icon,
+  StretchHorizontalIcon,
+} from "lucide-react";
 import type {
   ComponentInstanceValue,
   ComponentPropDefinition,
@@ -31,6 +50,7 @@ import {
   updateNodeStyle,
 } from "../../../../foundation/documentTransactions.ts";
 import { Button } from "@/shared/ui/button";
+import { ButtonGroup } from "@/shared/ui/button-group";
 import { Input } from "@/shared/ui/input";
 import { Switch } from "@/shared/ui/switch";
 import type { DocumentSelection } from "./documentSelection.ts";
@@ -56,6 +76,7 @@ export function PropertyInspector({
   }
 
   const style = node.styleId ? document.styles[node.styleId] : undefined;
+  const layoutDirection = style?.layout?.direction ?? "column";
   const changeStyle = (update: (style: StyleDefinition) => StyleDefinition) => {
     onChange((current) => updateNodeStyle(current, node.id, update));
   };
@@ -162,85 +183,133 @@ export function PropertyInspector({
       )}
 
       {node.type === "container" && (
-        <InspectorSection title="레이아웃">
-          <Field label="방향">
-            <Select
-              value={style?.layout?.direction ?? "column"}
-              onChange={(direction) => changeStyle((current) => ({
-                ...current,
-                layout: { ...current.layout, direction: direction as "row" | "column" },
-              }))}
-              options={[{ value: "column", label: "세로" }, { value: "row", label: "가로" }]}
-            />
-          </Field>
-          <Field label="정렬">
-            <Select
-              value={style?.layout?.align ?? "stretch"}
-              onChange={(align) => changeStyle((current) => ({
-                ...current,
-                layout: { ...current.layout, align: align as NonNullable<StyleDefinition["layout"]>["align"] },
-              }))}
-              options={[
-                { value: "start", label: "시작" },
-                { value: "center", label: "가운데" },
-                { value: "end", label: "끝" },
-                { value: "stretch", label: "늘림" },
-              ]}
-            />
-          </Field>
-          <NumberField
-            label="간격 (pt)"
-            value={style?.layout?.gapPt}
-            min={0}
-            onChange={(gapPt) => changeStyle((current) => {
-              const layout = { ...current.layout };
-              if (gapPt === undefined) delete layout.gapPt;
-              else layout.gapPt = gapPt;
-              return { ...current, layout };
-            })}
-          />
-          <PaddingFields
-            value={style?.layout?.paddingPt}
-            onChange={(paddingPt) => changeStyle((current) => ({
-              ...current,
-              layout: { ...current.layout, paddingPt },
-            }))}
-          />
-          <Field label="폭">
-            <Select
-              value={style?.layout?.width?.mode ?? "auto"}
-              onChange={(mode) => changeStyle((current) => ({
-                ...current,
-                layout: {
-                  ...current.layout,
-                  width: mode === "fixed"
-                    ? { mode, valuePt: current.layout?.width?.mode === "fixed" ? current.layout.width.valuePt : 240 }
-                    : { mode } as WidthValue,
-                },
-              }))}
-              options={[
-                { value: "auto", label: "자동" },
-                { value: "fill", label: "채우기" },
-                { value: "fixed", label: "고정" },
-              ]}
-            />
-          </Field>
-          {style?.layout?.width?.mode === "fixed" && (
-            <NumberField
-              label="고정 폭 (pt)"
-              value={style.layout.width.valuePt}
-              min={0.01}
-              onChange={(valuePt) => {
-                if (valuePt === undefined) return;
-                changeStyle((current) => ({
+        <>
+          <InspectorSection title="오토레이아웃">
+            <ControlField label="흐름">
+              <IconSegmentedControl
+                value={layoutDirection}
+                onChange={(direction) => changeStyle((current) => ({
                   ...current,
-                  layout: { ...current.layout, width: { mode: "fixed", valuePt } },
-                }));
-              }}
+                  layout: { ...current.layout, direction },
+                }))}
+                options={[
+                  { value: "column", label: "세로 흐름", icon: <ArrowDownIcon /> },
+                  { value: "row", label: "가로 흐름", icon: <ArrowRightIcon /> },
+                ]}
+              />
+            </ControlField>
+
+            <div className="grid grid-cols-2 gap-3">
+              <ControlField label="교차축 정렬">
+                <IconSegmentedControl
+                  value={style?.layout?.align ?? "stretch"}
+                  onChange={(align) => changeStyle((current) => ({
+                    ...current,
+                    layout: { ...current.layout, align },
+                  }))}
+                  options={[
+                    { value: "start", label: "시작 정렬", icon: <AlignStartVerticalIcon /> },
+                    { value: "center", label: "가운데 정렬", icon: <AlignCenterVerticalIcon /> },
+                    { value: "end", label: "끝 정렬", icon: <AlignEndVerticalIcon /> },
+                    { value: "stretch", label: "늘려서 정렬", icon: <StretchHorizontalIcon /> },
+                  ]}
+                />
+              </ControlField>
+              <ControlField label="주축 정렬">
+                <IconSegmentedControl
+                  value={style?.layout?.justify ?? "start"}
+                  onChange={(justify) => changeStyle((current) => ({
+                    ...current,
+                    layout: { ...current.layout, justify },
+                  }))}
+                  options={layoutDirection === "row" ? [
+                    { value: "start", label: "시작 정렬", icon: <AlignHorizontalJustifyStartIcon /> },
+                    { value: "center", label: "가운데 정렬", icon: <AlignHorizontalJustifyCenterIcon /> },
+                    { value: "end", label: "끝 정렬", icon: <AlignHorizontalJustifyEndIcon /> },
+                    { value: "between", label: "사이 간격", icon: <AlignHorizontalSpaceBetweenIcon /> },
+                  ] : [
+                    { value: "start", label: "시작 정렬", icon: <AlignVerticalJustifyStartIcon /> },
+                    { value: "center", label: "가운데 정렬", icon: <AlignVerticalJustifyCenterIcon /> },
+                    { value: "end", label: "끝 정렬", icon: <AlignVerticalJustifyEndIcon /> },
+                    { value: "between", label: "사이 간격", icon: <AlignVerticalSpaceBetweenIcon /> },
+                  ]}
+                />
+              </ControlField>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField
+                label="간격 (pt)"
+                value={style?.layout?.gapPt}
+                min={0}
+                onChange={(gapPt) => changeStyle((current) => {
+                  const layout = { ...current.layout };
+                  if (gapPt === undefined) delete layout.gapPt;
+                  else layout.gapPt = gapPt;
+                  return { ...current, layout };
+                })}
+              />
+              <NumberField
+                label="높이 (pt)"
+                value={style?.layout?.heightPt}
+                min={0.01}
+                onChange={(heightPt) => changeStyle((current) => {
+                  const layout = { ...current.layout };
+                  if (heightPt === undefined) delete layout.heightPt;
+                  else layout.heightPt = heightPt;
+                  return { ...current, layout };
+                })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="폭">
+                <Select
+                  value={style?.layout?.width?.mode ?? "auto"}
+                  onChange={(mode) => changeStyle((current) => ({
+                    ...current,
+                    layout: {
+                      ...current.layout,
+                      width: mode === "fixed"
+                        ? { mode, valuePt: current.layout?.width?.mode === "fixed" ? current.layout.width.valuePt : 240 }
+                        : { mode } as WidthValue,
+                    },
+                  }))}
+                  options={[
+                    { value: "auto", label: "자동" },
+                    { value: "fill", label: "채우기" },
+                    { value: "fixed", label: "고정" },
+                  ]}
+                />
+              </Field>
+              {style?.layout?.width?.mode === "fixed" ? (
+                <NumberField
+                  label="고정 폭 (pt)"
+                  value={style.layout.width.valuePt}
+                  min={0.01}
+                  onChange={(valuePt) => {
+                    if (valuePt === undefined) return;
+                    changeStyle((current) => ({
+                      ...current,
+                      layout: { ...current.layout, width: { mode: "fixed", valuePt } },
+                    }));
+                  }}
+                />
+              ) : <div />}
+            </div>
+
+            <PaddingFields
+              value={style?.layout?.paddingPt}
+              onChange={(paddingPt) => changeStyle((current) => ({
+                ...current,
+                layout: { ...current.layout, paddingPt },
+              }))}
             />
-          )}
-          <PositionFields style={style} onChange={changeStyle} />
-        </InspectorSection>
+          </InspectorSection>
+          <InspectorSection title="위치">
+            <PositionFields style={style} onChange={changeStyle} />
+          </InspectorSection>
+        </>
       )}
 
       {node.type !== "container" && (
@@ -376,10 +445,52 @@ export function PropertyInspector({
 
 function InspectorSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-3 border-b border-border p-4">
-      <h3 className="text-xs font-semibold text-muted-foreground">{title}</h3>
+    <section className="space-y-4 border-b border-border p-4">
+      <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3>
       {children}
     </section>
+  );
+}
+
+function ControlField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-1.5 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function IconSegmentedControl<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: Array<{ value: T; label: string; icon: React.ReactNode }>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <ButtonGroup className="grid w-full auto-cols-fr grid-flow-col rounded-lg bg-muted/70 p-0.5">
+      {options.map((option) => {
+        const selected = option.value === value;
+        return (
+          <Button
+            key={option.value}
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            className={`h-8 w-full border-0 ${selected ? "bg-background text-foreground shadow-xs hover:bg-background" : "text-muted-foreground"}`}
+            aria-label={option.label}
+            aria-pressed={selected}
+            title={option.label}
+            onClick={() => onChange(option.value)}
+          >
+            {option.icon}
+          </Button>
+        );
+      })}
+    </ButtonGroup>
   );
 }
 
@@ -518,8 +629,8 @@ function PositionFields({
   const position = style?.layout?.position;
   return (
     <>
-      <Field label="배치 방식">
-        <Select
+      <ControlField label="배치 방식">
+        <IconSegmentedControl
           value={position ?? "flow"}
           onChange={(value) => onChange((current) => {
             const layout = { ...current.layout };
@@ -535,18 +646,18 @@ function PositionFields({
             return { ...current, layout };
           })}
           options={[
-            { value: "flow", label: "Auto Layout" },
-            { value: "relative", label: "상대 위치" },
-            { value: "absolute", label: "자유 위치" },
+            { value: "flow", label: "오토레이아웃", icon: <Rows3Icon /> },
+            { value: "relative", label: "상대 위치", icon: <MoveIcon /> },
+            { value: "absolute", label: "자유 위치", icon: <CrosshairIcon /> },
           ]}
         />
-      </Field>
+      </ControlField>
       {position && (
         <div className="grid grid-cols-2 gap-2">
-          {(["topPt", "rightPt", "bottomPt", "leftPt"] as const).map((property) => (
+          {(["leftPt", "topPt", "rightPt", "bottomPt"] as const).map((property) => (
             <NumberField
               key={property}
-              label={`${{ topPt: "위", rightPt: "오른쪽", bottomPt: "아래", leftPt: "왼쪽" }[property]} (pt)`}
+              label={`${{ topPt: "Y", rightPt: "오른쪽", bottomPt: "아래", leftPt: "X" }[property]} (pt)`}
               value={style?.layout?.[property]}
               onChange={(value) => onChange((current) => {
                 const layout = { ...current.layout };

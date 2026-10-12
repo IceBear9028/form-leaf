@@ -85,11 +85,12 @@ root 바로 아래에 추가한 node는 사용자가 문서를 나누는 최상�
 ### 선택 동기화
 
 - 문서의 요소를 선택하면 왼쪽 tree에서 같은 node 또는 instance를 선택한다.
+- 컴포넌트 편집 미리보기에서 요소를 선택하면 접힌 조상 layer를 모두 펼치고, 해당 행을 보이는 위치로 스크롤한 뒤 키보드 focus를 옮긴다. 텍스트를 직접 편집 중이면 caret을 유지하기 위해 layer 선택과 스크롤만 동기화한다.
 - tree에서 선택하면 문서의 위치를 강조하고 화면 밖이면 스크롤한다.
 - 선택 outline과 toolbar는 출력 DOM 크기에 영향을 주지 않는 overlay로 표시한다.
 - 서로 다른 node나 페이지를 가로지른 텍스트 선택에는 inline toolbar를 표시하지 않는다.
 - `Escape`는 toolbar, 텍스트 편집, 요소 선택 순으로 한 단계씩 닫는다.
-- drag reorder 외에 키보드와 메뉴로 같은 순서 변경을 제공한다.
+- layer 순서는 행을 drag해서 변경한다. 별도의 위·아래 이동 버튼은 반복해 표시하지 않는다.
 
 ## 텍스트 서식
 
@@ -136,16 +137,20 @@ Markdown은 승인된 원문 문법만 저장한다. 굵게, 기울임, 취소�
 
 각 node 행은 다음 동작을 제공한다.
 
+- 행의 가장 왼쪽에는 shadcn `Collapsible`의 작은 ghost icon trigger와 회전하는 chevron을 표시한다. trigger는 기본 상태에서 배경·테두리를 표시하지 않고 hover·focus 때만 피드백을 주며, 자식이 없는 node도 같은 폭의 빈 공간을 유지해 계층 정렬이 흔들리지 않게 한다.
+- `CONTAINER`, `TEXT` 같은 문자열 type badge는 반복해서 표시하지 않는다. node 종류는 테두리나 배경이 없는 Lucide 아이콘과 접근 가능한 이름으로만 구분한다.
 - 선택과 문서 위치 이동
 - 이름 변경
-- 위·아래 이동 또는 drag reorder
+- drag reorder
 - 표시 전환
 - 복제
 - 자식 추가가 가능한 경우 자식 추가
 - component로 만들기
-- 보관
+- 휴지통 아이콘으로 보관함 이동. 이 동작은 영구 삭제가 아니며 보관함에서 복원할 수 있다.
 
 텍스트 값을 tree나 inspector에 중복 입력하지 않는다. inspector에는 node 타입, 구조화된 속성, style과 component 편집 진입점만 표시한다.
+
+style inspector는 Figma 계열 속성 패널처럼 관련 값을 짧은 section으로 묶는다. 방향·교차축 정렬·주축 정렬·배치 방식은 shadcn 버튼과 Lucide 아이콘을 사용한 segmented control로 표시하고, 폭·높이·간격·padding·좌표는 좁은 2열 입력으로 표시한다. 모델이 지원하지 않는 회전 같은 속성은 동작하지 않는 장식 control로 만들지 않는다.
 
 Repeater는 item을 하위 행으로 펼쳐 보여준다. 표시 이름은 component가 지정한 대표 prop 값에서 가져오되 값이 비면 `새 항목 1` 같은 중립 fallback을 사용한다.
 

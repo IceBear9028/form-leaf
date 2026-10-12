@@ -265,12 +265,20 @@ function ComponentEditorScreen({
   const [draft, setDraft] = useState<DocumentData>(() => createComponentDocumentDraft(sourceDocument, componentId));
   const component = draft.components[componentId];
   const [selection, setSelection] = useState<DocumentSelection | undefined>(() => selectNode(component.rootNodeId));
+  const [layerFocusRequest, setLayerFocusRequest] = useState<{ nodeId: string; requestId: number }>();
+  const layerFocusRequestIdRef = useRef(0);
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
   const componentCanvasRef = useRef<HTMLDivElement>(null);
   const selectableNodeIds = useMemoComponentNodeIds(draft, component.rootNodeId);
 
   const updateDraft = (change: DocumentData | ((current: DocumentData) => DocumentData)) => {
     setDraft((current) => typeof change === "function" ? change(current) : change);
+  };
+
+  const selectFromPreview = (nodeId: string) => {
+    setSelection(selectNode(nodeId));
+    layerFocusRequestIdRef.current += 1;
+    setLayerFocusRequest({ nodeId, requestId: layerFocusRequestIdRef.current });
   };
 
   useEffect(() => {
@@ -330,6 +338,7 @@ function ComponentEditorScreen({
             document={draft}
             rootNodeId={component.rootNodeId}
             selection={selection}
+            focusRequest={layerFocusRequest}
             onSelectionChange={setSelection}
             onChange={updateDraft}
           />
@@ -347,7 +356,7 @@ function ComponentEditorScreen({
               mode="screen"
               selectedNodeId={selection?.nodeId}
               selectableNodeIds={selectableNodeIds}
-              onSelect={({ nodeId }) => setSelection(selectNode(nodeId))}
+              onSelect={({ nodeId }) => selectFromPreview(nodeId)}
               onEditValueChange={commitDirectEdit}
               onRichTextSelection={setRichTextSelection}
               richTextSelection={richTextSelection}
@@ -357,7 +366,7 @@ function ComponentEditorScreen({
               document={draft}
               selection={selection}
               componentRootNodeId={component.rootNodeId}
-              onSelectionChange={(nodeId) => setSelection(selectNode(nodeId))}
+              onSelectionChange={selectFromPreview}
               onChange={updateDraft}
             />
           </div>
