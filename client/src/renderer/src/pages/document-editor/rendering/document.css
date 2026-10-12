@@ -127,7 +127,8 @@
   padding-bottom: var(--markdown-block-gap);
 }
 
-.document-renderer--screen .document-node[data-document-selected="true"] {
+.document-renderer--screen .document-node[data-document-selected="true"],
+.document-renderer--screen .document-repeater-item[data-document-selected="true"] {
   outline: 1.5px solid #1768e5;
   outline-offset: 2px;
 }

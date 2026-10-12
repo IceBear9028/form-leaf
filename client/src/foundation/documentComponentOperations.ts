@@ -329,6 +329,26 @@ export function duplicateRepeaterItem(
   };
 }
 
+export function removeRepeaterItem(
+  document: DocumentData,
+  repeaterNodeId: NodeId,
+  itemId: string,
+  options?: DocumentTransactionOptions,
+): DocumentData {
+  assertDocumentData(document);
+  const node = requireRepeater(document, repeaterNodeId);
+  if (!node.items.some((item) => item.id === itemId)) {
+    throw new Error(`repeater item을 찾을 수 없습니다: ${itemId}`);
+  }
+  return finalize({
+    ...document,
+    nodes: {
+      ...document.nodes,
+      [node.id]: { ...node, items: node.items.filter((item) => item.id !== itemId) },
+    },
+  }, options);
+}
+
 export function moveRepeaterItem(
   document: DocumentData,
   repeaterNodeId: NodeId,

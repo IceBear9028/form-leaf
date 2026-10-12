@@ -16,6 +16,7 @@ import {
   exportComponentPackage,
   importComponentPackage,
   moveRepeaterItem,
+  removeRepeaterItem,
   setComponentInstanceProp,
   setRepeaterItemProp,
   setRepeaterItemVisibility,
@@ -182,7 +183,7 @@ test("component draft 저장은 원본 구조와 style만 반영하고 연결된
   assert.equal(tree.children[2].items[0].child.style.typography.fontWeight, 700);
 });
 
-test("repeater item은 추가·override·복제·이동·숨김을 독립적으로 처리한다", () => {
+test("repeater item은 추가·override·복제·이동·숨김·영구 삭제를 독립적으로 처리한다", () => {
   const options = optionsFactory();
   let document = addComponentDefinition(emptyDocument(), {
     id: "component-row",
@@ -218,6 +219,15 @@ test("repeater item은 추가·override·복제·이동·숨김을 독립적으�
   assert.deepEqual(repeater.items.map((item) => item.id), [second.itemId, first.itemId]);
   assert.equal(repeater.items[0].props["prop-label"], "Bravo");
   assert.equal(repeater.items[1].visible, false);
+
+  const beforeRemoval = document;
+  document = removeRepeaterItem(document, "node-list", second.itemId, options);
+  assert.deepEqual(document.nodes["node-list"].items.map((item) => item.id), [first.itemId]);
+  assert.deepEqual(beforeRemoval.nodes["node-list"].items.map((item) => item.id), [second.itemId, first.itemId]);
+  assert.throws(
+    () => removeRepeaterItem(document, "node-list", second.itemId, options),
+    /repeater item을 찾을 수 없습니다/,
+  );
 });
 
 test("component cycle을 만드는 구조 변경은 원본을 바꾸지 않고 거부한다", () => {

@@ -233,9 +233,11 @@ test("분할 가능한 중첩 container는 시각 wrapper를 보존한 paginatio
       style: {
         layout: { paddingPt: [8, 6, 4, 6] },
         decoration: {
+          background: { kind: "hex", value: "#F4F4F5" },
           borderWidthPt: 1,
           borderColor: { kind: "hex", value: "#000000" },
-          borderEdges: ["top"],
+          borderEdges: ["top", "right", "bottom", "left"],
+          radiusPt: 4,
         },
       },
       children: [
@@ -268,8 +270,10 @@ test("분할 가능한 중첩 container는 시각 wrapper를 보존한 paginatio
   assert.equal(units[1].node.children[0].sourceNodeId, "second");
   assert.deepEqual(units[0].node.style.layout.paddingPt, [8, 6, 4, 6]);
   assert.deepEqual(units[1].node.style.layout.paddingPt, [0, 6, 4, 6]);
-  assert.equal(units[1].node.style.decoration.borderWidthPt, undefined);
-  assert.equal(units[1].node.style.decoration.borderEdges, undefined);
+  assert.equal(units[1].node.style.decoration.borderWidthPt, 1);
+  assert.deepEqual(units[1].node.style.decoration.borderEdges, ["right", "bottom", "left"]);
+  assert.deepEqual(units[1].node.style.decoration.background, { kind: "hex", value: "#F4F4F5" });
+  assert.equal(units[1].node.style.decoration.radiusPt, 4);
 });
 
 test("repeater 내부 Markdown은 원본을 유지하며 블록 단위 pagination unit으로 나눈다", () => {

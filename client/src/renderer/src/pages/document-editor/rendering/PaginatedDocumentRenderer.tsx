@@ -13,6 +13,7 @@ export function PaginatedDocumentRenderer({
   document,
   mode,
   selectedNodeId,
+  selectedRepeaterItem,
   selectableNodeIds,
   onSelect,
   onEditValueChange,
@@ -23,6 +24,7 @@ export function PaginatedDocumentRenderer({
   document: DocumentData;
   mode: "screen" | "print";
   selectedNodeId?: string;
+  selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
   onSelect?: (target: RenderSelectionTarget) => void;
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
@@ -99,6 +101,7 @@ export function PaginatedDocumentRenderer({
               <NodeRenderer
                 node={{ ...root, children: page.units.map((unit) => unit.node) }}
                 selectedNodeId={selectedNodeId}
+                selectedRepeaterItem={selectedRepeaterItem}
                 selectableNodeIds={selectableNodeIds}
                 onSelect={mode === "screen" ? onSelect : undefined}
                 onEditValueChange={mode === "screen" ? onEditValueChange : undefined}

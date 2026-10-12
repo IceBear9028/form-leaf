@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   BoxIcon,
+  CircleIcon,
   ChevronRightIcon,
   ComponentIcon,
   CopyIcon,
@@ -15,8 +16,14 @@ import {
   Trash2Icon,
   TypeIcon,
 } from "lucide-react";
-import type { DocumentData, DocumentNode } from "../../../../foundation/documentModel.ts";
+import type { ComponentInstanceValue, DocumentData, DocumentNode } from "../../../../foundation/documentModel.ts";
 import { createEntityId } from "../../../../foundation/documentModel.ts";
+import {
+  duplicateRepeaterItem,
+  moveRepeaterItem,
+  removeRepeaterItem,
+  setRepeaterItemVisibility,
+} from "../../../../foundation/documentComponentOperations.ts";
 import {
   addNode,
   archiveNode,
@@ -32,7 +39,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui
 import { Input } from "@/shared/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import type { GenericDocumentChange } from "./useGenericDocumentSession.ts";
-import { selectNode, type DocumentSelection } from "./documentSelection.ts";
+import {
+  documentInsertionParentId,
+  selectNode,
+  selectRepeaterItem,
+  type DocumentLayerFocusRequest,
+  type DocumentSelection,
+} from "./documentSelection.ts";
+import { repeaterItemLabel } from "./repeaterItemPresentation.ts";
 
 type AddableNodeType = "container" | "text" | "rich-text" | "markdown" | "image";
 
@@ -47,11 +61,12 @@ export function DocumentStructurePanel({
   document: DocumentData;
   rootNodeId?: string;
   selection?: DocumentSelection;
-  focusRequest?: { nodeId: string; requestId: number; moveFocus?: boolean };
+  focusRequest?: DocumentLayerFocusRequest;
   onSelectionChange: (selection?: DocumentSelection) => void;
   onChange: (change: GenericDocumentChange) => void;
 }) {
   const [draggedNodeId, setDraggedNodeId] = useState<string>();
+  const [draggedRepeaterItem, setDraggedRepeaterItem] = useState<{ nodeId: string; itemId: string }>();
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(() => new Set());
   const treeRef = useRef<HTMLDivElement>(null);
   const lastHandledFocusRequestRef = useRef(0);
@@ -65,6 +80,7 @@ export function DocumentStructurePanel({
     lastHandledFocusRequestRef.current = focusRequest.requestId;
 
     const ancestors = new Set<string>();
+    if (focusRequest.itemId) ancestors.add(focusRequest.nodeId);
     let currentId: string | undefined = focusRequest.nodeId;
     while (currentId && currentId !== rootNodeId) {
       const parentId = findNodeParentId(document, currentId);
@@ -82,12 +98,15 @@ export function DocumentStructurePanel({
     let innerFrame = 0;
     const outerFrame = requestAnimationFrame(() => {
       innerFrame = requestAnimationFrame(() => {
-        const row = [...(treeRef.current?.querySelectorAll<HTMLElement>("[data-layer-node-id]") ?? [])]
-          .find((element) => element.dataset.layerNodeId === focusRequest.nodeId);
+        const row = focusRequest.itemId
+          ? [...(treeRef.current?.querySelectorAll<HTMLElement>("[data-layer-repeater-item-id]") ?? [])]
+            .find((element) => element.dataset.layerRepeaterItemId === focusRequest.itemId)
+          : [...(treeRef.current?.querySelectorAll<HTMLElement>("[data-layer-node-id]") ?? [])]
+            .find((element) => element.dataset.layerNodeId === focusRequest.nodeId);
         row?.scrollIntoView({ block: "nearest" });
         const activeElement = globalThis.document.activeElement as HTMLElement | null;
         const editingPreviewText = activeElement?.isContentEditable
-          && Boolean(activeElement.closest('[data-document-render-mode="screen"]'));
+          && Boolean(activeElement.closest('[data-document-render-mode="screen"], .document-renderer--screen'));
         if (focusRequest.moveFocus !== false && !editingPreviewText) row?.focus({ preventScroll: true });
       });
     });
@@ -115,6 +134,9 @@ export function DocumentStructurePanel({
           draggedNodeId={draggedNodeId}
           onDragStart={setDraggedNodeId}
           onDragEnd={() => setDraggedNodeId(undefined)}
+          draggedRepeaterItem={draggedRepeaterItem}
+          onRepeaterItemDragStart={(nodeId, itemId) => setDraggedRepeaterItem({ nodeId, itemId })}
+          onRepeaterItemDragEnd={() => setDraggedRepeaterItem(undefined)}
           collapsedNodeIds={collapsedNodeIds}
           onToggleCollapsed={(nodeId) => setCollapsedNodeIds((current) => {
             const next = new Set(current);
@@ -166,7 +188,7 @@ export function DocumentElementToolbar({
   onChange: (change: GenericDocumentChange) => void;
 }) {
   const add = (type: AddableNodeType) => {
-    const parentId = insertionParentId(document, selection?.nodeId, rootNodeId);
+    const parentId = documentInsertionParentId(document, selection?.nodeId, rootNodeId);
     const node = createNode(type);
     onChange((current) => addNode(current, parentId, node));
     onSelectionChange(selectNode(node.id));
@@ -222,6 +244,9 @@ function TreeRow({
   draggedNodeId,
   onDragStart,
   onDragEnd,
+  draggedRepeaterItem,
+  onRepeaterItemDragStart,
+  onRepeaterItemDragEnd,
   collapsedNodeIds,
   onToggleCollapsed,
 }: {
@@ -235,17 +260,21 @@ function TreeRow({
   draggedNodeId?: string;
   onDragStart: (nodeId: string) => void;
   onDragEnd: () => void;
+  draggedRepeaterItem?: { nodeId: string; itemId: string };
+  onRepeaterItemDragStart: (nodeId: string, itemId: string) => void;
+  onRepeaterItemDragEnd: () => void;
   collapsedNodeIds: ReadonlySet<string>;
   onToggleCollapsed: (nodeId: string) => void;
 }) {
-  const selected = selection?.nodeId === node.id;
+  const selected = selection?.kind === "node" && selection.nodeId === node.id;
   const isRoot = node.id === scopeRootNodeId;
   const parentId = findNodeParentId(document, node.id);
   const siblings = parentId && document.nodes[parentId]?.type === "container"
     ? document.nodes[parentId].childIds
     : [];
   const index = siblings.indexOf(node.id);
-  const hasChildren = node.type === "container" && node.childIds.length > 0;
+  const hasChildren = (node.type === "container" && node.childIds.length > 0) ||
+    (node.type === "repeater" && node.items.length > 0);
   const open = hasChildren && !collapsedNodeIds.has(node.id);
 
   return (
@@ -314,6 +343,11 @@ function TreeRow({
           onFocus={() => onSelectionChange(selectNode(node.id))}
           onChange={(event) => onChange((current) => renameNode(current, node.id, event.target.value))}
         />
+        {node.type === "repeater" && (
+          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+            {node.items.length}개
+          </span>
+        )}
         {!isRoot && (
           <div className="pointer-events-none absolute right-1 top-1/2 flex -translate-y-1/2 items-center rounded-md bg-accent/95 opacity-0 shadow-sm transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
             <IconButton
@@ -326,7 +360,9 @@ function TreeRow({
               label="복제"
               onClick={() => {
                 if (!parentId) return;
-                onChange((current) => duplicateNodeSubtree(current, node.id, parentId, index + 1).document);
+                const result = duplicateNodeSubtree(document, node.id, parentId, index + 1);
+                onChange(result.document);
+                onSelectionChange(selectNode(result.rootNodeId));
               }}
             ><CopyIcon /></IconButton>
             <IconButton
@@ -354,13 +390,142 @@ function TreeRow({
               draggedNodeId={draggedNodeId}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
+              draggedRepeaterItem={draggedRepeaterItem}
+              onRepeaterItemDragStart={onRepeaterItemDragStart}
+              onRepeaterItemDragEnd={onRepeaterItemDragEnd}
               collapsedNodeIds={collapsedNodeIds}
               onToggleCollapsed={onToggleCollapsed}
             />
           ))}
         </CollapsibleContent>
       )}
+      {node.type === "repeater" && (
+        <CollapsibleContent>
+          {node.items.map((item, itemIndex) => (
+            <RepeaterItemRow
+              key={item.id}
+              document={document}
+              repeater={node}
+              item={item}
+              index={itemIndex}
+              depth={depth + 1}
+              selection={selection}
+              onSelectionChange={onSelectionChange}
+              onChange={onChange}
+              draggedRepeaterItem={draggedRepeaterItem}
+              onDragStart={onRepeaterItemDragStart}
+              onDragEnd={onRepeaterItemDragEnd}
+            />
+          ))}
+        </CollapsibleContent>
+      )}
     </Collapsible>
+  );
+}
+
+function RepeaterItemRow({
+  document,
+  repeater,
+  item,
+  index,
+  depth,
+  selection,
+  onSelectionChange,
+  onChange,
+  draggedRepeaterItem,
+  onDragStart,
+  onDragEnd,
+}: {
+  document: DocumentData;
+  repeater: Extract<DocumentNode, { type: "repeater" }>;
+  item: ComponentInstanceValue;
+  index: number;
+  depth: number;
+  selection?: DocumentSelection;
+  onSelectionChange: (selection?: DocumentSelection) => void;
+  onChange: (change: GenericDocumentChange) => void;
+  draggedRepeaterItem?: { nodeId: string; itemId: string };
+  onDragStart: (nodeId: string, itemId: string) => void;
+  onDragEnd: () => void;
+}) {
+  const selected = selection?.kind === "repeater-item"
+    && selection.nodeId === repeater.id
+    && selection.itemId === item.id;
+  const select = () => onSelectionChange(selectRepeaterItem(repeater.id, item.id));
+
+  return (
+    <div
+      className={`group relative flex items-center gap-1 rounded-md border px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${selected ? "border-ring bg-accent" : "border-transparent hover:bg-accent/50"}`}
+      data-layer-repeater-item-id={item.id}
+      data-layer-repeater-node-id={repeater.id}
+      role="treeitem"
+      aria-selected={selected}
+      aria-level={depth + 1}
+      tabIndex={-1}
+      style={{ marginLeft: `${depth * 12}px` }}
+      draggable
+      onClick={select}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        select();
+      }}
+      onDragStart={(event) => {
+        event.stopPropagation();
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", item.id);
+        onDragStart(repeater.id, item.id);
+      }}
+      onDragEnd={onDragEnd}
+      onDragOver={(event) => {
+        if (draggedRepeaterItem?.nodeId !== repeater.id) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (draggedRepeaterItem?.nodeId !== repeater.id) return;
+        onChange((current) => moveRepeaterItem(current, repeater.id, draggedRepeaterItem.itemId, index));
+        onDragEnd();
+      }}
+    >
+      <span className="size-6 shrink-0" aria-hidden="true" />
+      <span
+        className="flex size-5 shrink-0 items-center justify-center text-muted-foreground"
+        title="Repeater item"
+        aria-hidden="true"
+      >
+        <CircleIcon className="size-2.5 fill-current" />
+      </span>
+      <span className={`min-w-0 flex-1 truncate px-1 text-xs ${item.visible ? "" : "text-muted-foreground line-through"}`}>
+        {repeaterItemLabel(document, repeater, item, index)}
+      </span>
+      <div className="pointer-events-none absolute right-1 top-1/2 flex -translate-y-1/2 items-center rounded-md bg-accent/95 opacity-0 shadow-sm transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
+        <IconButton
+          label={item.visible ? "항목 숨기기" : "항목 표시하기"}
+          onClick={() => onChange((current) => setRepeaterItemVisibility(current, repeater.id, item.id, !item.visible))}
+        >
+          {item.visible ? <EyeIcon /> : <EyeOffIcon />}
+        </IconButton>
+        <IconButton
+          label="항목 복제"
+          onClick={() => {
+            const result = duplicateRepeaterItem(document, repeater.id, item.id);
+            onChange(result.document);
+            onSelectionChange(selectRepeaterItem(repeater.id, result.itemId));
+          }}
+        ><CopyIcon /></IconButton>
+        <IconButton
+          label="항목 삭제 · 실행 취소 가능"
+          onClick={() => {
+            onChange((current) => removeRepeaterItem(current, repeater.id, item.id));
+            if (selected) onSelectionChange(undefined);
+          }}
+        ><Trash2Icon /></IconButton>
+      </div>
+    </div>
   );
 }
 
@@ -397,29 +562,29 @@ function IconButton({
   children: React.ReactElement<{ className?: string }>;
 }) {
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="size-7 p-0"
-      aria-label={label}
-      disabled={disabled}
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-        if (event.detail > 0) event.currentTarget.blur();
-      }}
-    >
-      {children}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="size-7 p-0"
+            aria-label={label}
+            disabled={disabled}
+            onClick={(event) => {
+              event.stopPropagation();
+              onClick();
+              if (event.detail > 0) event.currentTarget.blur();
+            }}
+          />
+        )}
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
-}
-
-function insertionParentId(document: DocumentData, selectedId: string | undefined, rootNodeId: string): string {
-  if (!selectedId) return rootNodeId;
-  const selected = document.nodes[selectedId];
-  if (selected?.type === "container" && !selected.archivedFrom) return selected.id;
-  return findNodeParentId(document, selectedId) ?? rootNodeId;
 }
 
 function createNode(type: AddableNodeType): DocumentNode {

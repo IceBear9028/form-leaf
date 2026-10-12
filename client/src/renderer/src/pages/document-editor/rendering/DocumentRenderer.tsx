@@ -13,6 +13,7 @@ export function DocumentRenderer({
   mode = "screen",
   className,
   selectedNodeId,
+  selectedRepeaterItem,
   selectableNodeIds,
   onSelect,
   onEditValueChange,
@@ -24,6 +25,7 @@ export function DocumentRenderer({
   mode?: "screen" | "measure" | "print";
   className?: string;
   selectedNodeId?: string;
+  selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
   onSelect?: (target: RenderSelectionTarget) => void;
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
@@ -40,6 +42,7 @@ export function DocumentRenderer({
         node={tree}
         measure={mode === "measure"}
         selectedNodeId={selectedNodeId}
+        selectedRepeaterItem={selectedRepeaterItem}
         selectableNodeIds={selectableNodeIds}
         onSelect={onSelect}
         onEditValueChange={mode === "screen" ? onEditValueChange : undefined}

@@ -28,11 +28,21 @@ import { ComponentDefinitionPanel } from "./ComponentReusePanel.tsx";
 import { DocumentElementToolbar, DocumentStructurePanel } from "./DocumentStructurePanel.tsx";
 import { PropertyInspector } from "./PropertyInspector.tsx";
 import { RichTextSelectionToolbar } from "./RichTextSelectionToolbar.tsx";
-import { selectNode, type DocumentSelection } from "./documentSelection.ts";
+import {
+  documentSelectableNodeIds,
+  selectNode,
+  selectRepeaterItem,
+  type DocumentLayerFocusRequest,
+  type DocumentSelection,
+} from "./documentSelection.ts";
 import { DocumentRenderer } from "./rendering/DocumentRenderer.tsx";
 import { PaginatedDocumentRenderer } from "./rendering/PaginatedDocumentRenderer.tsx";
 import type { DirectTextSelection } from "./rendering/EditableTextValue.tsx";
-import { type SaveState, useGenericDocumentSession } from "./useGenericDocumentSession.ts";
+import {
+  type GenericDocumentChange,
+  type SaveState,
+  useGenericDocumentSession,
+} from "./useGenericDocumentSession.ts";
 import {
   DEFAULT_PREVIEW_ZOOM,
   MAX_PREVIEW_ZOOM,
@@ -50,7 +60,7 @@ export function GenericDocumentEditorPage({
   onBack: () => Promise<void>;
 }) {
   const session = useGenericDocumentSession(initialDocument, onSummaryChange);
-  const previewRef = useRef<HTMLElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const undoRef = useRef<DocumentData[]>([]);
   const redoRef = useRef<DocumentData[]>([]);
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
@@ -58,14 +68,44 @@ export function GenericDocumentEditorPage({
   const [exporting, setExporting] = useState(false);
   const [returning, setReturning] = useState(false);
   const [editingComponentId, setEditingComponentId] = useState<string>();
+  const [layerFocusRequest, setLayerFocusRequest] = useState<DocumentLayerFocusRequest>();
+  const layerFocusRequestIdRef = useRef(0);
+  const selectableNodeIds = useMemo(() => documentSelectableNodeIds(session.document), [session.document]);
+
+  const updateDocument = (change: GenericDocumentChange) => {
+    session.updateDocument((current) => {
+      const next = typeof change === "function" ? change(current) : change;
+      if (next === current) return current;
+      pushUndoSnapshot(undoRef.current, current);
+      redoRef.current = [];
+      return next;
+    });
+  };
+
+  const selectAndReveal = (selection?: DocumentSelection, moveFocus?: boolean) => {
+    session.setSelection(selection);
+    if (!selection) {
+      setLayerFocusRequest(undefined);
+      return;
+    }
+    layerFocusRequestIdRef.current += 1;
+    setLayerFocusRequest({
+      nodeId: selection.nodeId,
+      itemId: selection.kind === "repeater-item" ? selection.itemId : undefined,
+      requestId: layerFocusRequestIdRef.current,
+      moveFocus,
+    });
+  };
+
+  const clearPreviewSelection = () => {
+    selectAndReveal(undefined);
+    setRichTextSelection(undefined);
+    const activeElement = globalThis.document.activeElement;
+    if (activeElement instanceof HTMLElement) activeElement.blur();
+  };
 
   const commitDirectEdit = (target: DocumentEditTarget, value: DirectEditValue, _selection: TextRange) => {
-    const next = updateDocumentEditValue(session.document, target, value);
-    if (next === session.document) return;
-    undoRef.current.push(session.document);
-    if (undoRef.current.length > 100) undoRef.current.shift();
-    redoRef.current = [];
-    session.updateDocument(next);
+    updateDocument((current) => updateDocumentEditValue(current, target, value));
   };
 
   const formatRichText = (mark: RichTextMark) => {
@@ -91,19 +131,23 @@ export function GenericDocumentEditorPage({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || !previewRef.current?.contains(document.activeElement)) return;
+      if (!(event.metaKey || event.ctrlKey)) return;
       const key = event.key.toLowerCase();
       if (key === "z" || key === "y") {
+        if (usesNativeUndo(globalThis.document.activeElement, previewRef.current)) return;
         event.preventDefault();
         const redo = key === "y" || (key === "z" && event.shiftKey);
         const source = redo ? redoRef.current : undoRef.current;
         const destination = redo ? undoRef.current : redoRef.current;
         const next = source.pop();
         if (!next) return;
-        destination.push(session.document);
-        session.updateDocument(next);
+        session.updateDocument((current) => {
+          pushUndoSnapshot(destination, current);
+          return next;
+        });
         return;
       }
+      if (!previewRef.current?.contains(globalThis.document.activeElement)) return;
       if (!richTextSelection) return;
       const mark: RichTextMark | undefined = key === "b"
         ? { type: "bold" }
@@ -165,7 +209,7 @@ export function GenericDocumentEditorPage({
         componentId={editingComponentId}
         onCancel={() => setEditingComponentId(undefined)}
         onSave={(document) => {
-          session.updateDocument((current) => applyComponentDocumentDraft(current, editingComponentId, document));
+          updateDocument((current) => applyComponentDocumentDraft(current, editingComponentId, document));
           session.setSelection(undefined);
           setEditingComponentId(undefined);
         }}
@@ -230,18 +274,66 @@ export function GenericDocumentEditorPage({
           </Button>
         </div>
       </header>
-      <div className="workspace grid min-h-0 flex-1 grid-cols-[264px_minmax(0,1fr)]">
-        <DocumentComponentNavigator document={session.document} onEditComponent={setEditingComponentId} />
-        <main ref={previewRef} className="min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 pb-[100px] pt-[34px] max-[1180px]:px-6" aria-label="문서 미리보기">
-          <PaginatedDocumentRenderer
+      <div className="workspace grid min-h-0 flex-1 grid-cols-[288px_minmax(0,1fr)_320px]">
+        <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(220px,0.72fr)]">
+          <DocumentStructurePanel
             document={session.document}
-            mode="screen"
-            onEditValueChange={commitDirectEdit}
-            onRichTextSelection={setRichTextSelection}
-            richTextSelection={richTextSelection}
-            zoom={zoom}
+            selection={session.selection}
+            focusRequest={layerFocusRequest}
+            onSelectionChange={(selection) => selectAndReveal(selection, false)}
+            onChange={updateDocument}
           />
+          <DocumentComponentNavigator
+            document={session.document}
+            selection={session.selection}
+            onSelectionChange={(selection) => selectAndReveal(selection, false)}
+            onChange={updateDocument}
+            onEditComponent={setEditingComponentId}
+          />
+        </div>
+        <main className="relative min-w-0 overflow-hidden bg-[#e9edf2]" aria-label="문서 미리보기">
+          <div
+            ref={previewRef}
+            className="h-full overflow-auto overscroll-contain px-10 pb-[100px] pt-[34px] max-[1180px]:px-6"
+            onClick={(event) => {
+              const target = event.target;
+              if (!(target instanceof Element)) return;
+              if (target.closest("[data-document-node-id]")) return;
+              clearPreviewSelection();
+            }}
+          >
+            <PaginatedDocumentRenderer
+              document={session.document}
+              mode="screen"
+              selectedNodeId={session.selection?.kind === "node" ? session.selection.nodeId : undefined}
+              selectedRepeaterItem={session.selection?.kind === "repeater-item"
+                ? { nodeId: session.selection.nodeId, itemId: session.selection.itemId }
+                : undefined}
+              selectableNodeIds={selectableNodeIds}
+              onSelect={({ nodeId, repeaterItemId }) => selectAndReveal(
+                repeaterItemId ? selectRepeaterItem(nodeId, repeaterItemId) : selectNode(nodeId),
+              )}
+              onEditValueChange={commitDirectEdit}
+              onRichTextSelection={setRichTextSelection}
+              richTextSelection={richTextSelection}
+              zoom={zoom}
+            />
+          </div>
+          <div className="absolute bottom-5 left-1/2 z-20 -translate-x-1/2">
+            <DocumentElementToolbar
+              document={session.document}
+              selection={session.selection}
+              onSelectionChange={(selection) => selectAndReveal(selection, false)}
+              onChange={updateDocument}
+            />
+          </div>
         </main>
+        <PropertyInspector
+          document={session.document}
+          selection={session.selection}
+          onSelectionChange={(selection) => selectAndReveal(selection, false)}
+          onChange={updateDocument}
+        />
       </div>
       <div className="document-print-surface">
         <PaginatedDocumentRenderer document={session.document} mode="print" />
@@ -265,20 +357,28 @@ function ComponentEditorScreen({
   const [draft, setDraft] = useState<DocumentData>(() => createComponentDocumentDraft(sourceDocument, componentId));
   const component = draft.components[componentId];
   const [selection, setSelection] = useState<DocumentSelection | undefined>(() => selectNode(component.rootNodeId));
-  const [layerFocusRequest, setLayerFocusRequest] = useState<{ nodeId: string; requestId: number; moveFocus?: boolean }>();
+  const undoRef = useRef<DocumentData[]>([]);
+  const redoRef = useRef<DocumentData[]>([]);
+  const [layerFocusRequest, setLayerFocusRequest] = useState<DocumentLayerFocusRequest>();
   const layerFocusRequestIdRef = useRef(0);
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
   const componentCanvasRef = useRef<HTMLDivElement>(null);
   const selectableNodeIds = useMemoComponentNodeIds(draft, component.rootNodeId);
 
   const updateDraft = (change: DocumentData | ((current: DocumentData) => DocumentData)) => {
-    setDraft((current) => typeof change === "function" ? change(current) : change);
+    setDraft((current) => {
+      const next = typeof change === "function" ? change(current) : change;
+      if (next === current) return current;
+      pushUndoSnapshot(undoRef.current, current);
+      redoRef.current = [];
+      return next;
+    });
   };
 
-  const selectFromPreview = (nodeId: string) => {
-    setSelection(selectNode(nodeId));
+  const selectFromPreview = (nodeId: string, itemId?: string) => {
+    setSelection(itemId ? selectRepeaterItem(nodeId, itemId) : selectNode(nodeId));
     layerFocusRequestIdRef.current += 1;
-    setLayerFocusRequest({ nodeId, requestId: layerFocusRequestIdRef.current });
+    setLayerFocusRequest({ nodeId, itemId, requestId: layerFocusRequestIdRef.current });
   };
 
   const clearPreviewSelection = () => {
@@ -290,12 +390,40 @@ function ComponentEditorScreen({
   };
 
   useEffect(() => {
-    setSelection((current) => (
-      current && selectableNodeIds.has(current.nodeId) && !draft.nodes[current.nodeId]?.archivedFrom
-        ? current
-        : selectNode(component.rootNodeId)
-    ));
+    setSelection((current) => {
+      if (!current || !selectableNodeIds.has(current.nodeId) || draft.nodes[current.nodeId]?.archivedFrom) {
+        return selectNode(component.rootNodeId);
+      }
+      if (current.kind === "repeater-item") {
+        const node = draft.nodes[current.nodeId];
+        if (node.type !== "repeater" || !node.items.some((item) => item.id === current.itemId)) {
+          return selectNode(component.rootNodeId);
+        }
+      }
+      return current;
+    });
   }, [component.rootNodeId, draft, selectableNodeIds]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if (key !== "z" && key !== "y") return;
+      if (usesNativeUndo(globalThis.document.activeElement, componentCanvasRef.current)) return;
+      event.preventDefault();
+      const redo = key === "y" || (key === "z" && event.shiftKey);
+      const source = redo ? redoRef.current : undoRef.current;
+      const destination = redo ? undoRef.current : redoRef.current;
+      const next = source.pop();
+      if (!next) return;
+      setDraft((current) => {
+        pushUndoSnapshot(destination, current);
+        return next;
+      });
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   const commitDirectEdit = (target: DocumentEditTarget, value: DirectEditValue, _selection: TextRange) => {
     setDraft((current) => updateDocumentEditValue(current, target, value));
@@ -371,9 +499,12 @@ function ComponentEditorScreen({
                 document={draft}
                 rootNodeId={component.rootNodeId}
                 mode="screen"
-                selectedNodeId={selection?.nodeId}
+                selectedNodeId={selection?.kind === "node" ? selection.nodeId : undefined}
+                selectedRepeaterItem={selection?.kind === "repeater-item"
+                  ? { nodeId: selection.nodeId, itemId: selection.itemId }
+                  : undefined}
                 selectableNodeIds={selectableNodeIds}
-                onSelect={({ nodeId }) => selectFromPreview(nodeId)}
+                onSelect={({ nodeId, repeaterItemId }) => selectFromPreview(nodeId, repeaterItemId)}
                 onEditValueChange={commitDirectEdit}
                 onRichTextSelection={setRichTextSelection}
                 richTextSelection={richTextSelection}
@@ -381,7 +512,7 @@ function ComponentEditorScreen({
               <ComponentDirectManipulationOverlay
                 canvasRef={componentCanvasRef}
                 document={draft}
-                selection={selection}
+                selection={selection?.kind === "node" ? selection : undefined}
                 componentRootNodeId={component.rootNodeId}
                 onSelectionChange={selectFromPreview}
                 onChange={updateDraft}
@@ -399,6 +530,7 @@ function ComponentEditorScreen({
                 layerFocusRequestIdRef.current += 1;
                 setLayerFocusRequest({
                   nodeId: nextSelection.nodeId,
+                  itemId: nextSelection.kind === "repeater-item" ? nextSelection.itemId : undefined,
                   requestId: layerFocusRequestIdRef.current,
                   moveFocus: false,
                 });
@@ -407,7 +539,12 @@ function ComponentEditorScreen({
             />
           </div>
         </main>
-        <PropertyInspector document={draft} selection={selection} onChange={updateDraft} />
+        <PropertyInspector
+          document={draft}
+          selection={selection}
+          onSelectionChange={setSelection}
+          onChange={updateDraft}
+        />
       </div>
       {richTextSelection && <RichTextSelectionToolbar rect={richTextSelection.rect} onFormat={formatRichText} onRemove={removeInlineMark} />}
     </div>
@@ -446,4 +583,17 @@ function errorMessage(error: unknown): string {
 
 function afterNextPaint(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+
+function pushUndoSnapshot(history: DocumentData[], document: DocumentData): void {
+  history.push(document);
+  if (history.length > 100) history.shift();
+}
+
+function usesNativeUndo(activeElement: Element | null, preview: HTMLElement | null): boolean {
+  if (!(activeElement instanceof HTMLElement)) return false;
+  if (activeElement.isContentEditable) return !preview?.contains(activeElement);
+  return activeElement instanceof HTMLInputElement
+    || activeElement instanceof HTMLTextAreaElement
+    || activeElement instanceof HTMLSelectElement;
 }

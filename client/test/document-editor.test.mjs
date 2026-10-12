@@ -12,10 +12,13 @@ import {
   updateNodeStyle,
 } from "../src/foundation/document.ts";
 import {
+  documentInsertionParentId,
   documentSelectableNodeIds,
   reconcileDocumentSelection,
   selectNode,
+  selectRepeaterItem,
 } from "../src/renderer/src/pages/document-editor/documentSelection.ts";
+import { repeaterItemLabel } from "../src/renderer/src/pages/document-editor/repeaterItemPresentation.ts";
 import {
   DEFAULT_PREVIEW_ZOOM,
   MAX_PREVIEW_ZOOM,
@@ -125,6 +128,91 @@ test("preview 선택 대상은 document tree만 포함하고 component 정의 �
   assert.deepEqual([...ids], ["node-root", "node-visible"]);
   assert.equal(ids.has("component-root"), false);
   assert.equal(ids.has("component-text"), false);
+});
+
+test("Document 요소 추가 위치는 선택한 container, 부모 container, root 순서로 결정한다", () => {
+  let document = addNode(emptyDocument(), "node-root", {
+    id: "node-section",
+    type: "container",
+    name: "표시 이름은 위치 결정에 사용하지 않음",
+    visible: true,
+    childIds: [],
+  }, undefined, options);
+  document = addNode(document, "node-section", textNode("node-text", "Content"), undefined, options);
+  document = addComponentDefinition(document, {
+    id: "component-1",
+    name: "Reusable block",
+    rootNodeId: "component-root",
+    propDefinitions: [],
+  }, {
+    "component-root": {
+      id: "component-root",
+      type: "container",
+      name: "Definition root",
+      visible: true,
+      childIds: [],
+    },
+  }, options);
+
+  assert.equal(documentInsertionParentId(document), "node-root");
+  assert.equal(documentInsertionParentId(document, "node-section"), "node-section");
+  assert.equal(documentInsertionParentId(document, "node-text"), "node-section");
+  assert.equal(documentInsertionParentId(document, "component-root"), "node-root");
+  assert.equal(documentInsertionParentId(document, "component-root", "component-root"), "component-root");
+
+  const archived = archiveNode(document, "node-text", options);
+  assert.equal(documentInsertionParentId(archived, "node-text"), "node-root");
+});
+
+test("repeater item 선택은 item id로 유지되고 실제 항목 데이터로 레이어 이름을 만든다", () => {
+  let document = addComponentDefinition(emptyDocument(), {
+    id: "component-education",
+    name: "Education item",
+    rootNodeId: "component-root",
+    propDefinitions: [{
+      id: "prop-school",
+      name: "학교",
+      status: "active",
+      valueType: "text",
+      defaultValue: "기본 학교",
+      binding: { nodeId: "component-text", property: "text.value" },
+    }],
+  }, {
+    "component-root": {
+      id: "component-root",
+      type: "container",
+      name: "Item root",
+      visible: true,
+      childIds: ["component-text"],
+    },
+    "component-text": textNode("component-text"),
+  }, options);
+  document = addNode(document, "node-root", {
+    id: "node-education",
+    type: "repeater",
+    name: "교육",
+    visible: true,
+    itemComponentId: "component-education",
+    items: [
+      { id: "item-1", componentId: "component-education", visible: true, props: { "prop-school": "한국대학교" } },
+      { id: "item-2", componentId: "component-education", visible: true, props: {} },
+    ],
+  }, undefined, options);
+
+  const repeater = document.nodes["node-education"];
+  const selection = selectRepeaterItem(repeater.id, "item-2");
+  assert.deepEqual(reconcileDocumentSelection(document, selection), selection);
+  assert.equal(repeaterItemLabel(document, repeater, repeater.items[0], 0), "항목 1 · 한국대학교");
+  assert.equal(repeaterItemLabel(document, repeater, repeater.items[1], 1), "항목 2 · 기본 학교");
+
+  const withoutSecondItem = {
+    ...document,
+    nodes: {
+      ...document.nodes,
+      [repeater.id]: { ...repeater, items: repeater.items.slice(0, 1) },
+    },
+  };
+  assert.equal(reconcileDocumentSelection(withoutSecondItem, selection), undefined);
 });
 
 test("preview zoom은 8%씩 이동하고 50~115% 범위를 넘지 않는다", () => {

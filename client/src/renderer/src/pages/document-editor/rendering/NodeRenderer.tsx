@@ -16,12 +16,14 @@ export type RenderSelectionTarget = {
   renderId: string;
   nodeId: string;
   nodeType: RenderTreeNode["type"];
+  repeaterItemId?: string;
 };
 
 export function NodeRenderer({
   node,
   measure = false,
   selectedNodeId,
+  selectedRepeaterItem,
   selectableNodeIds,
   onSelect,
   onEditValueChange,
@@ -31,6 +33,7 @@ export function NodeRenderer({
   node: RenderTreeNode;
   measure?: boolean;
   selectedNodeId?: string;
+  selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
   onSelect?: (target: RenderSelectionTarget) => void;
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
@@ -76,19 +79,49 @@ export function NodeRenderer({
   };
 
   if (node.type === "container") {
-    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />)}</div>;
+    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />)}</div>;
   }
   if (node.type === "component-instance") {
-    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} /></div>;
+    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} /></div>;
   }
   if (node.type === "repeater") {
     return (
       <div {...attributes}>
-        {node.items.map((item) => item.visible && (
-          <div className="document-repeater-item" data-repeater-item-id={item.id} key={item.id}>
-            <NodeRenderer node={item.child} measure={measure} selectedNodeId={selectedNodeId} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />
-          </div>
-        ))}
+        {node.items.map((item) => {
+          if (!item.visible) return null;
+          const itemSelectable = Boolean(selectable && onSelect);
+          const selectItem = itemSelectable
+            ? (event: { stopPropagation: () => void }) => {
+              event.stopPropagation();
+              onSelect?.({
+                renderId: `${node.renderId}/item:${item.id}`,
+                nodeId: node.sourceNodeId,
+                nodeType: node.type,
+                repeaterItemId: item.id,
+              });
+            }
+            : undefined;
+          return (
+            <div
+              className="document-repeater-item"
+              data-repeater-item-id={item.id}
+              data-document-selected={selectedRepeaterItem?.nodeId === node.sourceNodeId && selectedRepeaterItem.itemId === item.id ? "true" : undefined}
+              key={item.id}
+              tabIndex={itemSelectable ? 0 : undefined}
+              role={itemSelectable ? "button" : undefined}
+              onClick={selectItem}
+              onKeyDown={itemSelectable
+                ? (event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  selectItem?.(event);
+                }
+                : undefined}
+            >
+              <NodeRenderer node={item.child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />
+            </div>
+          );
+        })}
       </div>
     );
   }

@@ -15,8 +15,13 @@ import {
   ArrowRightIcon,
   CrosshairIcon,
   MoveIcon,
+  PanelBottomIcon,
+  PanelLeftIcon,
+  PanelRightIcon,
+  PanelTopIcon,
   Rows3Icon,
   StretchHorizontalIcon,
+  Trash2Icon,
 } from "lucide-react";
 import type {
   ComponentInstanceValue,
@@ -38,6 +43,7 @@ import {
   clearRepeaterItemProp,
   duplicateRepeaterItem,
   moveRepeaterItem,
+  removeRepeaterItem,
   setComponentInstanceProp,
   setRepeaterItemProp,
   setRepeaterItemVisibility,
@@ -61,16 +67,20 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { Switch } from "@/shared/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import type { DocumentSelection } from "./documentSelection.ts";
+import { repeaterItemLabel } from "./repeaterItemPresentation.ts";
 import type { GenericDocumentChange } from "./useGenericDocumentSession.ts";
 
 export function PropertyInspector({
   document,
   selection,
+  onSelectionChange,
   onChange,
 }: {
   document: DocumentData;
   selection?: DocumentSelection;
+  onSelectionChange?: (selection?: DocumentSelection) => void;
   onChange: (change: GenericDocumentChange) => void;
 }) {
   const node = selection ? document.nodes[selection.nodeId] : undefined;
@@ -79,6 +89,68 @@ export function PropertyInspector({
       <aside className="border-l border-border bg-background p-4" aria-label="Properties">
         <h2 className="text-sm font-semibold">속성</h2>
         <p className="mt-2 text-xs leading-5 text-muted-foreground">문서나 레이어에서 요소를 선택하세요.</p>
+      </aside>
+    );
+  }
+
+  if (selection?.kind === "repeater-item") {
+    if (node.type !== "repeater") return null;
+    const itemIndex = node.items.findIndex((item) => item.id === selection.itemId);
+    const item = node.items[itemIndex];
+    if (!item) return null;
+    const definitions = document.components[node.itemComponentId].propDefinitions;
+    return (
+      <aside className="min-h-0 overflow-y-auto border-l border-border bg-background" aria-label="Properties">
+        <div className="border-b border-border bg-muted/30 px-4 py-3">
+          <h2 className="text-sm font-semibold">속성</h2>
+          <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">REPEATER ITEM</p>
+        </div>
+        <InspectorSection title="반복 항목">
+          <p className="truncate text-sm font-medium">{repeaterItemLabel(document, node, item, itemIndex)}</p>
+          <p className="text-xs text-muted-foreground">{node.name || "Repeater"}의 {itemIndex + 1}번째 항목</p>
+          <ToggleField
+            label="표시"
+            checked={item.visible}
+            onCheckedChange={(visible) => onChange((current) => (
+              setRepeaterItemVisibility(current, node.id, item.id, visible)
+            ))}
+          />
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              onChange((current) => removeRepeaterItem(current, node.id, item.id));
+              onSelectionChange?.(undefined);
+            }}
+          >
+            <Trash2Icon aria-hidden="true" />
+            항목 삭제
+          </Button>
+          <p className="text-[11px] leading-4 text-muted-foreground">
+            즉시 삭제되며 Ctrl/Cmd+Z로 실행 취소할 수 있습니다.
+          </p>
+        </InspectorSection>
+        <ComponentPropsSection
+          title="항목 값"
+          definitions={definitions}
+          values={item.props}
+          assets={document.assets}
+          onSet={(propId, value) => onChange((current) => setRepeaterItemProp(
+            current,
+            node.id,
+            item.id,
+            propId,
+            value,
+          ))}
+          onClear={(propId) => onChange((current) => clearRepeaterItemProp(
+            current,
+            node.id,
+            item.id,
+            propId,
+          ))}
+        />
       </aside>
     );
   }
@@ -103,11 +175,13 @@ export function PropertyInspector({
             onChange={(event) => onChange((current) => renameNode(current, node.id, event.target.value))}
           />
         </Field>
-        <ToggleField
-          label="표시"
-          checked={node.visible}
-          onCheckedChange={(visible) => onChange((current) => setNodeVisibility(current, node.id, visible))}
-        />
+        {node.id !== document.rootNodeId && (
+          <ToggleField
+            label="표시"
+            checked={node.visible}
+            onCheckedChange={(visible) => onChange((current) => setNodeVisibility(current, node.id, visible))}
+          />
+        )}
         {isDirectlyEditable(node) && (
           <p className="rounded-md border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground">
             내용은 문서 화면에서 직접 편집합니다.
@@ -391,6 +465,8 @@ export function PropertyInspector({
           })}
         />
       </InspectorSection>
+
+      <DecorationSection style={style} onChange={changeStyle} />
 
       {node.type === "markdown" && (
         <InspectorSection title="Markdown">
@@ -692,6 +768,134 @@ function PositionFields({
   );
 }
 
+type BorderEdge = NonNullable<NonNullable<StyleDefinition["decoration"]>["borderEdges"]>[number];
+
+function DecorationSection({
+  style,
+  onChange,
+}: {
+  style?: StyleDefinition;
+  onChange: (update: (style: StyleDefinition) => StyleDefinition) => void;
+}) {
+  const decoration = style?.decoration;
+  const borderEdges = decoration?.borderEdges ?? [];
+  const edgeOptions: Array<{ value: BorderEdge; label: string; icon: React.ReactNode }> = [
+    { value: "top", label: "위쪽 선", icon: <PanelTopIcon /> },
+    { value: "right", label: "오른쪽 선", icon: <PanelRightIcon /> },
+    { value: "bottom", label: "아래쪽 선", icon: <PanelBottomIcon /> },
+    { value: "left", label: "왼쪽 선", icon: <PanelLeftIcon /> },
+  ];
+  const changeDecoration = (update: (current: NonNullable<StyleDefinition["decoration"]>) => NonNullable<StyleDefinition["decoration"]>) => {
+    onChange((current) => withDecoration(current, update({ ...current.decoration })));
+  };
+
+  return (
+    <InspectorSection title="장식">
+      <ColorField
+        label="배경색"
+        value={decoration?.background?.kind === "hex" ? decoration.background.value : ""}
+        onChange={(value) => changeDecoration((current) => {
+          if (value) current.background = { kind: "hex", value };
+          else delete current.background;
+          return current;
+        })}
+      />
+      <ColorField
+        label="선 색상"
+        value={decoration?.borderColor?.kind === "hex" ? decoration.borderColor.value : ""}
+        onChange={(value) => changeDecoration((current) => {
+          if (value) current.borderColor = { kind: "hex", value };
+          else delete current.borderColor;
+          return current;
+        })}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <NumberField
+          label="선 두께 (pt)"
+          value={decoration?.borderWidthPt}
+          min={0}
+          step={0.25}
+          onChange={(borderWidthPt) => changeDecoration((current) => {
+            if (borderWidthPt === undefined) delete current.borderWidthPt;
+            else current.borderWidthPt = borderWidthPt;
+            return current;
+          })}
+        />
+        <NumberField
+          label="모서리 (pt)"
+          value={decoration?.radiusPt}
+          min={0}
+          step={0.5}
+          onChange={(radiusPt) => changeDecoration((current) => {
+            if (radiusPt === undefined) delete current.radiusPt;
+            else current.radiusPt = radiusPt;
+            return current;
+          })}
+        />
+      </div>
+      <ControlField label="선 방향">
+        <ButtonGroup className="grid w-full grid-cols-4 rounded-lg bg-muted/70 p-0.5">
+          {edgeOptions.map((option) => {
+            const selected = borderEdges.includes(option.value);
+            return (
+              <Tooltip key={option.value}>
+                <TooltipTrigger
+                  render={(
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      className={`h-8 w-full border-0 ${selected ? "bg-background text-foreground shadow-xs hover:bg-background" : "text-muted-foreground"}`}
+                      aria-label={option.label}
+                      aria-pressed={selected}
+                      onClick={() => changeDecoration((current) => {
+                        const edges = current.borderEdges ?? [];
+                        const next = edges.includes(option.value)
+                          ? edges.filter((edge) => edge !== option.value)
+                          : [...edges, option.value];
+                        if (next.length) current.borderEdges = next;
+                        else delete current.borderEdges;
+                        return current;
+                      })}
+                    />
+                  )}
+                >
+                  {option.icon}
+                </TooltipTrigger>
+                <TooltipContent>{option.label}</TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </ButtonGroup>
+      </ControlField>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full"
+        disabled={!decoration}
+        onClick={() => onChange((current) => {
+          const next = { ...current };
+          delete next.decoration;
+          return next;
+        })}
+      >
+        장식 전체 초기화
+      </Button>
+    </InspectorSection>
+  );
+}
+
+function withDecoration(
+  style: StyleDefinition,
+  decoration: NonNullable<StyleDefinition["decoration"]>,
+): StyleDefinition {
+  const next = { ...style };
+  if (Object.keys(decoration).length > 0) next.decoration = decoration;
+  else delete next.decoration;
+  return next;
+}
+
 function ColorField({
   label,
   value,
@@ -735,12 +939,14 @@ function ColorField({
 }
 
 function ComponentPropsSection({
+  title = "컴포넌트 값",
   definitions,
   values,
   assets,
   onSet,
   onClear,
 }: {
+  title?: string;
   definitions: ComponentPropDefinition[];
   values: Record<string, ComponentPropValue>;
   assets: DocumentData["assets"];
@@ -748,7 +954,7 @@ function ComponentPropsSection({
   onClear: (propId: string) => void;
 }) {
   return (
-    <InspectorSection title="컴포넌트 값">
+    <InspectorSection title={title}>
       {definitions.length === 0 && <p className="text-xs text-muted-foreground">노출된 prop이 없습니다.</p>}
       {definitions.map((definition) => {
         const overridden = Object.hasOwn(values, definition.id);
@@ -833,6 +1039,12 @@ function RepeaterItemsSection({
                 size="xs"
                 onClick={() => onChange((current) => setRepeaterItemVisibility(current, node.id, item.id, !item.visible))}
               >{item.visible ? "숨기기" : "표시"}</Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="xs"
+                onClick={() => onChange((current) => removeRepeaterItem(current, node.id, item.id))}
+              >삭제</Button>
             </div>
             <RepeaterItemProps
               item={item}
