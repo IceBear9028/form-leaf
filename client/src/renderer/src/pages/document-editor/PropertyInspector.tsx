@@ -52,6 +52,14 @@ import {
 import { Button } from "@/shared/ui/button";
 import { ButtonGroup } from "@/shared/ui/button-group";
 import { Input } from "@/shared/ui/input";
+import {
+  Select as SelectRoot,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
 import { Switch } from "@/shared/ui/switch";
 import type { DocumentSelection } from "./documentSelection.ts";
 import type { GenericDocumentChange } from "./useGenericDocumentSession.ts";
@@ -530,13 +538,24 @@ function Select({
   options: Array<{ value: string; label: string }>;
 }) {
   return (
-    <select
-      className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+    <SelectRoot
+      items={options}
       value={value}
-      onChange={(event) => onChange(event.target.value)}
+      onValueChange={(nextValue) => {
+        if (nextValue !== null) onChange(nextValue);
+      }}
     >
-      {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-    </select>
+      <SelectTrigger className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent alignItemWithTrigger={false}>
+        <SelectGroup>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </SelectRoot>
   );
 }
 

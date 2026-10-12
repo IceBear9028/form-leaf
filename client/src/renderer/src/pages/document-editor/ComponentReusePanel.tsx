@@ -17,6 +17,14 @@ import {
 } from "../../../../foundation/documentTransactions.ts";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
 import type { DocumentSelection } from "./documentSelection.ts";
 import { selectNode } from "./documentSelection.ts";
 import type { GenericDocumentChange } from "./useGenericDocumentSession.ts";
@@ -167,15 +175,11 @@ export function ComponentReusePanel({
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           <label className="grid gap-1 text-xs text-muted-foreground">
             선택한 컴포넌트
-            <select
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
-              value={selectedComponentId}
-              onChange={(event) => setComponentId(event.target.value)}
-            >
-              {componentIds.map((id) => (
-                <option key={id} value={id}>{document.components[id].name || id}</option>
-              ))}
-            </select>
+            <SelectControl
+              value={selectedComponentId ?? ""}
+              onChange={setComponentId}
+              options={componentIds.map((id) => ({ value: id, label: document.components[id].name || id }))}
+            />
           </label>
           {component && (
             <ComponentDefinitionEditor
@@ -203,14 +207,14 @@ export function ComponentReusePanel({
       )}
       <div className="space-y-2 border-t border-border p-3">
         <p className="text-xs font-semibold">개인 라이브러리</p>
-        <select
-          className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
+        <SelectControl
           value={libraryId}
-          onChange={(event) => setLibraryId(event.target.value)}
-        >
-          <option value="">저장된 컴포넌트 선택</option>
-          {libraryItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select>
+          onChange={setLibraryId}
+          options={[
+            { value: "", label: "저장된 컴포넌트 선택" },
+            ...libraryItems.map((item) => ({ value: item.id, label: item.name })),
+          ]}
+        />
         <div className="grid grid-cols-[1fr_auto] gap-2">
           <Button type="button" variant="outline" size="sm" disabled={!libraryId || libraryBusy} onClick={() => void importFromLibrary()}>
             <DownloadIcon aria-hidden="true" /> 문서로 복사
@@ -222,6 +226,37 @@ export function ComponentReusePanel({
         {libraryError && <p className="text-xs text-destructive">{libraryError}</p>}
       </div>
     </aside>
+  );
+}
+
+function SelectControl({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select
+      items={options}
+      value={value}
+      onValueChange={(nextValue) => {
+        if (nextValue !== null) onChange(nextValue);
+      }}
+    >
+      <SelectTrigger size="sm" className="w-full text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent alignItemWithTrigger={false}>
+        <SelectGroup>
+          {options.map((option) => (
+            <SelectItem key={option.value || "empty"} value={option.value}>{option.label}</SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 }
 

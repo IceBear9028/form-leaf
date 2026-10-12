@@ -25,7 +25,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { DocumentComponentNavigator } from "./DocumentComponentNavigator.tsx";
 import { ComponentDirectManipulationOverlay } from "./ComponentDirectManipulationOverlay.tsx";
 import { ComponentDefinitionPanel } from "./ComponentReusePanel.tsx";
-import { DocumentStructurePanel } from "./DocumentStructurePanel.tsx";
+import { DocumentElementToolbar, DocumentStructurePanel } from "./DocumentStructurePanel.tsx";
 import { PropertyInspector } from "./PropertyInspector.tsx";
 import { RichTextSelectionToolbar } from "./RichTextSelectionToolbar.tsx";
 import { selectNode, type DocumentSelection } from "./documentSelection.ts";
@@ -265,7 +265,7 @@ function ComponentEditorScreen({
   const [draft, setDraft] = useState<DocumentData>(() => createComponentDocumentDraft(sourceDocument, componentId));
   const component = draft.components[componentId];
   const [selection, setSelection] = useState<DocumentSelection | undefined>(() => selectNode(component.rootNodeId));
-  const [layerFocusRequest, setLayerFocusRequest] = useState<{ nodeId: string; requestId: number }>();
+  const [layerFocusRequest, setLayerFocusRequest] = useState<{ nodeId: string; requestId: number; moveFocus?: boolean }>();
   const layerFocusRequestIdRef = useRef(0);
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
   const componentCanvasRef = useRef<HTMLDivElement>(null);
@@ -279,6 +279,14 @@ function ComponentEditorScreen({
     setSelection(selectNode(nodeId));
     layerFocusRequestIdRef.current += 1;
     setLayerFocusRequest({ nodeId, requestId: layerFocusRequestIdRef.current });
+  };
+
+  const clearPreviewSelection = () => {
+    setSelection(undefined);
+    setLayerFocusRequest(undefined);
+    setRichTextSelection(undefined);
+    const activeElement = globalThis.document.activeElement;
+    if (activeElement instanceof HTMLElement) activeElement.blur();
   };
 
   useEffect(() => {
@@ -344,29 +352,57 @@ function ComponentEditorScreen({
           />
           <ComponentDefinitionPanel document={draft} componentId={componentId} onChange={updateDraft} />
         </div>
-        <main className="min-w-0 overflow-auto overscroll-contain bg-[#e9edf2] px-10 py-[34px] max-[1180px]:px-6" aria-label="컴포넌트 미리보기">
-          <div className="mx-auto mb-3 flex w-fit items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm">
-            요소를 선택한 뒤 파란 영역을 그대로 드래그하세요.
-            <span className="font-medium text-foreground">Auto Layout은 즉시 재배치 · 자유 위치는 좌표 이동</span>
+        <main className="relative min-w-0 overflow-hidden bg-[#e9edf2]" aria-label="컴포넌트 미리보기">
+          <div
+            className="h-full overflow-auto overscroll-contain px-10 pb-28 pt-[34px] max-[1180px]:px-6"
+            onClick={(event) => {
+              const target = event.target;
+              if (!(target instanceof Element)) return;
+              if (target.closest("[data-document-node-id], [data-component-drag-handle]")) return;
+              clearPreviewSelection();
+            }}
+          >
+            <div className="mx-auto mb-3 flex w-fit items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm">
+              요소를 선택한 뒤 파란 영역을 그대로 드래그하세요.
+              <span className="font-medium text-foreground">Auto Layout은 즉시 재배치 · 자유 위치는 좌표 이동</span>
+            </div>
+            <div ref={componentCanvasRef} className="document-page mx-auto h-auto min-h-[180px] overflow-visible shadow-[0_8px_28px_rgb(43_53_68_/_13%),0_1px_3px_rgb(43_53_68_/_12%)]">
+              <DocumentRenderer
+                document={draft}
+                rootNodeId={component.rootNodeId}
+                mode="screen"
+                selectedNodeId={selection?.nodeId}
+                selectableNodeIds={selectableNodeIds}
+                onSelect={({ nodeId }) => selectFromPreview(nodeId)}
+                onEditValueChange={commitDirectEdit}
+                onRichTextSelection={setRichTextSelection}
+                richTextSelection={richTextSelection}
+              />
+              <ComponentDirectManipulationOverlay
+                canvasRef={componentCanvasRef}
+                document={draft}
+                selection={selection}
+                componentRootNodeId={component.rootNodeId}
+                onSelectionChange={selectFromPreview}
+                onChange={updateDraft}
+              />
+            </div>
           </div>
-          <div ref={componentCanvasRef} className="document-page mx-auto h-auto min-h-[180px] overflow-visible shadow-[0_8px_28px_rgb(43_53_68_/_13%),0_1px_3px_rgb(43_53_68_/_12%)]">
-            <DocumentRenderer
+          <div className="absolute bottom-5 left-1/2 z-20 -translate-x-1/2">
+            <DocumentElementToolbar
               document={draft}
               rootNodeId={component.rootNodeId}
-              mode="screen"
-              selectedNodeId={selection?.nodeId}
-              selectableNodeIds={selectableNodeIds}
-              onSelect={({ nodeId }) => selectFromPreview(nodeId)}
-              onEditValueChange={commitDirectEdit}
-              onRichTextSelection={setRichTextSelection}
-              richTextSelection={richTextSelection}
-            />
-            <ComponentDirectManipulationOverlay
-              canvasRef={componentCanvasRef}
-              document={draft}
               selection={selection}
-              componentRootNodeId={component.rootNodeId}
-              onSelectionChange={selectFromPreview}
+              onSelectionChange={(nextSelection) => {
+                setSelection(nextSelection);
+                if (!nextSelection) return;
+                layerFocusRequestIdRef.current += 1;
+                setLayerFocusRequest({
+                  nodeId: nextSelection.nodeId,
+                  requestId: layerFocusRequestIdRef.current,
+                  moveFocus: false,
+                });
+              }}
               onChange={updateDraft}
             />
           </div>

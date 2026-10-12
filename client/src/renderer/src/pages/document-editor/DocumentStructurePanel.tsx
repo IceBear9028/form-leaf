@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  BoxIcon,
   ChevronRightIcon,
   ComponentIcon,
   CopyIcon,
@@ -9,7 +10,6 @@ import {
   FolderIcon,
   ImageIcon,
   ListIcon,
-  PlusIcon,
   RotateCcwIcon,
   TextQuoteIcon,
   Trash2Icon,
@@ -30,6 +30,7 @@ import {
 import { Button, buttonVariants } from "@/shared/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import { Input } from "@/shared/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import type { GenericDocumentChange } from "./useGenericDocumentSession.ts";
 import { selectNode, type DocumentSelection } from "./documentSelection.ts";
 
@@ -46,7 +47,7 @@ export function DocumentStructurePanel({
   document: DocumentData;
   rootNodeId?: string;
   selection?: DocumentSelection;
-  focusRequest?: { nodeId: string; requestId: number };
+  focusRequest?: { nodeId: string; requestId: number; moveFocus?: boolean };
   onSelectionChange: (selection?: DocumentSelection) => void;
   onChange: (change: GenericDocumentChange) => void;
 }) {
@@ -58,13 +59,6 @@ export function DocumentStructurePanel({
   const archived = rootNodeId === document.rootNodeId
     ? Object.values(document.nodes).filter((node) => node.archivedFrom)
     : [];
-
-  const add = (type: AddableNodeType) => {
-    const parentId = insertionParentId(document, selection?.nodeId, rootNodeId);
-    const node = createNode(type);
-    onChange((current) => addNode(current, parentId, node));
-    onSelectionChange(selectNode(node.id));
-  };
 
   useEffect(() => {
     if (!focusRequest || focusRequest.requestId === lastHandledFocusRequestRef.current) return;
@@ -94,7 +88,7 @@ export function DocumentStructurePanel({
         const activeElement = globalThis.document.activeElement as HTMLElement | null;
         const editingPreviewText = activeElement?.isContentEditable
           && Boolean(activeElement.closest('[data-document-render-mode="screen"]'));
-        if (!editingPreviewText) row?.focus({ preventScroll: true });
+        if (focusRequest.moveFocus !== false && !editingPreviewText) row?.focus({ preventScroll: true });
       });
     });
     return () => {
@@ -130,25 +124,8 @@ export function DocumentStructurePanel({
           })}
         />
       </div>
-      <div className="border-t border-border bg-muted/20 p-3">
-        <div className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground">
-          <PlusIcon className="size-3.5" aria-hidden="true" /> 요소 추가
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          {([
-            ["container", "Container"],
-            ["text", "Text"],
-            ["rich-text", "Rich text"],
-            ["markdown", "Markdown"],
-            ["image", "Image"],
-          ] as const).map(([type, label]) => (
-            <Button key={type} type="button" variant="outline" size="sm" onClick={() => add(type)}>
-              {label}
-            </Button>
-          ))}
-        </div>
-        {archived.length > 0 && (
-          <div className="mt-4 border-t border-border pt-3">
+      {archived.length > 0 && (
+        <div className="border-t border-border bg-muted/20 p-3">
             <h3 className="mb-2 text-xs font-semibold text-muted-foreground">보관함</h3>
             <div className="space-y-1">
               {archived.map((node) => (
@@ -169,10 +146,68 @@ export function DocumentStructurePanel({
                 </div>
               ))}
             </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </aside>
+  );
+}
+
+export function DocumentElementToolbar({
+  document,
+  rootNodeId = document.rootNodeId,
+  selection,
+  onSelectionChange,
+  onChange,
+}: {
+  document: DocumentData;
+  rootNodeId?: string;
+  selection?: DocumentSelection;
+  onSelectionChange: (selection?: DocumentSelection) => void;
+  onChange: (change: GenericDocumentChange) => void;
+}) {
+  const add = (type: AddableNodeType) => {
+    const parentId = insertionParentId(document, selection?.nodeId, rootNodeId);
+    const node = createNode(type);
+    onChange((current) => addNode(current, parentId, node));
+    onSelectionChange(selectNode(node.id));
+  };
+  const items: Array<{ type: AddableNodeType; label: string; icon: React.ReactNode }> = [
+    { type: "container", label: "컨테이너", icon: <BoxIcon aria-hidden="true" /> },
+    { type: "text", label: "텍스트", icon: <TypeIcon aria-hidden="true" /> },
+    { type: "rich-text", label: "서식 텍스트", icon: <TextQuoteIcon aria-hidden="true" /> },
+    { type: "markdown", label: "마크다운", icon: <FileTextIcon aria-hidden="true" /> },
+    { type: "image", label: "이미지", icon: <ImageIcon aria-hidden="true" /> },
+  ];
+
+  return (
+    <div
+      className="flex items-center gap-0.5 rounded-xl border border-border/80 bg-background/95 p-1.5 shadow-[0_10px_28px_rgb(15_23_42_/_16%),0_2px_6px_rgb(15_23_42_/_8%)] backdrop-blur"
+      role="toolbar"
+      aria-label="요소 추가"
+    >
+      {items.map((item) => (
+        <Tooltip key={item.type}>
+          <TooltipTrigger
+            render={(
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="size-9 rounded-lg bg-transparent! p-0 text-muted-foreground shadow-none hover:bg-muted/70! hover:text-foreground focus:bg-primary! focus:text-primary-foreground focus-visible:bg-primary! focus-visible:text-primary-foreground"
+                aria-label={`${item.label} 추가`}
+                onClick={(event) => {
+                  event.currentTarget.focus();
+                  add(item.type);
+                }}
+              />
+            )}
+          >
+            {item.icon}
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>{item.label}</TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
   );
 }
 
@@ -225,7 +260,7 @@ function TreeRow({
       aria-expanded={hasChildren ? open : undefined}
     >
       <div
-        className={`group flex items-center gap-1 rounded-md border px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${selected ? "border-ring bg-accent" : "border-transparent hover:bg-accent/50"}`}
+        className={`group relative flex items-center gap-1 rounded-md border px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${selected ? "border-ring bg-accent" : "border-transparent hover:bg-accent/50"}`}
         data-layer-node-id={node.id}
         tabIndex={-1}
         style={{ marginLeft: `${depth * 12}px` }}
@@ -280,7 +315,7 @@ function TreeRow({
           onChange={(event) => onChange((current) => renameNode(current, node.id, event.target.value))}
         />
         {!isRoot && (
-          <div className="hidden items-center group-focus-within:flex group-hover:flex">
+          <div className="pointer-events-none absolute right-1 top-1/2 flex -translate-y-1/2 items-center rounded-md bg-accent/95 opacity-0 shadow-sm transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
             <IconButton
               label={node.visible ? "숨기기" : "표시하기"}
               onClick={() => onChange((current) => setNodeVisibility(current, node.id, !node.visible))}
@@ -372,6 +407,7 @@ function IconButton({
       onClick={(event) => {
         event.stopPropagation();
         onClick();
+        if (event.detail > 0) event.currentTarget.blur();
       }}
     >
       {children}

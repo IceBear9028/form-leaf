@@ -355,6 +355,7 @@ export function ComponentDirectManipulationOverlay({
       {movable && (
         <button
           type="button"
+          data-component-drag-handle
           className={`pointer-events-auto absolute touch-none border-0 bg-transparent p-0 outline-none ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
           style={visibleRect}
           aria-label={freelyPositioned ? "선택 영역을 드래그해 위치 변경" : "선택 영역을 드래그해 Auto Layout 순서 변경"}

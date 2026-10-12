@@ -28,7 +28,7 @@
 │   └ 반복 목록        │                                       │
 │ 하단 영역            │                                       │
 │                      │                                       │
-│ + 추가               │                                       │
+│                      │            [요소 추가 도구]            │
 └──────────────────────┴───────────────────────────────────────┘
 ```
 
@@ -45,7 +45,7 @@
 
 새 문서는 이름과 빈 root container만 가진다. 특정 목적을 전제로 한 starter나 기본 section을 자동으로 만들지 않는다.
 
-`+ 추가`를 누르면 현재 선택한 container에 다음 범용 요소를 추가한다.
+컴포넌트 편집 화면 아래에 떠 있는 `요소 추가` 도구에서 현재 선택한 container에 다음 범용 요소를 추가한다.
 
 - 텍스트
 - 서식 텍스트
@@ -55,6 +55,8 @@
 - Repeater
 - 이 문서의 component instance
 - 개인 library에서 가져오기
+
+첫 범위의 하단 도구에는 Container, 텍스트, 서식 텍스트, Markdown, 이미지 버튼을 표시한다. 각 action은 shadcn `Button`의 작은 icon 크기와 Lucide 아이콘을 사용하고, hover 또는 키보드 focus 시 한국어 이름을 shadcn `Tooltip`로 표시한다. 기본 상태에서는 버튼별 배경을 표시하지 않고 hover에는 약한 배경, 클릭·focus된 하나의 버튼에만 강조 배경을 표시한다. 도구는 canvas 스크롤과 무관하게 화면 아래 가운데에 유지하며 출력물에는 포함하지 않는다.
 
 root 바로 아래에 추가한 node는 사용자가 문서를 나누는 최상위 layer가 된다. 사용자가 이를 카테고리로 인식하거나 원하는 이름을 붙일 수 있지만, 저장 모델에는 별도의 category 타입이 없다.
 
@@ -85,6 +87,7 @@ root 바로 아래에 추가한 node는 사용자가 문서를 나누는 최상�
 ### 선택 동기화
 
 - 문서의 요소를 선택하면 왼쪽 tree에서 같은 node 또는 instance를 선택한다.
+- 컴포넌트 편집 canvas에서 실제 요소가 아닌 문서 여백이나 회색 작업영역을 클릭하면 현재 요소 선택과 layer focus를 해제한다.
 - 컴포넌트 편집 미리보기에서 요소를 선택하면 접힌 조상 layer를 모두 펼치고, 해당 행을 보이는 위치로 스크롤한 뒤 키보드 focus를 옮긴다. 텍스트를 직접 편집 중이면 caret을 유지하기 위해 layer 선택과 스크롤만 동기화한다.
 - tree에서 선택하면 문서의 위치를 강조하고 화면 밖이면 스크롤한다.
 - 선택 outline과 toolbar는 출력 DOM 크기에 영향을 주지 않는 overlay로 표시한다.
@@ -128,8 +131,6 @@ Markdown은 승인된 원문 문법만 저장한다. 굵게, 기울임, 취소�
    └ 반복 목록 · 3개
 ≡ 하단 영역                    숨김
 
-[+ 추가]
-
 컴포넌트  2개  →
 내 라이브러리   →
 보관함          →
@@ -148,9 +149,13 @@ Markdown은 승인된 원문 문법만 저장한다. 굵게, 기울임, 취소�
 - component로 만들기
 - 휴지통 아이콘으로 보관함 이동. 이 동작은 영구 삭제가 아니며 보관함에서 복원할 수 있다.
 
+표시·복제·보관 action은 행에 pointer가 올라왔을 때만 나타나고 pointer가 벗어나면 숨긴다. 이름 입력이나 행 선택 focus 때문에 hover action이 남아 있지 않아야 한다. 단, 키보드로 action에 직접 focus한 동안에는 접근성을 위해 계속 표시한다.
+
 텍스트 값을 tree나 inspector에 중복 입력하지 않는다. inspector에는 node 타입, 구조화된 속성, style과 component 편집 진입점만 표시한다.
 
 style inspector는 Figma 계열 속성 패널처럼 관련 값을 짧은 section으로 묶는다. 방향·교차축 정렬·주축 정렬·배치 방식은 shadcn 버튼과 Lucide 아이콘을 사용한 segmented control로 표시하고, 폭·높이·간격·padding·좌표는 좁은 2열 입력으로 표시한다. 모델이 지원하지 않는 회전 같은 속성은 동작하지 않는 장식 control로 만들지 않는다.
+
+화면에 보이는 button, select, tooltip 같은 공통 control은 `shared/ui`의 shadcn 컴포넌트를 사용한다. 직접 작성한 native control은 출력 DOM이나 drag hit area처럼 디자인 control이 아닌 경우에만 허용한다.
 
 Repeater는 item을 하위 행으로 펼쳐 보여준다. 표시 이름은 component가 지정한 대표 prop 값에서 가져오되 값이 비면 `새 항목 1` 같은 중립 fallback을 사용한다.
 
