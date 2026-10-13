@@ -96,20 +96,38 @@ export function DocumentStructurePanel({
       currentId = parentId;
     }
     setCollapsedNodeIds((current) => {
-      if (![...ancestors].some((nodeId) => current.has(nodeId))) return current;
+      const componentPrefix = focusRequest.componentNodeId
+        ? componentNodeLayerPrefix(focusRequest.nodeId, focusRequest.itemId)
+        : undefined;
+      if (
+        ![...ancestors].some((nodeId) => current.has(nodeId)) &&
+        !(componentPrefix && [...current].some((nodeId) => nodeId.startsWith(componentPrefix)))
+      ) return current;
       const next = new Set(current);
       ancestors.forEach((nodeId) => next.delete(nodeId));
+      if (componentPrefix) {
+        next.forEach((nodeId) => {
+          if (nodeId.startsWith(componentPrefix)) next.delete(nodeId);
+        });
+      }
       return next;
     });
 
     let innerFrame = 0;
     const outerFrame = requestAnimationFrame(() => {
       innerFrame = requestAnimationFrame(() => {
-        const row = focusRequest.itemId
-          ? [...(treeRef.current?.querySelectorAll<HTMLElement>("[data-layer-repeater-item-id]") ?? [])]
-            .find((element) => element.dataset.layerRepeaterItemId === focusRequest.itemId)
-          : [...(treeRef.current?.querySelectorAll<HTMLElement>("[data-layer-node-id]") ?? [])]
-            .find((element) => element.dataset.layerNodeId === focusRequest.nodeId);
+        const row = focusRequest.componentNodeId
+          ? [...(treeRef.current?.querySelectorAll<HTMLElement>("[data-layer-component-node-id]") ?? [])]
+            .find((element) => (
+              element.dataset.layerComponentOuterNodeId === focusRequest.nodeId &&
+              element.dataset.layerComponentItemId === focusRequest.itemId &&
+              element.dataset.layerComponentNodeId === focusRequest.componentNodeId
+            ))
+          : focusRequest.itemId
+            ? [...(treeRef.current?.querySelectorAll<HTMLElement>("[data-layer-repeater-item-id]") ?? [])]
+              .find((element) => element.dataset.layerRepeaterItemId === focusRequest.itemId)
+            : [...(treeRef.current?.querySelectorAll<HTMLElement>("[data-layer-node-id]") ?? [])]
+              .find((element) => element.dataset.layerNodeId === focusRequest.nodeId);
         const tree = treeRef.current;
         if (tree && row) {
           const treeRect = tree.getBoundingClientRect();
@@ -825,7 +843,11 @@ function repeaterItemLayerId(nodeId: string, itemId: string): string {
 }
 
 function componentNodeLayerId(nodeId: string, itemId: string | undefined, componentNodeId: string): string {
-  return `component:${nodeId}:${itemId ?? "instance"}:node:${componentNodeId}`;
+  return `${componentNodeLayerPrefix(nodeId, itemId)}${componentNodeId}`;
+}
+
+function componentNodeLayerPrefix(nodeId: string, itemId?: string): string {
+  return `component:${nodeId}:${itemId ?? "instance"}:node:`;
 }
 
 function componentPropDisplayValue(value: ComponentPropValue): string | undefined {

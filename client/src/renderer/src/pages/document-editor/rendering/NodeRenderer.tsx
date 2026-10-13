@@ -17,6 +17,7 @@ export type RenderSelectionTarget = {
   nodeId: string;
   nodeType: RenderTreeNode["type"];
   repeaterItemId?: string;
+  componentNodeId?: string;
 };
 
 export function NodeRenderer({
@@ -49,9 +50,20 @@ export function NodeRenderer({
     (node.type === "text" || node.type === "rich-text" || node.type === "markdown"),
   );
   const select = selectable
-    ? (event: { stopPropagation: () => void }) => {
+    ? (event: { currentTarget: EventTarget | null; target: EventTarget | null; stopPropagation: () => void }) => {
       event.stopPropagation();
-      onSelect?.({ renderId: node.renderId, nodeId: node.sourceNodeId, nodeType: node.type });
+      const clickedNode = event.target instanceof Element
+        ? event.target.closest<HTMLElement>("[data-document-node-id]")
+        : undefined;
+      (clickedNode ?? (event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined))
+        ?.focus({ preventScroll: true });
+      const clickedNodeId = clickedNode?.dataset.documentNodeId;
+      onSelect?.({
+        renderId: node.renderId,
+        nodeId: node.sourceNodeId,
+        nodeType: node.type,
+        ...(clickedNodeId && clickedNodeId !== node.sourceNodeId ? { componentNodeId: clickedNodeId } : {}),
+      });
     }
     : undefined;
   const attributes = {
@@ -66,11 +78,17 @@ export function NodeRenderer({
     "data-markdown-fragment-last": node.type === "markdown" && node.fragment ? String(node.fragment.last) : undefined,
     "data-measure-id": measure ? node.renderId : undefined,
     "data-document-selected": selectedNodeId === node.sourceNodeId ? "true" : undefined,
-    tabIndex: selectable && !directlyEditable ? 0 : undefined,
+    tabIndex: onSelect && !directlyEditable ? selectable ? 0 : -1 : undefined,
     role: selectable && !directlyEditable ? "button" : undefined,
     onClick: select,
     onKeyDown: selectable && !directlyEditable
-      ? (event: { key: string; preventDefault: () => void; stopPropagation: () => void }) => {
+      ? (event: {
+        currentTarget: EventTarget | null;
+        key: string;
+        preventDefault: () => void;
+        stopPropagation: () => void;
+        target: EventTarget | null;
+      }) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         select?.(event);
@@ -91,13 +109,20 @@ export function NodeRenderer({
           if (!item.visible) return null;
           const itemSelectable = Boolean(selectable && onSelect);
           const selectItem = itemSelectable
-            ? (event: { stopPropagation: () => void }) => {
+            ? (event: { currentTarget: EventTarget | null; target: EventTarget | null; stopPropagation: () => void }) => {
               event.stopPropagation();
+              const clickedNode = event.target instanceof Element
+                ? event.target.closest<HTMLElement>("[data-document-node-id]")
+                : undefined;
+              (clickedNode ?? (event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined))
+                ?.focus({ preventScroll: true });
+              const componentNodeId = clickedNode?.dataset.documentNodeId;
               onSelect?.({
                 renderId: `${node.renderId}/item:${item.id}`,
                 nodeId: node.sourceNodeId,
                 nodeType: node.type,
                 repeaterItemId: item.id,
+                ...(componentNodeId ? { componentNodeId } : {}),
               });
             }
             : undefined;

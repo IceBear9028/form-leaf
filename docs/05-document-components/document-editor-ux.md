@@ -76,10 +76,19 @@ component definition 편집은 별도 draft 화면으로 진입한다. 취소하
 
 ### 출력 안정성
 
-- selection outline은 screen renderer에서만 보인다.
+- document selection ID 자체에는 outline을 그리지 않는다. pagination으로 같은 node가 여러 fragment에 투영되어도 모든 fragment에 파란 frame을 반복 표시하지 않는다.
+- 파란 outline은 screen renderer에서 실제 DOM focus를 가진 단 하나의 document 요소에만 표시한다. text, Markdown block과 component 내부 virtual node도 사용자가 클릭한 정확한 요소가 focus 대상이다.
 - screen mode에만 `selectedNodeId`, `selectableNodeIds`와 `onSelect`를 전달한다.
 - measure와 print renderer에는 selection event나 action UI를 넣지 않는다.
 - outline과 floating UI는 pagination 측정값과 PDF layout을 바꾸지 않는다.
+
+### 양방향 focus와 자동 scroll
+
+- 프리뷰 요소를 클릭하면 해당 요소가 focus되어 파란 outline을 표시하고, 레이어는 같은 document node 또는 component 내부 virtual node까지 조상을 펼친 뒤 세로로 자동 scroll한다.
+- 프리뷰 클릭으로 직접 편집 중인 text, rich-text와 Markdown caret은 레이어 동기화가 focus를 가져가지 않는다.
+- 레이어 행을 클릭하면 대응하는 프리뷰 fragment 중 현재 viewport에 가장 가까운 요소로 자동 scroll하고 그 요소에 focus를 이동한다.
+- Repeater의 shared component 내부 행은 `repeater node id + item id + component node id`로 정확한 프리뷰 요소를 찾는다. item 전체 frame으로 대체하지 않는다.
+- 자동 scroll은 레이어와 프리뷰의 자체 scroll container만 이동하며 document 전체나 다른 패널의 가로 위치를 바꾸지 않는다.
 
 ## 레이어와 구조 action
 
@@ -209,6 +218,7 @@ component definition root나 definition 내부 node는 실제 Document의 삽입
 - 인용문은 굵은 세로선 하나만 두지 않고 옅은 배경, `1.5pt` 왼쪽 선, 상하 `5pt`와 좌우 `8pt` 안쪽 여백으로 본문 목록과 구분한다.
 - 긴 한국어 본문의 기본 목표는 `8.5pt`, 행간 `1.6`, 목록 항목 간격 `2.5pt`다. 제목과 metadata 크기는 독립적으로 유지한다.
 - Markdown block 간 기본 간격은 `8pt`를 유지한다. 인용문 뒤의 목록도 같은 block 간격을 사용해 문제와 해결이 붙어 보이지 않게 한다.
+- root Markdown block 간격은 paragraph, heading, blockquote, list 등 block 종류와 편집 wrapper 분리 여부에 관계없이 적용한다. pagination이 각 block을 별도 render fragment로 나눠도 `--markdown-block-gap`을 fragment 사이의 외부 간격으로 유지하고, 추가 빈 줄은 이 기본 간격과 별도로 보존한다.
 - 인용문 하나는 페이지 경계에서 내부가 나뉘지 않아야 한다. 다만 긴 component 전체를 무조건 한 페이지에 고정해 빈 공간이나 overflow를 만들지는 않는다.
 - Markdown 본문이 `도입 문단 → 첫 소제목`으로 시작하면 도입 문단들을 첫 소제목과 함께 다음 페이지로 이동할 수 있는 연속 묶음으로 다룬다. component 제목과 도입만 이전 페이지 하단에 남고 첫 사례가 다음 페이지에서 맥락 없이 시작하는 것을 막는다.
 - `소제목 → 인용문 → 목록`이 연속되면 세 block을 같은 사례 묶음으로 다룬다. 묶음 자체가 한 페이지보다 크지 않은 한 문제만 이전 페이지에 남거나 해결 목록만 다음 페이지로 넘어가지 않아야 한다.

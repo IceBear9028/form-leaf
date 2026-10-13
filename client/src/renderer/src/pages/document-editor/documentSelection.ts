@@ -12,6 +12,7 @@ export type DocumentSelection =
 export type DocumentLayerFocusRequest = {
   nodeId: string;
   itemId?: string;
+  componentNodeId?: string;
   requestId: number;
   moveFocus?: boolean;
 };

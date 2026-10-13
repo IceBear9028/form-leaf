@@ -31,6 +31,7 @@ import { RichTextSelectionToolbar } from "./RichTextSelectionToolbar.tsx";
 import {
   documentSelectableNodeIds,
   reconcileDocumentSelection,
+  selectComponentNode,
   selectNode,
   selectRepeaterItem,
   type DocumentLayerFocusRequest,
@@ -39,6 +40,7 @@ import {
 import { DocumentRenderer } from "./rendering/DocumentRenderer.tsx";
 import { PaginatedDocumentRenderer } from "./rendering/PaginatedDocumentRenderer.tsx";
 import type { DirectTextSelection } from "./rendering/EditableTextValue.tsx";
+import type { RenderSelectionTarget } from "./rendering/NodeRenderer.tsx";
 import {
   type GenericDocumentChange,
   type SaveState,
@@ -93,9 +95,15 @@ export function GenericDocumentEditorPage({
     setLayerFocusRequest({
       nodeId: selection.nodeId,
       itemId: selectionItemId(selection),
+      componentNodeId: selection.kind === "component-node" ? selection.componentNodeId : undefined,
       requestId: layerFocusRequestIdRef.current,
       moveFocus,
     });
+  };
+
+  const selectFromLayer = (selection?: DocumentSelection) => {
+    session.setSelection(selection);
+    if (selection) schedulePreviewFocus(previewRef.current, selection);
   };
 
   const clearPreviewSelection = () => {
@@ -281,7 +289,7 @@ export function GenericDocumentEditorPage({
             document={session.document}
             selection={session.selection}
             focusRequest={layerFocusRequest}
-            onSelectionChange={(selection) => selectAndReveal(selection, false)}
+            onSelectionChange={selectFromLayer}
             onChange={updateDocument}
           />
           <DocumentComponentNavigator
@@ -309,9 +317,7 @@ export function GenericDocumentEditorPage({
               selectedNodeId={selectionPreviewNodeId(session.selection)}
               selectedRepeaterItem={selectionPreviewRepeaterItem(session.selection)}
               selectableNodeIds={selectableNodeIds}
-              onSelect={({ nodeId, repeaterItemId }) => selectAndReveal(
-                repeaterItemId ? selectRepeaterItem(nodeId, repeaterItemId) : selectNode(nodeId),
-              )}
+              onSelect={(target) => selectAndReveal(selectionFromRenderTarget(target), false)}
               onEditValueChange={commitDirectEdit}
               onRichTextSelection={setRichTextSelection}
               richTextSelection={richTextSelection}
@@ -362,6 +368,7 @@ function ComponentEditorScreen({
   const layerFocusRequestIdRef = useRef(0);
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
   const componentCanvasRef = useRef<HTMLDivElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
   const selectableNodeIds = useMemoComponentNodeIds(draft, component.rootNodeId);
 
   const updateDraft = (change: DocumentData | ((current: DocumentData) => DocumentData)) => {
@@ -377,7 +384,25 @@ function ComponentEditorScreen({
   const selectFromPreview = (nodeId: string, itemId?: string) => {
     setSelection(itemId ? selectRepeaterItem(nodeId, itemId) : selectNode(nodeId));
     layerFocusRequestIdRef.current += 1;
-    setLayerFocusRequest({ nodeId, itemId, requestId: layerFocusRequestIdRef.current });
+    setLayerFocusRequest({ nodeId, itemId, requestId: layerFocusRequestIdRef.current, moveFocus: false });
+  };
+
+  const selectRenderTarget = (target: RenderSelectionTarget) => {
+    const nextSelection = selectionFromRenderTarget(target);
+    setSelection(nextSelection);
+    layerFocusRequestIdRef.current += 1;
+    setLayerFocusRequest({
+      nodeId: nextSelection.nodeId,
+      itemId: selectionItemId(nextSelection),
+      componentNodeId: nextSelection.kind === "component-node" ? nextSelection.componentNodeId : undefined,
+      requestId: layerFocusRequestIdRef.current,
+      moveFocus: false,
+    });
+  };
+
+  const selectFromLayer = (nextSelection?: DocumentSelection) => {
+    setSelection(nextSelection);
+    if (nextSelection) schedulePreviewFocus(previewScrollRef.current, nextSelection);
   };
 
   const clearPreviewSelection = () => {
@@ -468,13 +493,14 @@ function ComponentEditorScreen({
             rootNodeId={component.rootNodeId}
             selection={selection}
             focusRequest={layerFocusRequest}
-            onSelectionChange={setSelection}
+            onSelectionChange={selectFromLayer}
             onChange={updateDraft}
           />
           <ComponentDefinitionPanel document={draft} componentId={componentId} onChange={updateDraft} />
         </div>
         <main className="relative min-w-0 overflow-hidden bg-[#e9edf2]" aria-label="컴포넌트 미리보기">
           <div
+            ref={previewScrollRef}
             className="h-full overflow-auto overscroll-contain px-10 pb-28 pt-[34px] max-[1180px]:px-6"
             onClick={(event) => {
               const target = event.target;
@@ -495,7 +521,7 @@ function ComponentEditorScreen({
                 selectedNodeId={selectionPreviewNodeId(selection)}
                 selectedRepeaterItem={selectionPreviewRepeaterItem(selection)}
                 selectableNodeIds={selectableNodeIds}
-                onSelect={({ nodeId, repeaterItemId }) => selectFromPreview(nodeId, repeaterItemId)}
+                onSelect={selectRenderTarget}
                 onEditValueChange={commitDirectEdit}
                 onRichTextSelection={setRichTextSelection}
                 richTextSelection={richTextSelection}
@@ -522,6 +548,7 @@ function ComponentEditorScreen({
                 setLayerFocusRequest({
                   nodeId: nextSelection.nodeId,
                   itemId: selectionItemId(nextSelection),
+                  componentNodeId: nextSelection.kind === "component-node" ? nextSelection.componentNodeId : undefined,
                   requestId: layerFocusRequestIdRef.current,
                   moveFocus: false,
                 });
@@ -557,6 +584,87 @@ function selectionPreviewRepeaterItem(
 ): { nodeId: string; itemId: string } | undefined {
   const itemId = selection ? selectionItemId(selection) : undefined;
   return selection && itemId ? { nodeId: selection.nodeId, itemId } : undefined;
+}
+
+function selectionFromRenderTarget(target: RenderSelectionTarget): DocumentSelection {
+  if (target.componentNodeId) {
+    return selectComponentNode(target.nodeId, target.componentNodeId, target.repeaterItemId);
+  }
+  return target.repeaterItemId
+    ? selectRepeaterItem(target.nodeId, target.repeaterItemId)
+    : selectNode(target.nodeId);
+}
+
+function schedulePreviewFocus(container: HTMLElement | null, selection: DocumentSelection): void {
+  if (!container) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const target = closestPreviewSelectionElement(container, selection);
+      if (!target) return;
+      const focusTarget = target.matches('[contenteditable="true"], [tabindex]')
+        ? target
+        : target.querySelector<HTMLElement>('[contenteditable="true"], [tabindex]') ?? target;
+      focusTarget.focus({ preventScroll: true });
+      scrollElementIntoView(container, focusTarget);
+    });
+  });
+}
+
+function closestPreviewSelectionElement(
+  container: HTMLElement,
+  selection: DocumentSelection,
+): HTMLElement | undefined {
+  const documentNodes = [...container.querySelectorAll<HTMLElement>("[data-document-node-id]")];
+  const repeaterItems = [...container.querySelectorAll<HTMLElement>("[data-repeater-item-id]")];
+  let candidates: HTMLElement[];
+  if (selection.kind === "component-node") {
+    const scopes = selection.itemId
+      ? repeaterItems.filter((element) => element.dataset.repeaterItemId === selection.itemId)
+      : documentNodes.filter((element) => element.dataset.documentNodeId === selection.nodeId);
+    candidates = scopes.flatMap((scope) => (
+      [scope, ...scope.querySelectorAll<HTMLElement>("[data-document-node-id]")]
+        .filter((element) => element.dataset.documentNodeId === selection.componentNodeId)
+    ));
+  } else if (selection.kind === "repeater-item") {
+    candidates = repeaterItems.filter((element) => element.dataset.repeaterItemId === selection.itemId);
+  } else {
+    candidates = documentNodes.filter((element) => element.dataset.documentNodeId === selection.nodeId);
+  }
+  const viewport = container.getBoundingClientRect();
+  return candidates.sort((left, right) => (
+    elementViewportDistance(left.getBoundingClientRect(), viewport) -
+    elementViewportDistance(right.getBoundingClientRect(), viewport)
+  ))[0];
+}
+
+function elementViewportDistance(element: DOMRect, viewport: DOMRect): number {
+  const vertical = element.bottom < viewport.top
+    ? viewport.top - element.bottom
+    : element.top > viewport.bottom
+      ? element.top - viewport.bottom
+      : 0;
+  const horizontal = element.right < viewport.left
+    ? viewport.left - element.right
+    : element.left > viewport.right
+      ? element.left - viewport.right
+      : 0;
+  return vertical + horizontal;
+}
+
+function scrollElementIntoView(container: HTMLElement, element: HTMLElement): void {
+  const viewport = container.getBoundingClientRect();
+  const target = element.getBoundingClientRect();
+  const margin = 24;
+  if (target.top < viewport.top + margin) {
+    container.scrollTop -= viewport.top + margin - target.top;
+  } else if (target.bottom > viewport.bottom - margin) {
+    container.scrollTop += target.bottom - (viewport.bottom - margin);
+  }
+  if (target.left < viewport.left + margin) {
+    container.scrollLeft -= viewport.left + margin - target.left;
+  } else if (target.right > viewport.right - margin) {
+    container.scrollLeft += target.right - (viewport.right - margin);
+  }
 }
 
 function useMemoComponentNodeIds(document: DocumentData, rootNodeId: string): ReadonlySet<string> {
