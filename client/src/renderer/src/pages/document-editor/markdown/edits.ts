@@ -108,6 +108,30 @@ export function toggleMarkdownInlineFormat(
   });
 }
 
+export function toggleMarkdownBlockquote(
+  source: string,
+  range: MarkdownSourceRange,
+): MarkdownEditResult {
+  const normalized = normalizeRange(source, range);
+  const lineStart = source.lastIndexOf("\n", Math.max(0, normalized.start - 1)) + 1;
+  const selectionEnd = normalized.end > normalized.start && source[normalized.end - 1] === "\n"
+    ? normalized.end - 1
+    : normalized.end;
+  const nextBreak = source.indexOf("\n", selectionEnd);
+  const lineEnd = nextBreak === -1 ? source.length : nextBreak;
+  const lines = source.slice(lineStart, lineEnd).split("\n");
+  const contentLines = lines.filter((line) => line.trim().length > 0);
+  const remove = contentLines.length > 0 && contentLines.every((line) => /^\s*>\s?/.test(line));
+  const replacement = lines.map((line) => {
+    if (remove) return line.replace(/^(\s*)>\s?/, "$1");
+    return line.length ? `> ${line}` : ">";
+  }).join("\n");
+  return replaceMarkdownRange(source, { start: lineStart, end: lineEnd }, replacement, {
+    start: 0,
+    end: replacement.length,
+  });
+}
+
 export function toggleMarkdownLink(
   source: string,
   range: MarkdownSourceRange,
@@ -163,6 +187,7 @@ function markdownBlockShortcutBefore(
     return { start: lineStart, marker: heading.replaceAll("\\", "") };
   }
   if (prefix === "\\-") return { start: lineStart, marker: "-" };
+  if (prefix === "\\>") return { start: lineStart, marker: ">" };
   if (/^[0-9]{1,9}\.$/.test(prefix)) return { start: lineStart, marker: prefix };
   return undefined;
 }

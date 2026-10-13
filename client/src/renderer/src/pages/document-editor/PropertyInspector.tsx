@@ -93,9 +93,14 @@ export function PropertyInspector({
     );
   }
 
-  if (selection?.kind === "repeater-item") {
+  const repeaterItemId = selection?.kind === "repeater-item"
+    ? selection.itemId
+    : selection?.kind === "component-node"
+      ? selection.itemId
+      : undefined;
+  if (repeaterItemId) {
     if (node.type !== "repeater") return null;
-    const itemIndex = node.items.findIndex((item) => item.id === selection.itemId);
+    const itemIndex = node.items.findIndex((item) => item.id === repeaterItemId);
     const item = node.items[itemIndex];
     if (!item) return null;
     const definitions = document.components[node.itemComponentId].propDefinitions;
@@ -108,6 +113,11 @@ export function PropertyInspector({
         <InspectorSection title="반복 항목">
           <p className="truncate text-sm font-medium">{repeaterItemLabel(document, node, item, itemIndex)}</p>
           <p className="text-xs text-muted-foreground">{node.name || "Repeater"}의 {itemIndex + 1}번째 항목</p>
+          {selection?.kind === "component-node" && (
+            <p className="rounded-md border border-border bg-muted/30 px-2.5 py-2 text-xs text-muted-foreground">
+              공유 구조 · {document.nodes[selection.componentNodeId]?.name || "Component node"}
+            </p>
+          )}
           <ToggleField
             label="표시"
             checked={item.visible}

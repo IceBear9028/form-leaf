@@ -138,7 +138,7 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
   assert.equal(document.styles["legacy-style-roomy-heading-row"].layout.paddingPt[2], 24.5);
   assert.equal(document.styles["legacy-style-split-item"].layout.gapPt, 18.4);
   assert.equal(document.styles["legacy-style-split-item"].layout.paddingPt[2], 13.6);
-  assert.deepEqual(document.styles["legacy-style-bullet-body"].markdown, { listItemGapPt: 4 });
+  assert.deepEqual(document.styles["legacy-style-bullet-body"].markdown, { listItemGapPt: 2 });
   assert.equal(document.nodes["legacy-node-section-c-2"].styleId, "legacy-style-roomy-boundary");
   assert.equal(document.nodes["legacy-node-section-c-heading-row"].styleId, "legacy-style-roomy-heading-row");
   assert.equal(document.nodes["legacy-node-section-c-items"].styleId, "legacy-style-connected-list");

@@ -15,6 +15,7 @@ import {
   replaceMarkdownRange,
   replaceMarkdownText,
   replaceMarkdownTextWithBlockShortcut,
+  toggleMarkdownBlockquote,
   toggleMarkdownInlineFormat,
   toggleMarkdownLink,
 } from "../src/renderer/src/pages/document-editor/markdown/edits.ts";
@@ -26,6 +27,7 @@ test("줄 시작 Markdown 접두어 뒤 Space를 블록 문법으로 전환한�
     ["\\#\\#", "## "],
     ["\\#\\#\\#\\#\\#\\#", "###### "],
     ["\\-", "- "],
+    ["\\>", "> "],
     ["1.", "1. "],
     ["23.", "23. "],
     ["앞 문단\n\n\\#", "앞 문단\n\n# "],
@@ -59,6 +61,20 @@ test("문장 중간과 지원하지 않는 접두어는 일반 문자로 유지�
 
   assert.equal(middle.source, "내용 \\# ");
   assert.equal(unsupported.source, "\\#\\#\\#\\#\\#\\#\\# ");
+});
+
+test("선택한 문단을 인용문으로 전환하고 다시 해제한다", () => {
+  const source = `### 개선\n\n기존 방식은 확인이 느렸습니다.\n두 번째 줄입니다.\n\n- 자동화했습니다.`;
+  const start = source.indexOf("기존");
+  const end = source.indexOf("\n\n- 자동화");
+  const quoted = toggleMarkdownBlockquote(source, { start, end });
+
+  assert.equal(quoted.source, `### 개선\n\n> 기존 방식은 확인이 느렸습니다.\n> 두 번째 줄입니다.\n\n- 자동화했습니다.`);
+  assert.equal(parseMarkdownBlocks(quoted.source)[1].node.type, "blockquote");
+  assert.equal(
+    toggleMarkdownBlockquote(quoted.source, quoted.selection).source,
+    source,
+  );
 });
 
 test("DOM source map 문자열은 유효한 숫자 경계만 복원한다", () => {
@@ -307,14 +323,14 @@ test("v1 성과 상세를 소제목, 문단과 목록 순서로 직렬화한다"
 
   assert.equal(markdown, `### 검색 성능 개선
 
-응답이 느려졌습니다.
+> 응답이 느려졌습니다.
 
 - 검색 조건을 단순화했습니다.
 - 캐시를 적용했습니다.
 - **응답 시간을 단축했습니다.**`);
   assert.deepEqual(parseMarkdownBlocks(markdown).map((block) => block.node.type), [
     "heading",
-    "paragraph",
+    "blockquote",
     "list",
   ]);
 });

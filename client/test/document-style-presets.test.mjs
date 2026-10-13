@@ -21,8 +21,9 @@ test("새 문서는 값이 포함된 일반 root style로 시작한다", () => {
 
   assert.equal(style.name, "일반");
   assert.equal(style.layout.gapPt, 8);
-  assert.equal(style.typography.fontSizePt, 8);
-  assert.equal(style.typography.lineHeight, 1.57);
+  assert.equal(style.typography.fontSizePt, 8.5);
+  assert.equal(style.typography.lineHeight, 1.6);
+  assert.equal(style.markdown.listItemGapPt, 2.5);
   assert.equal(matchesDocumentStylePreset(style, "regular"), true);
 });
 
@@ -44,7 +45,7 @@ test("preset 결과와 공개 preset 값은 서로 독립적이다", () => {
   const style = createDocumentStyleFromPreset("regular", "style-root");
   style.typography.fontSizePt = 11;
 
-  assert.equal(DOCUMENT_STYLE_PRESETS[0].style.typography.fontSizePt, 8);
+  assert.equal(DOCUMENT_STYLE_PRESETS[0].style.typography.fontSizePt, 8.5);
   assert.equal(matchesDocumentStylePreset(style, "regular"), false);
 });
 

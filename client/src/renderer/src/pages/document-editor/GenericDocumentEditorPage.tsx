@@ -30,6 +30,7 @@ import { PropertyInspector } from "./PropertyInspector.tsx";
 import { RichTextSelectionToolbar } from "./RichTextSelectionToolbar.tsx";
 import {
   documentSelectableNodeIds,
+  reconcileDocumentSelection,
   selectNode,
   selectRepeaterItem,
   type DocumentLayerFocusRequest,
@@ -91,7 +92,7 @@ export function GenericDocumentEditorPage({
     layerFocusRequestIdRef.current += 1;
     setLayerFocusRequest({
       nodeId: selection.nodeId,
-      itemId: selection.kind === "repeater-item" ? selection.itemId : undefined,
+      itemId: selectionItemId(selection),
       requestId: layerFocusRequestIdRef.current,
       moveFocus,
     });
@@ -305,10 +306,8 @@ export function GenericDocumentEditorPage({
             <PaginatedDocumentRenderer
               document={session.document}
               mode="screen"
-              selectedNodeId={session.selection?.kind === "node" ? session.selection.nodeId : undefined}
-              selectedRepeaterItem={session.selection?.kind === "repeater-item"
-                ? { nodeId: session.selection.nodeId, itemId: session.selection.itemId }
-                : undefined}
+              selectedNodeId={selectionPreviewNodeId(session.selection)}
+              selectedRepeaterItem={selectionPreviewRepeaterItem(session.selection)}
               selectableNodeIds={selectableNodeIds}
               onSelect={({ nodeId, repeaterItemId }) => selectAndReveal(
                 repeaterItemId ? selectRepeaterItem(nodeId, repeaterItemId) : selectNode(nodeId),
@@ -394,13 +393,7 @@ function ComponentEditorScreen({
       if (!current || !selectableNodeIds.has(current.nodeId) || draft.nodes[current.nodeId]?.archivedFrom) {
         return selectNode(component.rootNodeId);
       }
-      if (current.kind === "repeater-item") {
-        const node = draft.nodes[current.nodeId];
-        if (node.type !== "repeater" || !node.items.some((item) => item.id === current.itemId)) {
-          return selectNode(component.rootNodeId);
-        }
-      }
-      return current;
+      return reconcileDocumentSelection(draft, current) ?? selectNode(component.rootNodeId);
     });
   }, [component.rootNodeId, draft, selectableNodeIds]);
 
@@ -499,10 +492,8 @@ function ComponentEditorScreen({
                 document={draft}
                 rootNodeId={component.rootNodeId}
                 mode="screen"
-                selectedNodeId={selection?.kind === "node" ? selection.nodeId : undefined}
-                selectedRepeaterItem={selection?.kind === "repeater-item"
-                  ? { nodeId: selection.nodeId, itemId: selection.itemId }
-                  : undefined}
+                selectedNodeId={selectionPreviewNodeId(selection)}
+                selectedRepeaterItem={selectionPreviewRepeaterItem(selection)}
                 selectableNodeIds={selectableNodeIds}
                 onSelect={({ nodeId, repeaterItemId }) => selectFromPreview(nodeId, repeaterItemId)}
                 onEditValueChange={commitDirectEdit}
@@ -530,7 +521,7 @@ function ComponentEditorScreen({
                 layerFocusRequestIdRef.current += 1;
                 setLayerFocusRequest({
                   nodeId: nextSelection.nodeId,
-                  itemId: nextSelection.kind === "repeater-item" ? nextSelection.itemId : undefined,
+                  itemId: selectionItemId(nextSelection),
                   requestId: layerFocusRequestIdRef.current,
                   moveFocus: false,
                 });
@@ -549,6 +540,23 @@ function ComponentEditorScreen({
       {richTextSelection && <RichTextSelectionToolbar rect={richTextSelection.rect} onFormat={formatRichText} onRemove={removeInlineMark} />}
     </div>
   );
+}
+
+function selectionItemId(selection: DocumentSelection): string | undefined {
+  if (selection.kind === "repeater-item") return selection.itemId;
+  return selection.kind === "component-node" ? selection.itemId : undefined;
+}
+
+function selectionPreviewNodeId(selection?: DocumentSelection): string | undefined {
+  if (selection?.kind === "node") return selection.nodeId;
+  return selection?.kind === "component-node" && !selection.itemId ? selection.nodeId : undefined;
+}
+
+function selectionPreviewRepeaterItem(
+  selection?: DocumentSelection,
+): { nodeId: string; itemId: string } | undefined {
+  const itemId = selection ? selectionItemId(selection) : undefined;
+  return selection && itemId ? { nodeId: selection.nodeId, itemId } : undefined;
 }
 
 function useMemoComponentNodeIds(document: DocumentData, rootNodeId: string): ReadonlySet<string> {

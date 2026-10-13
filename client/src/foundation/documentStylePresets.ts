@@ -25,10 +25,13 @@ export const DOCUMENT_STYLE_PRESETS: readonly DocumentStylePreset[] = [
       },
       typography: {
         fontFamily: documentFont,
-        fontSizePt: 8,
-        lineHeight: 1.57,
+        fontSizePt: 8.5,
+        lineHeight: 1.6,
         fontWeight: 400,
         color: { kind: "hex", value: "#000000" },
+      },
+      markdown: {
+        listItemGapPt: 2.5,
       },
     },
   },

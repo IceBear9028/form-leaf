@@ -87,22 +87,43 @@ component definition 편집은 별도 draft 화면으로 진입한다. 취소하
 
 ### Repeater item
 
-Repeater 행은 component 이름과 item 수를 함께 표시하고, 펼치면 `items` 배열과 같은 순서로 item 행을 렌더링한다.
+Repeater 행은 component 이름과 item 수를 함께 표시하고, 펼치면 `items` 배열과 같은 순서로 item 행을 렌더링한다. 각 item 행은 다시 펼칠 수 있으며, item이 참조하는 component definition의 실제 node tree를 그 아래에 투영한다. item 한 줄만 표시하고 내부 component 구조를 생략하지 않는다.
 
 ```text
 교육 items · 2개
 ├ 항목 1 · 2025.01
+│ └ 교육 item · 공유 구조
+│   ├ Inline period
+│   │ ├ Start · 2025.01
+│   │ └ End · 2025.06
+│   ├ Inline title
+│   │ ├ Organization · 프로그램 이름
+│   │ └ Title · 과정 이름
+│   └ Body
 └ 항목 2 · 2017.03
+  └ 교육 item · 공유 구조
+    └ …
 ```
 
 - item 이름은 component prop의 선언 순서에서 첫 번째로 표시 가능한 실제 값 또는 기본값을 사용한다. 값이 없으면 `항목 1` 같은 중립 fallback을 사용하며 prop 이름이나 문서 목적을 해석하지 않는다.
 - item 행은 일반 component-instance와 다른 list-item 아이콘과 한 단계 깊은 들여쓰기를 사용한다.
+- item 내부 행의 구조와 순서는 `ComponentDefinition.rootNodeId`에서 시작하는 실제 definition node tree를 그대로 사용한다. `프로젝트`, `교육` 같은 표시 이름에 따른 별도 구조를 만들지 않는다.
+- definition node에 연결된 prop이 있으면 해당 item의 override 또는 prop 기본값을 보조 텍스트로 표시한다. container처럼 prop binding이 없는 node는 구조 이름만 표시한다.
+- item 내부 행은 item마다 복제 저장된 document node가 아니라 공유 component definition을 item 값과 합성한 virtual layer다. component root에는 `공유 구조`를 표시한다.
+- virtual layer를 선택하면 selection은 document의 repeater node, item id와 component node id를 함께 보존한다. 미리보기 outline은 해당 repeater item에 유지하고 inspector는 같은 item의 prop을 표시한다.
+- virtual layer에는 숨김, 복제, 삭제와 drag action을 제공하지 않는다. 이 action은 item 행에만 적용하며, 공유 구조 변경은 component definition 편집에서 수행한다.
+- item 행은 기본적으로 접어 긴 repeater를 탐색할 수 있게 한다. 미리보기에서 item을 선택하면 해당 repeater와 item 행을 자동으로 펼친다.
+- 미리보기 선택을 레이어에 자동 표시할 때는 필요한 행의 세로 위치만 맞추고 패널의 가로 스크롤 위치는 유지한다. 깊은 shared node를 선택해도 상위 레이어 이름의 앞부분이 화면 밖으로 밀리지 않아야 한다.
+- 레이어 트리는 패널 내부의 독립적인 가로·세로 scroll 영역이다. 깊은 node는 들여쓰기를 줄이거나 다른 패널 위에 겹치지 않고 사용자가 좌우로 이동해 확인한다.
+- 선택 및 keyboard focus ring은 레이어 scroll 영역에서 잘리며 가운데 미리보기나 오른쪽 inspector 영역까지 그려지지 않는다.
 - item 선택은 `{ kind: "repeater-item", nodeId, itemId }`로 식별한다.
 - item 행에서 숨김, 복제, 삭제와 같은 repeater item transaction을 실행할 수 있다. 순서는 drag로 변경한다.
 - item의 휴지통 action은 해당 값을 `items` 배열에서 즉시 영구 삭제한다. document node 보관함으로 이동시키지 않는다.
 - 삭제 직전 Document는 현재 편집 세션의 undo history에 저장한다. 삭제 직후 `Ctrl+Z` 또는 macOS의 `Cmd+Z`로 항목과 원래 순서를 복원할 수 있다.
 - 삭제한 item이 선택 중이었다면 selection을 즉시 해제한다.
 - item을 선택하면 inspector에는 repeater 전체 style이 아니라 해당 item의 component prop을 표시한다.
+
+일반 `component-instance`도 같은 shared component tree projection을 사용한다. instance 행을 펼치면 definition 내부 구조와 instance prop 값을 표시하되, 실제 document node action과 shared definition action을 섞지 않는다.
 
 ### Root
 
@@ -168,6 +189,40 @@ component definition root나 definition 내부 node는 실제 Document의 삽입
 
 화면에 보이는 Button, Select, Tooltip과 toggle은 `client/src/renderer/src/shared/ui`의 shadcn component를 사용한다. 아이콘은 Lucide를 사용한다. 문서 출력·pagination과 무관한 UI 스타일은 `document.css`에 추가하지 않는다.
 
+## PDF 가독성 검토와 Markdown 문제 서술
+
+실제 출력 PDF는 화면 미리보기만 보지 않고 A4 페이지 이미지를 같은 배율로 렌더링해 비교한다. 검토 기준 PDF의 6개 페이지 중 프로젝트가 이어지는 2–4페이지는 본문 `8pt`, 행간 `1.57`, 목록 항목 간격 `1pt`가 긴 한국어 문장에 반복 적용되어 다른 페이지보다 밀도가 높았다. 특히 문제 상황, 해결 행동과 결과가 같은 목록 위계에 섞이면 내용이 많아질수록 사용자가 성과보다 bullet 개수를 먼저 인식한다.
+
+프로젝트의 각 개선 사례는 다음과 같은 서술 구조를 권장한다.
+
+```markdown
+### 개선 결과 또는 핵심 행동
+
+> 해결하기 전의 문제, 제약 또는 판단 근거
+
+- 문제를 해결하기 위해 취한 행동
+- 검증 가능한 결과와 배운 점
+```
+
+- `>`는 문서 목적이나 `경력`, `교육`, `프로젝트` 같은 이름을 판별하는 기능이 아니다. 작성자가 명시한 Markdown 인용문을 문제·제약의 시각적 맥락으로 표현하는 범용 문법이다.
+- 인용문에 `문제` 같은 label을 자동 삽입하지 않는다. 화면, 측정과 PDF가 동일한 작성 원문을 사용한다.
+- 인용문은 굵은 세로선 하나만 두지 않고 옅은 배경, `1.5pt` 왼쪽 선, 상하 `5pt`와 좌우 `8pt` 안쪽 여백으로 본문 목록과 구분한다.
+- 긴 한국어 본문의 기본 목표는 `8.5pt`, 행간 `1.6`, 목록 항목 간격 `2.5pt`다. 제목과 metadata 크기는 독립적으로 유지한다.
+- Markdown block 간 기본 간격은 `8pt`를 유지한다. 인용문 뒤의 목록도 같은 block 간격을 사용해 문제와 해결이 붙어 보이지 않게 한다.
+- 인용문 하나는 페이지 경계에서 내부가 나뉘지 않아야 한다. 다만 긴 component 전체를 무조건 한 페이지에 고정해 빈 공간이나 overflow를 만들지는 않는다.
+- Markdown 본문이 `도입 문단 → 첫 소제목`으로 시작하면 도입 문단들을 첫 소제목과 함께 다음 페이지로 이동할 수 있는 연속 묶음으로 다룬다. component 제목과 도입만 이전 페이지 하단에 남고 첫 사례가 다음 페이지에서 맥락 없이 시작하는 것을 막는다.
+- `소제목 → 인용문 → 목록`이 연속되면 세 block을 같은 사례 묶음으로 다룬다. 묶음 자체가 한 페이지보다 크지 않은 한 문제만 이전 페이지에 남거나 해결 목록만 다음 페이지로 넘어가지 않아야 한다.
+
+가독성 변경은 renderer의 임의 확대가 아니라 node style 값으로 저장해야 한다. 따라서 화면, pagination 측정과 PDF 출력에 같은 글자 크기와 행간이 적용되며, 사용자는 inspector에서 다시 조절할 수 있다.
+
+비교 검증에서는 변경 전·후의 동일 페이지를 캡처하고 다음을 확인한다.
+
+1. 문제 문단이 해결 bullet과 한눈에 구분되는가.
+2. 한국어 한 줄의 글자 수가 줄고 조사·단어 경계의 줄바꿈이 자연스러운가.
+3. 연속 bullet의 행간과 항목 간격을 서로 구분할 수 있는가.
+4. 인용문 배경과 선이 흑백 PDF에서도 위계를 유지하는가.
+5. 가독성 장식이 selection, 측정과 출력 pagination을 서로 다르게 만들지 않는가.
+
 ## 장식
 
 선택한 일반 container를 포함한 style 가능 node에는 의미 이름과 무관한 `장식` section을 제공한다. `StyleDefinition.decoration`을 직접 편집한다.
@@ -231,5 +286,7 @@ component definition root나 definition 내부 node는 실제 Document의 삽입
 - section 이름에 의존한 하드코딩이 없다.
 - selection UI가 measure와 PDF 출력에 포함되지 않는다.
 - continuation page의 top border 제거 동작이 유지된다.
+- Markdown 인용문이 문제·제약 문단을 일반 목록과 구분하고 print에도 같은 구조로 출력된다.
+- 긴 본문의 기본 크기 `8.5pt`, 행간 `1.6`, 목록 간격 `2.5pt`가 pagination 측정과 PDF에 동일하게 적용된다.
 - typecheck, 전체 테스트와 production build가 통과한다.
 - Electron 실제 화면에서 선택, 빈 영역 선택 해제, 보관, component 추가와 장식 변경을 클릭으로 확인하고 스크린샷을 비교한다.

@@ -17,7 +17,7 @@ function contentBlockToMarkdown(block: ContentBlock): string {
   if (block.type === "detail") {
     return [
       hasText(block.title) ? `### ${textContentToMarkdown(block.title)}` : "",
-      hasText(block.context) ? textContentToMarkdown(block.context) : "",
+      hasText(block.context) ? serializeBlockquote(block.context) : "",
       serializeList([...block.actions, block.result].filter(hasText)),
     ].filter(Boolean).join("\n\n");
   }
@@ -29,6 +29,13 @@ function contentBlockToMarkdown(block: ContentBlock): string {
   }
   if (!block.items.length) return "";
   return `**기술 스택:** ${escapeMarkdownText(block.items.join(", "))}`;
+}
+
+function serializeBlockquote(content: TextContent): string {
+  return textContentToMarkdown(content)
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
 }
 
 function serializeList(items: TextContent[]): string {

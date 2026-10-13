@@ -29,18 +29,19 @@
   --markdown-accent: #0969da;
   --markdown-border: #d0d7de;
   --markdown-block-gap: 8pt;
-  --markdown-body-size: 8pt;
-  --markdown-body-line-height: 1.57;
-  --markdown-lead-size: 8pt;
-  --markdown-lead-line-height: 12.5pt;
-  --markdown-list-size: 8pt;
-  --markdown-list-line-height: 12.5pt;
-  --markdown-list-gap: 1pt;
+  --markdown-body-size: 8.5pt;
+  --markdown-body-line-height: 1.6;
+  --markdown-lead-size: 8.5pt;
+  --markdown-lead-line-height: 1.6;
+  --markdown-list-size: 8.5pt;
+  --markdown-list-line-height: 1.6;
+  --markdown-list-gap: 2.5pt;
   --markdown-code-font-family: "SF Mono", Monaco, Menlo, Consolas, "Ubuntu Mono", "Liberation Mono", monospace;
   --markdown-code-size: 7.4pt;
   --markdown-code-background: #f6f8fa;
   --markdown-code-border: #d0d7de;
   --markdown-quote-border: #d0d7de;
+  --markdown-quote-background: #f6f8fa;
   --markdown-table-size: 7.4pt;
   --markdown-table-border: #d0d7de;
   --markdown-table-header-background: transparent;
@@ -265,9 +266,10 @@
 
 .markdown-blockquote {
   margin: 0;
-  padding: 0 12pt 0 8pt;
-  border-left: 3pt solid var(--markdown-quote-border);
-  border-radius: 2pt;
+  padding: 5pt 8pt;
+  border-left: 1.5pt solid var(--markdown-quote-border);
+  border-radius: 0 3pt 3pt 0;
+  background: var(--markdown-quote-background);
   color: var(--markdown-secondary);
 }
 

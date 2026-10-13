@@ -10,6 +10,7 @@ import {
   replaceMarkdownRange,
   replaceMarkdownText,
   replaceMarkdownTextWithBlockShortcut,
+  toggleMarkdownBlockquote,
   toggleMarkdownInlineFormat,
   toggleMarkdownLink,
   type MarkdownInlineFormat,
@@ -182,6 +183,9 @@ export function EditableMarkdownValue({
     const href = window.prompt("링크 URL을 입력하세요. 비워두면 링크가 제거됩니다.", "https://");
     if (href !== null) updateSource((current) => toggleMarkdownLink(current, selection.range, href.trim() || undefined));
   };
+  const applyBlockquote = () => {
+    if (selection) updateSource((current) => toggleMarkdownBlockquote(current, selection.range));
+  };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -243,7 +247,12 @@ export function EditableMarkdownValue({
         <MarkdownFootnotesContent documentBlocks={blocks} context="document" idPrefix={`markdown-${sourceId}`} />
       )}
       {selection && (
-        <MarkdownSelectionToolbar rect={selection.rect} onFormat={applyFormat} onLink={applyLink} />
+        <MarkdownSelectionToolbar
+          rect={selection.rect}
+          onFormat={applyFormat}
+          onLink={applyLink}
+          onBlockquote={applyBlockquote}
+        />
       )}
     </div>
   );

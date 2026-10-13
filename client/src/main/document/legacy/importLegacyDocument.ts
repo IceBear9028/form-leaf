@@ -148,7 +148,7 @@ class LegacyDocumentBuilder {
   }
 
   private createStyles(compact: boolean): Record<string, StyleDefinition> {
-    const bodySize = compact ? 7.5 : 8;
+    const bodySize = compact ? 7.5 : 8.5;
     return {
       [this.rootStyleId]: {
         id: this.rootStyleId,
@@ -162,10 +162,11 @@ class LegacyDocumentBuilder {
         typography: {
           fontFamily: "Pretendard",
           fontSizePt: bodySize,
-          lineHeight: compact ? 1.5 : 1.57,
+          lineHeight: compact ? 1.5 : 1.6,
           fontWeight: 400,
           color: { kind: "hex", value: "#000000" },
         },
+        markdown: { listItemGapPt: compact ? 1 : 2.5 },
       },
       [this.sectionStyleId]: {
         id: this.sectionStyleId,
@@ -367,8 +368,12 @@ class LegacyDocumentBuilder {
         id: this.bulletBodyStyleId,
         name: "Bullet body",
         layout: { paddingPt: [6.4, 0, 0, 0] },
-        typography: { fontSizePt: 8, lineHeight: 1.25, color: { kind: "hex", value: "#343940" } },
-        markdown: { listItemGapPt: 4 },
+        typography: {
+          fontSizePt: compact ? 7.5 : 8.5,
+          lineHeight: compact ? 1.5 : 1.6,
+          color: { kind: "hex", value: "#343940" },
+        },
+        markdown: { listItemGapPt: compact ? 2 : 2.5 },
       },
       [this.accentTitleStyleId]: {
         id: this.accentTitleStyleId,
@@ -378,7 +383,12 @@ class LegacyDocumentBuilder {
       [this.compactTextStyleId]: {
         id: this.compactTextStyleId,
         name: "Compact text",
-        typography: { fontSizePt: compact ? 7.5 : 8, lineHeight: 1.35, color: { kind: "hex", value: "#34383E" } },
+        typography: {
+          fontSizePt: compact ? 7.5 : 8.5,
+          lineHeight: compact ? 1.5 : 1.6,
+          color: { kind: "hex", value: "#34383E" },
+        },
+        markdown: { listItemGapPt: compact ? 1 : 2.5 },
       },
       [this.headerRowStyleId]: {
         id: this.headerRowStyleId,

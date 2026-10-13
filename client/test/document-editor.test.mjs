@@ -15,6 +15,7 @@ import {
   documentInsertionParentId,
   documentSelectableNodeIds,
   reconcileDocumentSelection,
+  selectComponentNode,
   selectNode,
   selectRepeaterItem,
 } from "../src/renderer/src/pages/document-editor/documentSelection.ts";
@@ -202,6 +203,16 @@ test("repeater item 선택은 item id로 유지되고 실제 항목 데이터로
   const repeater = document.nodes["node-education"];
   const selection = selectRepeaterItem(repeater.id, "item-2");
   assert.deepEqual(reconcileDocumentSelection(document, selection), selection);
+  const componentNodeSelection = selectComponentNode(repeater.id, "component-text", "item-2");
+  assert.deepEqual(reconcileDocumentSelection(document, componentNodeSelection), componentNodeSelection);
+  assert.equal(
+    reconcileDocumentSelection(document, selectComponentNode(repeater.id, "unknown-node", "item-2")),
+    undefined,
+  );
+  assert.equal(
+    reconcileDocumentSelection(document, selectComponentNode(repeater.id, "component-text")),
+    undefined,
+  );
   assert.equal(repeaterItemLabel(document, repeater, repeater.items[0], 0), "항목 1 · 한국대학교");
   assert.equal(repeaterItemLabel(document, repeater, repeater.items[1], 1), "항목 2 · 기본 학교");
 
@@ -213,6 +224,7 @@ test("repeater item 선택은 item id로 유지되고 실제 항목 데이터로
     },
   };
   assert.equal(reconcileDocumentSelection(withoutSecondItem, selection), undefined);
+  assert.equal(reconcileDocumentSelection(withoutSecondItem, componentNodeSelection), undefined);
 });
 
 test("preview zoom은 8%씩 이동하고 50~115% 범위를 넘지 않는다", () => {

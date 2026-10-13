@@ -4,6 +4,7 @@ import {
   CodeXmlIcon,
   ItalicIcon,
   LinkIcon,
+  QuoteIcon,
   StrikethroughIcon,
   UnderlineIcon,
 } from "lucide-react";
@@ -20,13 +21,15 @@ export function MarkdownSelectionToolbar({
   rect,
   onFormat,
   onLink,
+  onBlockquote,
 }: {
   rect: DOMRect;
   onFormat: (format: MarkdownInlineFormat) => void;
   onLink: () => void;
+  onBlockquote: () => void;
 }) {
   const left = Math.min(
-    window.innerWidth - 224,
+    window.innerWidth - 256,
     Math.max(8, rect.left + rect.width / 2),
   );
   const top = Math.max(8, rect.top - 42);
@@ -44,6 +47,7 @@ export function MarkdownSelectionToolbar({
       <FormatButton label="밑줄" title="밑줄 (⌘U)" onClick={() => onFormat("underline")}><UnderlineIcon aria-hidden="true" /></FormatButton>
       <FormatButton label="취소선" title="취소선" onClick={() => onFormat("delete")}><StrikethroughIcon aria-hidden="true" /></FormatButton>
       <FormatButton label="인라인 코드" title="인라인 코드" onClick={() => onFormat("inline-code")}><CodeXmlIcon aria-hidden="true" /></FormatButton>
+      <FormatButton label="인용문" title="문제·제약 인용문" onClick={onBlockquote}><QuoteIcon aria-hidden="true" /></FormatButton>
       <FormatButton label="링크" title="링크" onClick={onLink}><LinkIcon aria-hidden="true" /></FormatButton>
     </ButtonGroup>,
     document.body,

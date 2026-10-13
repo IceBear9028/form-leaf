@@ -55,8 +55,15 @@ function splitMarkdown(node: RenderMarkdownNode): PaginationUnit[] {
     block.node.type === "definition" || block.node.type === "footnoteDefinition" ? [] : [index]
   ));
   if (visibleBlockIndexes.length <= 1) return [unitFromNode(node)];
+  const firstHeadingPosition = visibleBlockIndexes.findIndex((blockIndex) => (
+    blocks[blockIndex].node.type === "heading"
+  ));
   return visibleBlockIndexes.map((blockIndex, fragmentIndex) => {
     const block = blocks[blockIndex];
+    const nextBlockIndex = visibleBlockIndexes[fragmentIndex + 1];
+    const nextBlock = nextBlockIndex === undefined ? undefined : blocks[nextBlockIndex];
+    const leadBeforeFirstHeading = firstHeadingPosition > 0 && fragmentIndex < firstHeadingPosition;
+    const quoteBeforeList = block.node.type === "blockquote" && nextBlock?.node.type === "list";
     const fragment: RenderMarkdownNode = {
       ...node,
       renderId: `${node.renderId}/markdown-block:${block.id}`,
@@ -69,7 +76,10 @@ function splitMarkdown(node: RenderMarkdownNode): PaginationUnit[] {
     };
     return {
       ...unitFromNode(fragment),
-      keepWithNext: block.node.type === "heading" || node.style?.pagination?.keepWithNext,
+      keepWithNext: leadBeforeFirstHeading ||
+        block.node.type === "heading" ||
+        quoteBeforeList ||
+        node.style?.pagination?.keepWithNext,
       forcePageBreakBefore: fragmentIndex === 0
         ? node.style?.pagination?.forcePageBreakBefore
         : undefined,

@@ -71,7 +71,7 @@ test("새 범용 문서는 빈 root container만 가진 유효한 schemaVersion 
   assert.equal(isDocumentData(document), true);
   assert.deepEqual(document.components, {});
   assert.equal(document.styles["node-root"].name, "일반");
-  assert.equal(document.styles["node-root"].typography.fontSizePt, 8);
+  assert.equal(document.styles["node-root"].typography.fontSizePt, 8.5);
   assert.deepEqual(document.assets, {});
 });
 

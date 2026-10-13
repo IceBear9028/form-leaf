@@ -1,9 +1,32 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  collectPaginationUnits,
   paginate,
   reconcileVisiblePages,
 } from "../src/renderer/src/pages/document-editor/rendering/pagination.ts";
+
+test("Markdown 도입과 문제·해결 block을 페이지 경계에서 연속 묶음으로 유지한다", () => {
+  const units = collectPaginationUnits({
+    type: "markdown",
+    renderId: "markdown",
+    nodeId: "markdown-node",
+    visible: true,
+    source: `서비스 소개입니다.
+
+담당 범위입니다.
+
+### 응답 시간 개선
+
+> 기존에는 응답이 느렸습니다.
+
+- 캐시를 적용했습니다.
+
+마무리 문단입니다.`,
+  });
+
+  assert.deepEqual(units.map((unit) => unit.keepWithNext), [true, true, true, true, undefined, undefined]);
+});
 
 test("keepWithNext 묶음은 남은 공간이 부족하면 함께 다음 페이지로 이동한다", () => {
   const units = [
