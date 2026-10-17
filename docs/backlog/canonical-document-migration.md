@@ -2,7 +2,7 @@
 
 ## 상태
 
-Backlog — 미착수
+완료 — 2026-10-18, `docs/07-canonical-document-migration/`
 
 ## 문제
 
@@ -15,7 +15,7 @@ Backlog — 미착수
 - migration 결과의 즉시 영구 저장
 - 일반 load 경로에서 legacy 처리 제거
 
-## 현재 동작
+## 변경 전 동작
 
 ```text
 앱 초기화
@@ -85,21 +85,30 @@ Document ID는 파일과 library index의 영속 identity이므로 별도 결정
 
 ## 완료 조건
 
-- [ ] schemaVersion 4와 명시적인 migration chain이 정의된다.
-- [ ] 기존 v3 문서의 모든 참조를 손실 없이 canonical ID로 재키잉한다.
-- [ ] migration 전에 복구 가능한 backup을 생성한다.
-- [ ] migration 결과를 검증한 뒤 최신 파일로 원자적 저장한다.
-- [ ] migration 전후 문서 내용, component prop, 순서와 visibility가 동일하다.
-- [ ] migration 전후 render tree의 의미와 PDF 결과가 동일하다.
-- [ ] 최신 활성 문서에 `legacy-*` ID가 남지 않는다.
-- [ ] 일반 `load()`가 legacy 원본 경로를 읽지 않는다.
-- [ ] `upgradeLegacyVisuals()`가 일반 load 경로에서 제거된다.
-- [ ] legacy importer가 canonical ID를 생성한다.
-- [ ] 새 문서와 migration된 문서가 동일한 renderer·transaction·selection 경로를 사용한다.
-- [ ] migration을 반복 실행해도 데이터가 다시 변경되지 않는다.
-- [ ] 손상 파일과 migration 실패 복구 테스트가 통과한다.
-- [ ] typecheck, 전체 테스트와 production build가 통과한다.
-- [ ] 실제 사용자 문서의 backup, migration, 재실행과 PDF 출력을 Electron에서 검증한다.
+- [x] schemaVersion 4와 명시적인 migration chain이 정의된다.
+- [x] 기존 v3 문서의 모든 참조를 손실 없이 canonical ID로 재키잉한다.
+- [x] migration 전에 복구 가능한 backup을 생성한다.
+- [x] migration 결과를 검증한 뒤 최신 파일로 원자적 저장한다.
+- [x] migration 전후 문서 내용, component prop, 순서와 visibility가 동일하다.
+- [x] migration 전후 render tree의 의미와 PDF 결과가 동일하다.
+- [x] 최신 활성 문서에 `legacy-*` ID가 남지 않는다.
+- [x] 일반 `load()`가 legacy 원본 경로를 읽지 않는다.
+- [x] `upgradeLegacyVisuals()`가 일반 load 경로에서 제거된다.
+- [x] legacy importer가 canonical ID를 생성한다.
+- [x] 새 문서와 migration된 문서가 동일한 renderer·transaction·selection 경로를 사용한다.
+- [x] migration을 반복 실행해도 데이터가 다시 변경되지 않는다.
+- [x] 손상 파일과 migration 실패 복구 테스트가 통과한다.
+- [x] typecheck, 전체 테스트와 production build가 통과한다.
+- [x] 실제 사용자 문서의 backup, migration, 재실행과 PDF 출력을 Electron에서 검증한다.
+
+## 완료 결과
+
+- schemaVersion 4, 결정적 충돌 재시도와 전체 내부 참조 rekey를 구현했다.
+- active, trash와 component library migration을 앱 시작 시 함께 수행하며 normal load는 최신 validation만 사용한다.
+- 실제 사용자 workspace 복사본의 v3 문서 2개에서 legacy internal ID 246개를 제거하고 v3 backup 2개를 보존했다.
+- production Electron에서 8페이지와 3페이지 문서를 열고 같은 페이지 수의 PDF를 생성했으며 재시작 후 결과가 불변임을 확인했다.
+- 원래 사용자 workspace와 legacy 원본은 변경하거나 삭제하지 않았다.
+- 저장 위치 호환성은 [App data directory migration](app-data-directory-migration.md)으로 분리했다.
 
 ## 별도 문제
 

@@ -1,6 +1,6 @@
 import type { ComponentLibraryPackage } from "./documentComponentOperations.ts";
 
-export const COMPONENT_LIBRARY_SCHEMA_VERSION = 1 as const;
+export const COMPONENT_LIBRARY_SCHEMA_VERSION = 2 as const;
 
 export type ComponentLibrarySummary = {
   id: string;
@@ -63,13 +63,32 @@ function isComponentLibrarySummary(value: unknown): value is ComponentLibrarySum
 
 function isComponentLibraryPackage(value: unknown): value is ComponentLibraryPackage {
   return isRecord(value) &&
-    value.schemaVersion === 1 &&
+    value.schemaVersion === 2 &&
     typeof value.name === "string" &&
     typeof value.entryComponentId === "string" &&
     isRecord(value.components) &&
     isRecord(value.nodes) &&
     isRecord(value.styles) &&
-    isRecord(value.assets);
+    isRecord(value.assets) &&
+    !hasLegacyPackageIds(value);
+}
+
+function hasLegacyPackageIds(value: Record<string, unknown>): boolean {
+  const components = value.components as Record<string, unknown>;
+  const nodes = value.nodes as Record<string, unknown>;
+  const styles = value.styles as Record<string, unknown>;
+  const assets = value.assets as Record<string, unknown>;
+  return [
+    ...Object.keys(components),
+    ...Object.keys(nodes),
+    ...Object.keys(styles),
+    ...Object.keys(assets),
+    ...Object.values(nodes).flatMap((node) => (
+      isRecord(node) && node.type === "repeater" && Array.isArray(node.items)
+        ? node.items.flatMap((item) => isRecord(item) && typeof item.id === "string" ? [item.id] : [])
+        : []
+    )),
+  ].some((id) => id.startsWith("legacy-"));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

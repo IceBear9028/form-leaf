@@ -23,6 +23,7 @@
 | 04 | 레이어 경계와 테스트 단위 리팩터링 | 12단계 구현·회귀 검증 완료 | [04-layered-architecture-refactor](04-layered-architecture-refactor/README.md) |
 | 05 | 범용 문서·컴포넌트 모델 | 완료 | [05-document-components](05-document-components/README.md) |
 | 06 | 범용 문서 시각 시스템 복구 | 구현 중 | [06-restore-document-visual-system](06-restore-document-visual-system/README.md) |
+| 07 | Canonical Document migration | 완료 | [07-canonical-document-migration](07-canonical-document-migration/README.md) |
 
 ## References
 
@@ -38,3 +39,5 @@
 `05`는 특정 문서 목적을 코드에 내장하지 않는 범용 문서 편집기를 구현했다. 범용 core, DOM editor, component 재사용, preview 직접 편집, 저장소·library·IPC와 앱 진입점 전환을 완료하고 과거 runtime을 제거했다.
 
 `06`은 `05` 전환 중 함께 사라진 작업 전 문서 스타일과 editor 시각 품질을 범용 CSS·style definition 위에 복구한다.
+
+`07`은 과거 파일을 schemaVersion 4로 한 번 migration하고 최신 runtime의 legacy identity와 과거 원본 의존성을 제거한다.

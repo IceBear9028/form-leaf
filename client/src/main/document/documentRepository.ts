@@ -17,15 +17,22 @@ import {
   type DocumentLibraryIndex,
   type DocumentSummary,
 } from "../../foundation/documentLibrary.ts";
-import { readJsonWithBackup, writeJsonAtomically } from "./atomicJsonStore.ts";
+import {
+  readJsonWithBackup,
+  readJsonWithBackupSource,
+  writeJsonAtomically,
+} from "./atomicJsonStore.ts";
+import { isDocumentDataV3, migrateDocumentData } from "./documentMigration.ts";
 import {
   createDocumentPaths,
   DOCUMENT_BACKUP_SUFFIXES,
   DOCUMENT_SUFFIX,
   type DocumentPaths,
 } from "./documentPaths.ts";
-import { importLegacyDocument } from "./legacy/importLegacyDocument.ts";
-import { upgradeLegacyImportedDocument } from "./legacy/upgradeLegacyImportedDocument.ts";
+import {
+  importLegacyDocument,
+  importLegacyDocumentWithLegacyIds,
+} from "./legacy/importLegacyDocument.ts";
 import {
   createLegacyDocumentPaths,
   LEGACY_DOCUMENT_SUFFIX,
@@ -46,6 +53,11 @@ export class DocumentRepository {
   constructor(workspaceDirectory: string) {
     this.paths = createDocumentPaths(workspaceDirectory);
     this.legacyPaths = createLegacyDocumentPaths(workspaceDirectory);
+  }
+
+  initialize(): Promise<void> {
+    this.initializationPromise ??= this.initializeStorage();
+    return this.initializationPromise;
   }
 
   list(): Promise<DocumentSummary[]> {
@@ -92,7 +104,7 @@ export class DocumentRepository {
       }
       const document = await this.readDocument(this.paths.activeDocument(id));
       if (document.documentId !== id) throw new Error("문서 ID와 저장 파일이 일치하지 않습니다.");
-      return await this.upgradeLegacyVisuals(id, document);
+      return document;
     });
   }
 
@@ -232,16 +244,16 @@ export class DocumentRepository {
   }
 
   private ensureInitialized(): Promise<void> {
-    this.initializationPromise ??= this.initialize();
-    return this.initializationPromise;
+    return this.initialize();
   }
 
-  private async initialize(): Promise<void> {
+  private async initializeStorage(): Promise<void> {
     await mkdir(this.paths.activeDirectory, { recursive: true });
     await mkdir(this.paths.trashDirectory, { recursive: true });
     if (!existsSync(this.paths.index) && !existsSync(`${this.paths.index}.backup`)) {
       await this.writeIndex(createEmptyLibraryIndex());
     }
+    await this.migrateStoredDocuments();
     if (!existsSync(this.legacyPaths.migrationMarker) && !existsSync(`${this.legacyPaths.migrationMarker}.backup`)) {
       await this.migrateLegacyDocuments();
     }
@@ -291,20 +303,54 @@ export class DocumentRepository {
     return [...new Set(paths)].sort();
   }
 
-  private async upgradeLegacyVisuals(id: string, document: DocumentData): Promise<DocumentData> {
+  private async migrateStoredDocuments(): Promise<void> {
+    let visualSources: Map<string, DocumentData> | undefined;
+    const paths = [
+      ...(await this.documentIdsIn(this.paths.activeDirectory)).map(this.paths.activeDocument),
+      ...(await this.documentIdsIn(this.paths.trashDirectory)).map(this.paths.trashDocument),
+    ];
+    for (const path of paths) {
+      try {
+        const stored = await readJsonWithBackupSource(
+          path,
+          (value) => {
+            if (isDocumentData(value) || isDocumentDataV3(value)) return value;
+            throw new Error("문서 데이터 형식이 올바르지 않습니다.");
+          },
+          "문서 파일을 찾을 수 없습니다.",
+        );
+        if (!isDocumentDataV3(stored.value)) continue;
+        visualSources ??= await this.readLegacyVisualSources();
+        const documentId = (stored.value as { documentId: string }).documentId;
+        const migrated = migrateDocumentData(stored.value, {
+          legacyVisualSource: visualSources.get(documentId),
+        }).document;
+        await writeJsonAtomically(path, migrated, (current) => (
+          stored.sourcePath === path && isDocumentDataV3(current)
+            ? { path: `${path}.backup`, overwrite: true }
+            : undefined
+        ));
+      } catch (error) {
+        throw new Error(`문서 migration 실패 (${path}): ${errorMessage(error)}`);
+      }
+    }
+  }
+
+  private async readLegacyVisualSources(): Promise<Map<string, DocumentData>> {
+    const result = new Map<string, DocumentData>();
     for (const source of await this.legacyDocumentPaths()) {
       try {
         const imported = await readJsonWithBackup(
           source,
-          importLegacyDocument,
+          importLegacyDocumentWithLegacyIds,
           "이전 문서 파일을 찾을 수 없습니다.",
         );
-        if (imported.documentId === id) return upgradeLegacyImportedDocument(document, imported);
+        if (!result.has(imported.documentId)) result.set(imported.documentId, imported);
       } catch {
-        // 현재 범용 문서는 legacy 원본을 읽을 수 없어도 그대로 열 수 있어야 한다.
+        // 원본이 없거나 손상된 v3 문서는 현재 저장 상태만 canonicalize한다.
       }
     }
-    return document;
+    return result;
   }
 
   private async reconcileIndex(index: DocumentLibraryIndex): Promise<DocumentLibraryIndex> {
@@ -441,4 +487,8 @@ async function fileModifiedTimestamp(path: string, fallback: string): Promise<st
   } catch {
     return fallback;
   }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

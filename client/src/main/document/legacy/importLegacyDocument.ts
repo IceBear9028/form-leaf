@@ -9,7 +9,11 @@ import type {
   StyleDefinition,
 } from "../../../foundation/documentModel.ts";
 import { DOCUMENT_SCHEMA_VERSION } from "../../../foundation/documentModel.ts";
-import { validateDocumentData } from "../../../foundation/documentValidation.ts";
+import {
+  validateDocumentData,
+  validateDocumentDataForMigration,
+} from "../../../foundation/documentValidation.ts";
+import { rekeyLegacyDocument } from "../documentMigration.ts";
 import {
   isLegacyV1Document,
   isLegacyV2Document,
@@ -39,11 +43,25 @@ export class LegacyDocumentImportError extends Error {
 }
 
 export function importLegacyDocument(value: unknown): DocumentData {
+  const document = rekeyLegacyDocument(importLegacyDocumentWithLegacyIds(value));
+  const validation = validateDocumentData(document);
+  if (!validation.valid) {
+    const first = validation.issues[0];
+    throw new LegacyDocumentImportError(
+      first?.path ?? "$",
+      first?.message ?? "범용 문서로 변환하지 못했습니다.",
+    );
+  }
+  return document;
+}
+
+/** v3 → v4 시각 보강에서 과거 importer identity와 비교할 때만 사용한다. */
+export function importLegacyDocumentWithLegacyIds(value: unknown): DocumentData {
   const source = readLegacyDocument(value);
   const builder = new LegacyDocumentBuilder(source);
   source.sections.forEach((section, index) => builder.addSection(section, index));
   const document = builder.finish();
-  const validation = validateDocumentData(document);
+  const validation = validateDocumentDataForMigration(document);
   if (!validation.valid) {
     const first = validation.issues[0];
     throw new LegacyDocumentImportError(

@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateDocumentData } from "../src/foundation/document.ts";
+import { validateDocumentDataForMigration } from "../src/foundation/documentValidation.ts";
 import {
   importLegacyDocument,
+  importLegacyDocumentWithLegacyIds,
   LegacyDocumentImportError,
 } from "../src/main/document/legacy/importLegacyDocument.ts";
 import { upgradeLegacyImportedDocument } from "../src/main/document/legacy/upgradeLegacyImportedDocument.ts";
+import { createDeterministicEntityId } from "../src/main/document/documentMigration.ts";
 
 const text = (value, marks, href) => ({
   runs: [{
@@ -114,7 +117,7 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
 
   assert.equal(validation.valid, true);
   assert.deepEqual(source, snapshot);
-  assert.equal(document.schemaVersion, 3);
+  assert.equal(document.schemaVersion, 4);
   assert.equal(document.documentId, source.documentId);
   assert.equal(document.name, source.name);
   assert.equal(document.updatedAt, source.updatedAt);
@@ -124,56 +127,60 @@ test("v2 입력을 목적 type 없이 유효한 범용 document graph로 변환�
   assert.equal("sections" in document, false);
   assert.equal("kind" in document, false);
   assert.equal("categories" in document, false);
+  assert.equal(canonicalInternalIds(document), true);
 
   const rootChildren = document.nodes[document.rootNodeId].childIds.map((id) => document.nodes[id]);
   assert.equal(rootChildren[1].visible, false);
-  assert.equal(document.styles["legacy-style-root"].layout.gapPt, 0);
-  assert.equal(document.styles["legacy-style-section"].layout.gapPt, 18);
-  assert.equal(document.styles["legacy-style-section"].pagination.keepTogether, true);
-  assert.equal(document.styles["legacy-style-lead"].layout.gapPt, 16);
-  assert.equal(document.styles["legacy-style-lead"].layout.paddingPt[2], 16);
-  assert.equal(document.styles["legacy-style-header-row"].layout.paddingPt[2], 16.2);
-  assert.equal(document.styles["legacy-style-aside"].layout.gapPt, 11.25);
-  assert.equal(document.styles["legacy-style-roomy-boundary"].layout.paddingPt[0], 17.9);
-  assert.equal(document.styles["legacy-style-roomy-heading-row"].layout.paddingPt[2], 24.5);
-  assert.equal(document.styles["legacy-style-split-item"].layout.gapPt, 18.4);
-  assert.equal(document.styles["legacy-style-split-item"].layout.paddingPt[2], 13.6);
-  assert.deepEqual(document.styles["legacy-style-bullet-body"].markdown, { listItemGapPt: 2 });
-  assert.equal(document.nodes["legacy-node-section-c-2"].styleId, "legacy-style-roomy-boundary");
-  assert.equal(document.nodes["legacy-node-section-c-heading-row"].styleId, "legacy-style-roomy-heading-row");
-  assert.equal(document.nodes["legacy-node-section-c-items"].styleId, "legacy-style-connected-list");
-  assert.equal(document.nodes["legacy-node-section-c-item-root"].styleId, "legacy-style-split-item");
-  assert.equal(document.nodes["legacy-node-section-c-item-period"].styleId, "legacy-style-period");
-  assert.equal(document.nodes["legacy-node-section-c-period-label"].styleId, "legacy-style-duration");
-  assert.equal(document.nodes["legacy-node-section-c-title"].styleId, "legacy-style-subtitle");
-  assert.equal(document.nodes["legacy-node-section-c-body"].styleId, "legacy-style-bullet-body");
-  assert.equal(document.nodes["legacy-node-section-education-3"].styleId, "legacy-style-stacked-boundary");
-  assert.equal(document.nodes["legacy-node-section-education-items"].styleId, "legacy-style-spaced-list");
-  assert.equal(document.nodes["legacy-node-section-education-item-root"].styleId, "legacy-style-stacked-item");
+  const node = (legacyId) => document.nodes[canonicalId(document, "node", legacyId)];
+  const style = (legacyId) => document.styles[canonicalId(document, "style", legacyId)];
+  const styleId = (legacyId) => canonicalId(document, "style", legacyId);
+  assert.equal(style("legacy-style-root").layout.gapPt, 0);
+  assert.equal(style("legacy-style-section").layout.gapPt, 18);
+  assert.equal(style("legacy-style-section").pagination.keepTogether, true);
+  assert.equal(style("legacy-style-lead").layout.gapPt, 16);
+  assert.equal(style("legacy-style-lead").layout.paddingPt[2], 16);
+  assert.equal(style("legacy-style-header-row").layout.paddingPt[2], 16.2);
+  assert.equal(style("legacy-style-aside").layout.gapPt, 11.25);
+  assert.equal(style("legacy-style-roomy-boundary").layout.paddingPt[0], 17.9);
+  assert.equal(style("legacy-style-roomy-heading-row").layout.paddingPt[2], 24.5);
+  assert.equal(style("legacy-style-split-item").layout.gapPt, 18.4);
+  assert.equal(style("legacy-style-split-item").layout.paddingPt[2], 13.6);
+  assert.deepEqual(style("legacy-style-bullet-body").markdown, { listItemGapPt: 2 });
+  assert.equal(node("legacy-node-section-c-2").styleId, styleId("legacy-style-roomy-boundary"));
+  assert.equal(node("legacy-node-section-c-heading-row").styleId, styleId("legacy-style-roomy-heading-row"));
+  assert.equal(node("legacy-node-section-c-items").styleId, styleId("legacy-style-connected-list"));
+  assert.equal(node("legacy-node-section-c-item-root").styleId, styleId("legacy-style-split-item"));
+  assert.equal(node("legacy-node-section-c-item-period").styleId, styleId("legacy-style-period"));
+  assert.equal(node("legacy-node-section-c-period-label").styleId, styleId("legacy-style-duration"));
+  assert.equal(node("legacy-node-section-c-title").styleId, styleId("legacy-style-subtitle"));
+  assert.equal(node("legacy-node-section-c-body").styleId, styleId("legacy-style-bullet-body"));
+  assert.equal(node("legacy-node-section-education-3").styleId, styleId("legacy-style-stacked-boundary"));
+  assert.equal(node("legacy-node-section-education-items").styleId, styleId("legacy-style-spaced-list"));
+  assert.equal(node("legacy-node-section-education-item-root").styleId, styleId("legacy-style-stacked-item"));
   assert.deepEqual(
-    document.nodes["legacy-node-section-education-item-root"].childIds,
+    node("legacy-node-section-education-item-root").childIds,
     [
       "legacy-node-section-education-item-period",
       "legacy-node-section-education-item-title",
       "legacy-node-section-education-period-label",
       "legacy-node-section-education-links",
       "legacy-node-section-education-body",
-    ],
+    ].map((id) => canonicalId(document, "node", id)),
   );
   assert.deepEqual(
-    document.nodes["legacy-node-section-education-item-title"].childIds,
+    node("legacy-node-section-education-item-title").childIds,
     [
       "legacy-node-section-education-organization",
       "legacy-node-section-education-title-separator",
       "legacy-node-section-education-title",
-    ],
+    ].map((id) => canonicalId(document, "node", id)),
   );
-  assert.equal(document.nodes["legacy-node-section-education-period-label"].visible, false);
-  assert.equal(document.nodes["legacy-node-section-education-links"].visible, false);
-  assert.equal(document.nodes["legacy-node-section-education-body"].visible, false);
-  assert.equal(document.nodes["legacy-node-section-a-links"].type, "rich-text");
+  assert.equal(node("legacy-node-section-education-period-label").visible, false);
+  assert.equal(node("legacy-node-section-education-links").visible, false);
+  assert.equal(node("legacy-node-section-education-body").visible, false);
+  assert.equal(node("legacy-node-section-a-links").type, "rich-text");
   assert.deepEqual(
-    document.nodes["legacy-node-section-a-links"].value.runs[0].marks.map((mark) => mark.type),
+    node("legacy-node-section-a-links").value.runs[0].marks.map((mark) => mark.type),
     ["underline", "link"],
   );
 
@@ -264,7 +271,7 @@ test("지원하지 않는 이미지나 입력 형식은 위치를 포함한 오�
 });
 
 test("기존 legacy 범용 graph는 내용과 prop을 보존하며 새 시각 구조로 연다", () => {
-  const fresh = importLegacyDocument(legacyV2Document());
+  const fresh = importLegacyDocumentWithLegacyIds(legacyV2Document());
   const current = downgradeVisualGraph(fresh);
   current.nodes["legacy-node-section-a-links"] = {
     id: "legacy-node-section-a-links",
@@ -282,7 +289,7 @@ test("기존 legacy 범용 graph는 내용과 prop을 보존하며 새 시각 �
   const upgraded = upgradeLegacyImportedDocument(current, fresh);
 
   assert.deepEqual(current, snapshot);
-  assert.equal(validateDocumentData(upgraded).valid, true);
+  assert.equal(validateDocumentDataForMigration(upgraded).valid, true);
   assert.equal(Object.keys(upgraded.styles).length > 4, true);
   assert.equal(upgraded.styles["legacy-style-root"].layout.paddingPt, undefined);
   assert.equal(upgraded.nodes[body.id].source, "사용자가 수정한 본문");
@@ -303,16 +310,16 @@ test("기존 legacy 범용 graph는 내용과 prop을 보존하며 새 시각 �
 });
 
 test("과거 변환기가 만든 23-style graph도 내용 보존 후 최신 시각 구조로 연다", () => {
-  const fresh = importLegacyDocument(legacyV2Document());
+  const fresh = importLegacyDocumentWithLegacyIds(legacyV2Document());
   const current = generatedVisualV1Graph(fresh);
   const repeater = current.nodes["legacy-node-section-c-items"];
   repeater.items[0].props.body = "사용자가 수정한 경력 본문";
 
-  assert.equal(validateDocumentData(current).valid, true);
+  assert.equal(validateDocumentDataForMigration(current).valid, true);
 
   const upgraded = upgradeLegacyImportedDocument(current, fresh);
 
-  assert.equal(validateDocumentData(upgraded).valid, true);
+  assert.equal(validateDocumentDataForMigration(upgraded).valid, true);
   assert.equal(upgraded.nodes["legacy-node-section-c-2"].styleId, "legacy-style-roomy-boundary");
   assert.deepEqual(
     upgraded.nodes["legacy-node-section-c-2"].childIds,
@@ -349,7 +356,7 @@ test("과거 변환기가 만든 23-style graph도 내용 보존 후 최신 시�
 });
 
 test("기존 기본 style이 수정된 legacy graph는 자동 시각 업그레이드로 덮어쓰지 않는다", () => {
-  const fresh = importLegacyDocument(legacyV2Document());
+  const fresh = importLegacyDocumentWithLegacyIds(legacyV2Document());
   const current = downgradeVisualGraph(fresh);
   current.styles["legacy-style-root"].layout.gapPt = 99;
 
@@ -357,7 +364,7 @@ test("기존 기본 style이 수정된 legacy graph는 자동 시각 업그레�
 });
 
 test("사용자가 설명을 추가한 profile 링크 Markdown은 rich-text로 자동 치환하지 않는다", () => {
-  const fresh = importLegacyDocument(legacyV2Document());
+  const fresh = importLegacyDocumentWithLegacyIds(legacyV2Document());
   const current = downgradeVisualGraph(fresh);
   current.nodes["legacy-node-section-a-links"] = {
     id: "legacy-node-section-a-links",
@@ -369,7 +376,7 @@ test("사용자가 설명을 추가한 profile 링크 Markdown은 rich-text로 �
 
   const upgraded = upgradeLegacyImportedDocument(current, fresh);
 
-  assert.equal(validateDocumentData(upgraded).valid, true);
+  assert.equal(validateDocumentDataForMigration(upgraded).valid, true);
   assert.equal(upgraded.nodes["legacy-node-section-a-links"].type, "markdown");
   assert.equal(upgraded.nodes["legacy-node-section-a-links"].source, current.nodes["legacy-node-section-a-links"].source);
 });
@@ -430,8 +437,23 @@ function downgradeVisualGraph(fresh) {
       pagination: { keepWithNext: true },
     },
   };
-  assert.equal(validateDocumentData(current).valid, true);
+  assert.equal(validateDocumentDataForMigration(current).valid, true);
   return current;
+}
+
+function canonicalId(document, kind, legacyId) {
+  return createDeterministicEntityId(kind, `document:${document.documentId}`, legacyId);
+}
+
+function canonicalInternalIds(document) {
+  const ids = [
+    ...Object.keys(document.nodes),
+    ...Object.keys(document.components),
+    ...Object.keys(document.styles),
+    ...Object.keys(document.assets),
+    ...Object.values(document.nodes).flatMap((node) => node.type === "repeater" ? node.items.map((item) => item.id) : []),
+  ];
+  return ids.every((id) => !id.startsWith("legacy-"));
 }
 
 function generatedVisualV1Graph(fresh) {

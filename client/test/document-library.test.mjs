@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { DocumentRepository } from "../src/main/document/documentRepository.ts";
 import { ComponentLibraryRepository } from "../src/main/document/componentLibraryRepository.ts";
 import { createDefaultDocument } from "../src/main/document/legacy/legacyTypes.ts";
+import { importLegacyDocumentWithLegacyIds } from "../src/main/document/legacy/importLegacyDocument.ts";
 import { createEmptyDocument } from "../src/foundation/documentModel.ts";
 import { addNode } from "../src/foundation/documentTransactions.ts";
 import {
@@ -122,11 +123,147 @@ test("기존 문서를 한 번만 복사 변환하고 원본을 보존한다", a
   await writeFile(legacyPath, original, "utf8");
   const repository = new DocumentRepository(workspace);
   assert.deepEqual((await repository.list()).map((item) => item.id), ["legacy-document"]);
-  assert.equal((await repository.load("legacy-document")).schemaVersion, 3);
+  assert.equal((await repository.load("legacy-document")).schemaVersion, 4);
   assert.equal(await readFile(legacyPath, "utf8"), original);
   await repository.rename("legacy-document", "변환 후 이름");
   assert.equal((await new DocumentRepository(workspace).list()).length, 1);
   assert.equal(await readFile(legacyPath, "utf8"), original);
+});
+
+test("active와 trash의 v3 문서를 한 번만 v4로 migration하고 기존 backup으로 원본을 보존한다", async (t) => {
+  const workspace = await temporaryWorkspace(t);
+  const source = createDefaultDocument();
+  const active = {
+    ...importLegacyDocumentWithLegacyIds(source),
+    schemaVersion: 3,
+  };
+  const trashSource = { ...source, documentId: `${source.documentId}-trash`, name: "휴지통 문서" };
+  const trash = {
+    ...importLegacyDocumentWithLegacyIds(trashSource),
+    schemaVersion: 3,
+  };
+  const activePath = join(workspace, "documents", `${active.documentId}.document.json`);
+  const trashPath = join(workspace, "document-trash", `${trash.documentId}.document.json`);
+  await mkdir(join(workspace, "documents"), { recursive: true });
+  await mkdir(join(workspace, "document-trash"), { recursive: true });
+  await writeFile(activePath, `${JSON.stringify(active, null, 2)}\n`, "utf8");
+  await writeFile(trashPath, `${JSON.stringify(trash, null, 2)}\n`, "utf8");
+  await writeFile(join(workspace, "documents.json"), `${JSON.stringify({
+    schemaVersion: 2,
+    documents: [summary(active)],
+    trash: [{ ...summary(trash), deletedAt: "2026-10-17T02:00:00.000Z" }],
+  }, null, 2)}\n`, "utf8");
+  await writeFile(join(workspace, "legacy-import-v1.json"), JSON.stringify({
+    schemaVersion: 1,
+    completedAt: "2026-10-17T01:00:00.000Z",
+  }), "utf8");
+  const legacyPath = join(workspace, "default.resume.json");
+  const legacyText = `${JSON.stringify(source, null, 2)}\n`;
+  await writeFile(legacyPath, legacyText, "utf8");
+
+  const repository = new DocumentRepository(workspace);
+  assert.equal((await repository.list()).length, 1);
+  assert.equal((await repository.listTrash()).length, 1);
+  const migratedActive = JSON.parse(await readFile(activePath, "utf8"));
+  const migratedTrash = JSON.parse(await readFile(trashPath, "utf8"));
+  assert.equal(migratedActive.schemaVersion, 4);
+  assert.equal(migratedTrash.schemaVersion, 4);
+  assert.equal(hasLegacyInternalIds(migratedActive), false);
+  assert.equal(hasLegacyInternalIds(migratedTrash), false);
+  assert.equal(JSON.parse(await readFile(`${activePath}.backup`, "utf8")).schemaVersion, 3);
+  assert.equal(JSON.parse(await readFile(`${trashPath}.backup`, "utf8")).schemaVersion, 3);
+  assert.equal(await readFile(legacyPath, "utf8"), legacyText);
+
+  const migratedText = await readFile(activePath, "utf8");
+  await writeFile(legacyPath, "{broken", "utf8");
+  const restarted = new DocumentRepository(workspace);
+  assert.equal((await restarted.load(active.documentId)).schemaVersion, 4);
+  assert.equal(await readFile(activePath, "utf8"), migratedText);
+});
+
+test("legacy marker가 없어도 기존 v3 문서를 먼저 migration한 뒤 과거 원본을 보존한다", async (t) => {
+  const workspace = await temporaryWorkspace(t);
+  const source = createDefaultDocument();
+  const document = {
+    ...importLegacyDocumentWithLegacyIds(source),
+    schemaVersion: 3,
+  };
+  const path = join(workspace, "documents", `${document.documentId}.document.json`);
+  await mkdir(join(workspace, "documents"), { recursive: true });
+  await mkdir(join(workspace, "document-trash"), { recursive: true });
+  await writeFile(path, `${JSON.stringify(document, null, 2)}\n`, "utf8");
+  await writeFile(join(workspace, "documents.json"), JSON.stringify({
+    schemaVersion: 2,
+    documents: [summary(document)],
+    trash: [],
+  }), "utf8");
+  const legacyPath = join(workspace, "default.resume.json");
+  const legacyText = `${JSON.stringify(source, null, 2)}\n`;
+  await writeFile(legacyPath, legacyText, "utf8");
+
+  const repository = new DocumentRepository(workspace);
+  assert.equal((await repository.load(document.documentId)).schemaVersion, 4);
+  assert.equal(JSON.parse(await readFile(`${path}.backup`, "utf8")).schemaVersion, 3);
+  assert.equal(await readFile(legacyPath, "utf8"), legacyText);
+  assert.equal(JSON.parse(await readFile(join(workspace, "legacy-import-v1.json"), "utf8")).schemaVersion, 1);
+});
+
+test("손상된 현재 파일 대신 v3 backup을 migration하고 정상 backup은 유지한다", async (t) => {
+  const workspace = await temporaryWorkspace(t);
+  const document = {
+    ...importLegacyDocumentWithLegacyIds(createDefaultDocument()),
+    schemaVersion: 3,
+  };
+  const path = join(workspace, "documents", `${document.documentId}.document.json`);
+  await mkdir(join(workspace, "documents"), { recursive: true });
+  await mkdir(join(workspace, "document-trash"), { recursive: true });
+  await writeFile(path, "{broken", "utf8");
+  const backupText = `${JSON.stringify(document, null, 2)}\n`;
+  await writeFile(`${path}.backup`, backupText, "utf8");
+  await writeFile(join(workspace, "documents.json"), JSON.stringify({
+    schemaVersion: 2,
+    documents: [summary(document)],
+    trash: [],
+  }), "utf8");
+  await writeFile(join(workspace, "legacy-import-v1.json"), JSON.stringify({
+    schemaVersion: 1,
+    completedAt: "2026-10-17T01:00:00.000Z",
+  }), "utf8");
+
+  const repository = new DocumentRepository(workspace);
+  assert.equal((await repository.load(document.documentId)).schemaVersion, 4);
+  assert.equal(await readFile(`${path}.backup`, "utf8"), backupText);
+  assert.equal(JSON.parse(await readFile(path, "utf8")).schemaVersion, 4);
+});
+
+test("손상된 v3 참조는 원본을 바꾸지 않고 초기화를 중단한다", async (t) => {
+  const workspace = await temporaryWorkspace(t);
+  const document = {
+    ...importLegacyDocumentWithLegacyIds(createDefaultDocument()),
+    schemaVersion: 3,
+  };
+  document.nodes[document.rootNodeId].childIds.push("legacy-node-missing");
+  const path = join(workspace, "documents", `${document.documentId}.document.json`);
+  await mkdir(join(workspace, "documents"), { recursive: true });
+  await mkdir(join(workspace, "document-trash"), { recursive: true });
+  const original = `${JSON.stringify(document, null, 2)}\n`;
+  await writeFile(path, original, "utf8");
+  await writeFile(join(workspace, "documents.json"), JSON.stringify({
+    schemaVersion: 2,
+    documents: [summary(document)],
+    trash: [],
+  }), "utf8");
+  await writeFile(join(workspace, "legacy-import-v1.json"), JSON.stringify({
+    schemaVersion: 1,
+    completedAt: "2026-10-17T01:00:00.000Z",
+  }), "utf8");
+
+  await assert.rejects(
+    new DocumentRepository(workspace).list(),
+    new RegExp(`문서 migration 실패 .*${document.documentId}\\.document\\.json.*문서 데이터 형식`),
+  );
+  assert.equal(await readFile(path, "utf8"), original);
+  await assert.rejects(readFile(`${path}.backup`, "utf8"), { code: "ENOENT" });
 });
 
 test("개인 컴포넌트를 백업하며 저장하고 다른 문서에 독립 복사한다", async (t) => {
@@ -160,3 +297,118 @@ test("개인 컴포넌트를 백업하며 저장하고 다른 문서에 독립 �
   await repository.remove(saved.id);
   assert.deepEqual(await repository.list(), []);
 });
+
+test("v1 component library item과 package를 canonical v2로 한 번 migration한다", async (t) => {
+  const workspace = await temporaryWorkspace(t);
+  const itemId = "component-old";
+  const item = oldComponentLibraryItem(itemId);
+  const itemPath = join(workspace, "components", `${itemId}.component.json`);
+  await mkdir(join(workspace, "components"), { recursive: true });
+  await writeFile(itemPath, `${JSON.stringify(item, null, 2)}\n`, "utf8");
+  await writeFile(join(workspace, "components.json"), `${JSON.stringify({
+    schemaVersion: 1,
+    items: [{
+      id: item.id,
+      name: item.name,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    }],
+  }, null, 2)}\n`, "utf8");
+
+  const repository = new ComponentLibraryRepository(workspace);
+  assert.deepEqual((await repository.list()).map((entry) => entry.id), [itemId]);
+  const migrated = await repository.load(itemId);
+  assert.equal(migrated.schemaVersion, 2);
+  assert.equal(migrated.package.schemaVersion, 2);
+  assert.equal(hasLegacyPackageIds(migrated.package), false);
+  assert.equal(JSON.parse(await readFile(`${itemPath}.backup`, "utf8")).schemaVersion, 1);
+  assert.equal(JSON.parse(await readFile(`${join(workspace, "components.json")}.backup`, "utf8")).schemaVersion, 1);
+
+  const migratedText = await readFile(itemPath, "utf8");
+  const restarted = new ComponentLibraryRepository(workspace);
+  assert.equal((await restarted.load(itemId)).package.schemaVersion, 2);
+  assert.equal(await readFile(itemPath, "utf8"), migratedText);
+});
+
+test("저장 입력의 v2 component package에도 legacy identity를 남기지 않는다", async (t) => {
+  const workspace = await temporaryWorkspace(t);
+  const repository = new ComponentLibraryRepository(workspace);
+  const packageValue = {
+    ...oldComponentLibraryItem("component-input").package,
+    schemaVersion: 2,
+  };
+
+  const saved = await repository.save({ name: "Canonicalized input", package: packageValue });
+  const loaded = await repository.load(saved.id);
+  assert.equal(loaded.package.schemaVersion, 2);
+  assert.equal(hasLegacyPackageIds(loaded.package), false);
+});
+
+function summary(document) {
+  return {
+    id: document.documentId,
+    name: document.name,
+    createdAt: "2026-10-17T00:00:00.000Z",
+    updatedAt: document.updatedAt,
+  };
+}
+
+function hasLegacyInternalIds(document) {
+  return [
+    ...Object.keys(document.nodes),
+    ...Object.keys(document.components),
+    ...Object.keys(document.styles),
+    ...Object.keys(document.assets),
+    ...Object.values(document.nodes).flatMap((node) => node.type === "repeater" ? node.items.map((item) => item.id) : []),
+  ].some((id) => id.startsWith("legacy-"));
+}
+
+function oldComponentLibraryItem(id) {
+  return {
+    schemaVersion: 1,
+    id,
+    name: "Old component",
+    createdAt: "2026-10-17T00:00:00.000Z",
+    updatedAt: "2026-10-17T00:00:00.000Z",
+    package: {
+      schemaVersion: 1,
+      name: "Old component",
+      entryComponentId: "legacy-component-card",
+      components: {
+        "legacy-component-card": {
+          id: "legacy-component-card",
+          name: "Card",
+          rootNodeId: "legacy-node-card",
+          propDefinitions: [],
+        },
+      },
+      nodes: {
+        "legacy-node-card": {
+          id: "legacy-node-card",
+          type: "text",
+          name: "Card",
+          visible: true,
+          styleId: "legacy-style-card",
+          value: "old component",
+        },
+      },
+      styles: {
+        "legacy-style-card": {
+          id: "legacy-style-card",
+          name: "Card",
+          typography: { fontSizePt: 10 },
+        },
+      },
+      assets: {},
+    },
+  };
+}
+
+function hasLegacyPackageIds(componentPackage) {
+  return [
+    ...Object.keys(componentPackage.nodes),
+    ...Object.keys(componentPackage.components),
+    ...Object.keys(componentPackage.styles),
+    ...Object.keys(componentPackage.assets),
+  ].some((id) => id.startsWith("legacy-"));
+}

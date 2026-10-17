@@ -1,5 +1,5 @@
 import type { DocumentData, DocumentNode } from "../../../foundation/documentModel.ts";
-import { validateDocumentData } from "../../../foundation/documentValidation.ts";
+import { validateDocumentDataForMigration } from "../../../foundation/documentValidation.ts";
 import { isDeepStrictEqual } from "node:util";
 
 const baselineStyleIds = [
@@ -110,7 +110,7 @@ export function upgradeLegacyImportedDocument(
     };
   });
 
-  const validation = validateDocumentData(next);
+  const validation = validateDocumentDataForMigration(next);
   return validation.valid ? next : current;
 }
 

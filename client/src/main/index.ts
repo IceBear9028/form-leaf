@@ -19,6 +19,7 @@ function workspaceDirectory(): string {
 }
 
 function createWindow(): void {
+  if (mainWindow) return;
   mainWindow = new BrowserWindow({
     width: 1520,
     height: 980,
@@ -63,15 +64,20 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   const workspace = workspaceDirectory();
+  const documents = new DocumentRepository(workspace);
+  const components = new ComponentLibraryRepository(workspace);
   registerDocumentHandlers(
-    new DocumentRepository(workspace),
-    new ComponentLibraryRepository(workspace),
+    documents,
+    components,
   );
   registerPdfHandlers({
     documentsDirectory: app.getPath("documents"),
     getMainWindow: () => mainWindow,
   });
-  createWindow();
+  void Promise.allSettled([
+    documents.initialize(),
+    components.initialize(),
+  ]).then(createWindow);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

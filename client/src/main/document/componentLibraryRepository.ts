@@ -14,7 +14,15 @@ import {
   type ComponentLibraryPackageInput,
   type ComponentLibrarySummary,
 } from "../../foundation/componentLibrary.ts";
-import { readJsonWithBackup, writeJsonAtomically } from "./atomicJsonStore.ts";
+import {
+  readJsonWithBackup,
+  readJsonWithBackupSource,
+  writeJsonAtomically,
+} from "./atomicJsonStore.ts";
+import {
+  migrateComponentLibraryIndex,
+  migrateComponentLibraryItem,
+} from "./componentLibraryMigration.ts";
 import { COMPONENT_SUFFIX, createDocumentPaths, type DocumentPaths } from "./documentPaths.ts";
 
 export class ComponentLibraryRepository {
@@ -24,6 +32,11 @@ export class ComponentLibraryRepository {
 
   constructor(workspaceDirectory: string) {
     this.paths = createDocumentPaths(workspaceDirectory);
+  }
+
+  initialize(): Promise<void> {
+    this.initializationPromise ??= this.initializeStorage();
+    return this.initializationPromise;
   }
 
   list(): Promise<ComponentLibrarySummary[]> {
@@ -40,7 +53,7 @@ export class ComponentLibraryRepository {
       const id = input.id ?? `component-${randomUUID()}`;
       assertSafeId(id);
       const existing = input.id ? await this.readItem(id) : undefined;
-      const item: ComponentLibraryItem = {
+      const candidate: ComponentLibraryItem = {
         schemaVersion: COMPONENT_LIBRARY_SCHEMA_VERSION,
         id,
         name: input.name.trim() || input.package.name.trim() || "이름 없는 컴포넌트",
@@ -48,6 +61,7 @@ export class ComponentLibraryRepository {
         updatedAt: now,
         package: structuredClone(input.package),
       };
+      const item = migrateComponentLibraryItem(candidate).item;
       if (!isComponentLibraryItem(item)) throw new Error("저장할 컴포넌트 형식이 올바르지 않습니다.");
       assertValidComponentItem(item);
       await this.writeItem(item);
@@ -96,16 +110,62 @@ export class ComponentLibraryRepository {
   }
 
   private ensureInitialized(): Promise<void> {
-    this.initializationPromise ??= this.initialize();
-    return this.initializationPromise;
+    return this.initialize();
   }
 
-  private async initialize(): Promise<void> {
+  private async initializeStorage(): Promise<void> {
     await mkdir(this.paths.componentDirectory, { recursive: true });
     if (!existsSync(this.paths.componentIndex) && !existsSync(`${this.paths.componentIndex}.backup`)) {
       await this.writeIndex(createEmptyComponentLibraryIndex());
+    } else {
+      await this.migrateIndex();
     }
+    await this.migrateItems();
     await this.reconcileIndex(await this.readIndex());
+  }
+
+  private async migrateIndex(): Promise<void> {
+    const stored = await readJsonWithBackupSource(
+      this.paths.componentIndex,
+      migrateComponentLibraryIndex,
+      "컴포넌트 목록 파일을 찾을 수 없습니다.",
+    );
+    if (!stored.value.migrated) return;
+    await writeJsonAtomically(this.paths.componentIndex, stored.value.index, (current) => {
+      if (stored.sourcePath !== this.paths.componentIndex) return undefined;
+      try {
+        migrateComponentLibraryIndex(current);
+        return { path: `${this.paths.componentIndex}.backup`, overwrite: true };
+      } catch {
+        return undefined;
+      }
+    });
+  }
+
+  private async migrateItems(): Promise<void> {
+    const entries = await readdir(this.paths.componentDirectory, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(COMPONENT_SUFFIX)) continue;
+      const id = entry.name.slice(0, -COMPONENT_SUFFIX.length);
+      if (!isSafeId(id)) continue;
+      const path = this.paths.componentItem(id);
+      const stored = await readJsonWithBackupSource(
+        path,
+        migrateComponentLibraryItem,
+        "컴포넌트 항목 파일을 찾을 수 없습니다.",
+      );
+      if (!stored.value.migrated) continue;
+      assertValidComponentItem(stored.value.item);
+      await writeJsonAtomically(path, stored.value.item, (current) => {
+        if (stored.sourcePath !== path) return undefined;
+        try {
+          migrateComponentLibraryItem(current);
+          return { path: `${path}.backup`, overwrite: true };
+        } catch {
+          return undefined;
+        }
+      });
+    }
   }
 
   private async reconcileIndex(index: ComponentLibraryIndex): Promise<ComponentLibraryIndex> {

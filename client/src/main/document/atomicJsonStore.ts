@@ -12,13 +12,24 @@ export async function readJsonWithBackup<T>(
   parse: (value: unknown) => T,
   notFoundMessage: string,
 ): Promise<T> {
+  return (await readJsonWithBackupSource(path, parse, notFoundMessage)).value;
+}
+
+export async function readJsonWithBackupSource<T>(
+  path: string,
+  parse: (value: unknown) => T,
+  notFoundMessage: string,
+): Promise<{ value: T; sourcePath: string }> {
   const candidates = [path, `${path}.backup`];
   let firstError: unknown;
 
   for (const candidate of candidates) {
     if (!existsSync(candidate)) continue;
     try {
-      return parse(JSON.parse(await readFile(candidate, "utf8")) as unknown);
+      return {
+        value: parse(JSON.parse(await readFile(candidate, "utf8")) as unknown),
+        sourcePath: candidate,
+      };
     } catch (error) {
       firstError ??= error;
     }

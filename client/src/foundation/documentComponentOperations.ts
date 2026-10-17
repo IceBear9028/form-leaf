@@ -15,7 +15,7 @@ import type { DocumentTransactionOptions } from "./documentTransactions.ts";
 import { assertDocumentData } from "./documentValidation.ts";
 
 export type ComponentLibraryPackage = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   name: string;
   entryComponentId: string;
   components: Record<string, ComponentDefinition>;
@@ -432,7 +432,7 @@ export function exportComponentPackage(
     });
   });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     name: requireComponent(document, entryComponentId).name,
     entryComponentId,
     components: pickRecord(document.components, componentIds),
@@ -457,7 +457,7 @@ export function importComponentPackage(
   };
 } {
   assertDocumentData(document);
-  if (componentPackage.schemaVersion !== 1) throw new Error("지원하지 않는 component package version입니다.");
+  if (componentPackage.schemaVersion !== 2) throw new Error("지원하지 않는 component package version입니다.");
   if (!componentPackage.components[componentPackage.entryComponentId]) {
     throw new Error("component package의 entry를 찾을 수 없습니다.");
   }

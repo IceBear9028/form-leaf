@@ -28,6 +28,21 @@ export type DocumentValidationResult =
 type IssueWriter = (code: string, path: string, message: string) => void;
 
 export function validateDocumentData(value: unknown): DocumentValidationResult {
+  return validateDocumentDataInternal(value, false);
+}
+
+/**
+ * schema migration이 기존 내부 ID를 바꾸기 전에 v4와 같은 graph 구조인지 검사한다.
+ * 일반 runtime에서는 사용하지 않고 migration boundary에서만 사용한다.
+ */
+export function validateDocumentDataForMigration(value: unknown): DocumentValidationResult {
+  return validateDocumentDataInternal(value, true);
+}
+
+function validateDocumentDataInternal(
+  value: unknown,
+  allowLegacyInternalIds: boolean,
+): DocumentValidationResult {
   const issues: DocumentValidationIssue[] = [];
   const issue: IssueWriter = (code, path, message) => {
     issues.push({ code, path, message });
@@ -83,10 +98,44 @@ export function validateDocumentData(value: unknown): DocumentValidationResult {
     nodes && components && styles && assets
   ) {
     validateRelations(value.rootNodeId, nodes, components, styles, assets, issue);
+    if (!allowLegacyInternalIds) {
+      validateCanonicalInternalIds(nodes, components, styles, assets, issue);
+    }
   }
 
   if (issues.length) return { valid: false, issues };
   return { valid: true, document: value as DocumentData, issues: [] };
+}
+
+function validateCanonicalInternalIds(
+  nodes: Record<string, DocumentNode>,
+  components: Record<string, ComponentDefinition>,
+  styles: Record<string, StyleDefinition>,
+  assets: Record<string, DocumentAsset>,
+  issue: IssueWriter,
+): void {
+  const rejectLegacyId = (id: string, path: string, kind: string) => {
+    if (id.startsWith("legacy-")) {
+      issue("identity.legacy", path, `schemaVersion 4의 ${kind} ID에는 legacy namespace를 사용할 수 없습니다.`);
+    }
+  };
+  Object.values(nodes).forEach((node) => {
+    rejectLegacyId(node.id, `$.nodes.${node.id}.id`, "node");
+    if (node.type === "repeater") {
+      node.items.forEach((item, index) => {
+        rejectLegacyId(item.id, `$.nodes.${node.id}.items.${index}.id`, "repeater item");
+      });
+    }
+  });
+  Object.values(components).forEach((component) => {
+    rejectLegacyId(component.id, `$.components.${component.id}.id`, "component");
+  });
+  Object.values(styles).forEach((style) => {
+    rejectLegacyId(style.id, `$.styles.${style.id}.id`, "style");
+  });
+  Object.values(assets).forEach((asset) => {
+    rejectLegacyId(asset.id, `$.assets.${asset.id}.id`, "asset");
+  });
 }
 
 export function isDocumentData(value: unknown): value is DocumentData {

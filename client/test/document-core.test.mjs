@@ -61,10 +61,10 @@ function componentDefinition(id = "component-block", prefix = "block") {
   };
 }
 
-test("새 범용 문서는 빈 root container만 가진 유효한 schemaVersion 3 문서다", () => {
+test("새 범용 문서는 빈 root container만 가진 유효한 schemaVersion 4 문서다", () => {
   const document = emptyDocument();
 
-  assert.equal(document.schemaVersion, 3);
+  assert.equal(document.schemaVersion, 4);
   assert.equal(document.rootNodeId, "node-root");
   assert.deepEqual(document.nodes[document.rootNodeId].childIds, []);
   assert.equal(document.nodes[document.rootNodeId].styleId, "node-root");

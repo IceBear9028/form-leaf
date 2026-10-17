@@ -3,7 +3,7 @@ import {
   DEFAULT_DOCUMENT_STYLE_PRESET_ID,
 } from "./documentStylePresets.ts";
 
-export const DOCUMENT_SCHEMA_VERSION = 3 as const;
+export const DOCUMENT_SCHEMA_VERSION = 4 as const;
 
 export type NodeId = string;
 export type ComponentId = string;
