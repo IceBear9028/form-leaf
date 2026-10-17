@@ -4,7 +4,7 @@
 
 - 상태: 완료 — 2026-10-18
 - 현재 단계: 9. Preview 단일 활성 요소와 공통 편집 표시 완료
-- 작업 트리: 08 변경 커밋 준비 완료
+- 관련 커밋: `ccb5b25 fix: unify preview element selection`
 - 마지막 커밋: `3febb4f feat: migrate legacy documents to canonical schema`
 - 실행 상태: interaction debug를 켠 production build가 CDP port `9333`에서 실행 중
 
