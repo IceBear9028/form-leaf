@@ -26,13 +26,24 @@ export type RenderSelectionTarget = {
   componentNodeId?: string;
 };
 
+export type RenderSelectionMode = "content" | "structure";
+
+type SelectionPointerEvent = {
+  currentTarget: EventTarget | null;
+  target: EventTarget | null;
+  nativeEvent?: Event;
+};
+
 type NodeRendererProps = {
   node: RenderTreeNode;
   measure?: boolean;
   selectedNodeId?: string;
   selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
+  selectionMode?: RenderSelectionMode;
   onSelect?: (target: RenderSelectionTarget, event?: Event) => void;
+  activeEditRenderId?: string;
+  onEditActivate?: (target: DocumentEditTarget, renderId: string, event?: Event) => void;
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
   richTextSelection?: DirectTextSelection;
@@ -44,7 +55,10 @@ export const NodeRenderer = memo(function NodeRenderer({
   selectedNodeId,
   selectedRepeaterItem,
   selectableNodeIds,
+  selectionMode = "content",
   onSelect,
+  activeEditRenderId,
+  onEditActivate,
   onEditValueChange,
   onRichTextSelection,
   richTextSelection,
@@ -64,23 +78,59 @@ export const NodeRenderer = memo(function NodeRenderer({
     node.editTarget && onEditValueChange &&
     (node.type === "text" || node.type === "rich-text" || node.type === "markdown"),
   );
+  const focusSelectionOwnerOnMouseDown = selectable && selectionMode === "content"
+    ? (event: SelectionPointerEvent & {
+      preventDefault: () => void;
+      stopPropagation: () => void;
+    }) => {
+      if (resolveDirectEditTarget(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const currentTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
+      currentTarget?.focus({ preventScroll: true });
+    }
+    : undefined;
   const select = selectable
-    ? (event: { currentTarget: EventTarget | null; target: EventTarget | null; nativeEvent?: Event; stopPropagation: () => void }) => {
+    ? (event: SelectionPointerEvent & { stopPropagation: () => void }) => {
       event.stopPropagation();
       const clickedNode = event.target instanceof Element
         ? event.target.closest<HTMLElement>("[data-document-node-id]")
         : undefined;
-      (clickedNode ?? (event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined))
-        ?.focus({ preventScroll: true });
-      const clickedNodeId = clickedNode?.dataset.documentNodeId;
+      const directEditTarget = resolveDirectEditTarget(event);
+      const currentTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
       const nativeEvent = interactionEvent(event);
+      if (selectionMode === "content" && directEditTarget) {
+        recordInteraction("node-handler", {
+          selectionMode,
+          action: "preserve-direct-edit",
+          eventId: interactionEventId(nativeEvent),
+          eventType: nativeEvent?.type,
+          handlerNodeId: node.sourceNodeId,
+          handlerRenderId: node.renderId,
+          handlerNodeType: node.type,
+          target: snapshotEventTarget(event.target),
+          currentTarget: snapshotEventTarget(event.currentTarget),
+          closestDocumentNode: snapshotEventTarget(clickedNode),
+          directEditTarget: snapshotEventTarget(directEditTarget),
+        });
+        return;
+      }
+      const focusTarget = selectionMode === "structure" || clickedNode?.dataset.documentEditTarget === "true"
+        ? clickedNode
+        : currentTarget;
+      focusTarget?.focus({ preventScroll: true });
+      const clickedNodeId = clickedNode?.dataset.documentNodeId;
       const selectionTarget: RenderSelectionTarget = {
         renderId: node.renderId,
         nodeId: node.sourceNodeId,
         nodeType: node.type,
-        ...(clickedNodeId && clickedNodeId !== node.sourceNodeId ? { componentNodeId: clickedNodeId } : {}),
+        ...(selectionMode === "structure" && clickedNodeId && clickedNodeId !== node.sourceNodeId
+          ? { componentNodeId: clickedNodeId }
+          : {}),
       };
       recordInteraction("node-handler", {
+        selectionMode,
+        action: selectionMode === "structure" ? "select-structure" : "select-owner",
         eventId: interactionEventId(nativeEvent),
         eventType: nativeEvent?.type,
         handlerNodeId: node.sourceNodeId,
@@ -106,8 +156,13 @@ export const NodeRenderer = memo(function NodeRenderer({
     "data-markdown-fragment-last": node.type === "markdown" && node.fragment ? String(node.fragment.last) : undefined,
     "data-measure-id": measure ? node.renderId : undefined,
     "data-document-selected": selectedNodeId === node.sourceNodeId ? "true" : undefined,
+    "data-document-content-edit-target": selectionMode === "content" && directlyEditable ? "true" : undefined,
+    "data-document-edit-active": selectionMode === "content" && directlyEditable && activeEditRenderId === node.renderId
+      ? "true"
+      : undefined,
     tabIndex: onSelect && !directlyEditable ? selectable ? 0 : -1 : undefined,
     role: selectable && !directlyEditable ? "button" : undefined,
+    onMouseDown: focusSelectionOwnerOnMouseDown,
     onClick: select,
     onKeyDown: selectable && !directlyEditable
       ? (event: {
@@ -125,10 +180,10 @@ export const NodeRenderer = memo(function NodeRenderer({
   };
 
   if (node.type === "container") {
-    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />)}</div>;
+    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} selectionMode={selectionMode} onSelect={onSelect} activeEditRenderId={activeEditRenderId} onEditActivate={onEditActivate} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />)}</div>;
   }
   if (node.type === "component-instance") {
-    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} /></div>;
+    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} selectionMode={selectionMode} onSelect={onSelect} activeEditRenderId={activeEditRenderId} onEditActivate={onEditActivate} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} /></div>;
   }
   if (node.type === "repeater") {
     return (
@@ -137,23 +192,46 @@ export const NodeRenderer = memo(function NodeRenderer({
           if (!item.visible) return null;
           const itemSelectable = Boolean(selectable && onSelect);
           const selectItem = itemSelectable
-            ? (event: { currentTarget: EventTarget | null; target: EventTarget | null; nativeEvent?: Event; stopPropagation: () => void }) => {
+            ? (event: SelectionPointerEvent & { stopPropagation: () => void }) => {
               event.stopPropagation();
               const clickedNode = event.target instanceof Element
                 ? event.target.closest<HTMLElement>("[data-document-node-id]")
                 : undefined;
-              (clickedNode ?? (event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined))
-                ?.focus({ preventScroll: true });
-              const componentNodeId = clickedNode?.dataset.documentNodeId;
+              const directEditTarget = resolveDirectEditTarget(event);
+              const currentTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
               const nativeEvent = interactionEvent(event);
+              if (selectionMode === "content" && directEditTarget) {
+                recordInteraction("node-handler", {
+                  selectionMode,
+                  action: "preserve-direct-edit",
+                  eventId: interactionEventId(nativeEvent),
+                  eventType: nativeEvent?.type,
+                  handlerNodeId: node.sourceNodeId,
+                  handlerRenderId: node.renderId,
+                  handlerNodeType: node.type,
+                  repeaterItemId: item.id,
+                  target: snapshotEventTarget(event.target),
+                  currentTarget: snapshotEventTarget(event.currentTarget),
+                  closestDocumentNode: snapshotEventTarget(clickedNode),
+                  directEditTarget: snapshotEventTarget(directEditTarget),
+                });
+                return;
+              }
+              const focusTarget = selectionMode === "structure" || clickedNode?.dataset.documentEditTarget === "true"
+                ? clickedNode
+                : currentTarget;
+              focusTarget?.focus({ preventScroll: true });
+              const componentNodeId = clickedNode?.dataset.documentNodeId;
               const selectionTarget: RenderSelectionTarget = {
                 renderId: `${node.renderId}/item:${item.id}`,
                 nodeId: node.sourceNodeId,
                 nodeType: node.type,
                 repeaterItemId: item.id,
-                ...(componentNodeId ? { componentNodeId } : {}),
+                ...(selectionMode === "structure" && componentNodeId ? { componentNodeId } : {}),
               };
               recordInteraction("node-handler", {
+                selectionMode,
+                action: selectionMode === "structure" ? "select-structure" : "select-owner",
                 eventId: interactionEventId(nativeEvent),
                 eventType: nativeEvent?.type,
                 handlerNodeId: node.sourceNodeId,
@@ -176,6 +254,14 @@ export const NodeRenderer = memo(function NodeRenderer({
               key={item.id}
               tabIndex={itemSelectable ? 0 : undefined}
               role={itemSelectable ? "button" : undefined}
+              onMouseDown={itemSelectable && selectionMode === "content"
+                ? (event) => {
+                  if (resolveDirectEditTarget(event)) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.currentTarget.focus({ preventScroll: true });
+                }
+                : undefined}
               onClick={selectItem}
               onKeyDown={itemSelectable
                 ? (event) => {
@@ -185,7 +271,7 @@ export const NodeRenderer = memo(function NodeRenderer({
                 }
                 : undefined}
             >
-              <NodeRenderer node={item.child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} onSelect={onSelect} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />
+              <NodeRenderer node={item.child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} selectionMode={selectionMode} onSelect={onSelect} activeEditRenderId={activeEditRenderId} onEditActivate={onEditActivate} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />
             </div>
           );
         })}
@@ -194,7 +280,7 @@ export const NodeRenderer = memo(function NodeRenderer({
   }
   if (node.type === "text") {
     return directlyEditable && node.editTarget && onEditValueChange
-      ? <EditableTextValue hostProps={attributes} target={node.editTarget} value={node.value} onChange={onEditValueChange} />
+      ? <EditableTextValue hostProps={attributes} target={node.editTarget} renderId={node.renderId} value={node.value} onActivateTarget={onEditActivate} onChange={onEditValueChange} />
       : <div {...attributes}>{node.value}</div>;
   }
   if (node.type === "rich-text") {
@@ -203,7 +289,9 @@ export const NodeRenderer = memo(function NodeRenderer({
         <EditableTextValue
           hostProps={attributes}
           target={node.editTarget}
+          renderId={node.renderId}
           value={node.value}
+          onActivateTarget={onEditActivate}
           onChange={onEditValueChange}
           onRichTextSelection={onRichTextSelection}
           selectionToRestore={richTextSelection}
@@ -226,8 +314,10 @@ export const NodeRenderer = memo(function NodeRenderer({
         <EditableMarkdownValue
           hostProps={attributes}
           target={node.editTarget}
+          renderId={node.renderId}
           source={node.source}
           fragment={node.fragment}
+          onActivateTarget={onEditActivate}
           onChange={onEditValueChange}
         />
       )
@@ -242,14 +332,28 @@ export const NodeRenderer = memo(function NodeRenderer({
   );
 }, sameNodeRendererProps);
 
+function resolveDirectEditTarget(event: SelectionPointerEvent): HTMLElement | undefined {
+  return event.target instanceof Element
+    ? event.target.closest<HTMLElement>('[data-document-edit-target="true"]') ?? undefined
+    : undefined;
+}
+
 function sameNodeRendererProps(previous: NodeRendererProps, next: NodeRendererProps): boolean {
   if (
     previous.node !== next.node ||
     previous.measure !== next.measure ||
     previous.selectableNodeIds !== next.selectableNodeIds ||
+    previous.selectionMode !== next.selectionMode ||
     previous.onSelect !== next.onSelect ||
+    previous.onEditActivate !== next.onEditActivate ||
     previous.onEditValueChange !== next.onEditValueChange ||
     previous.onRichTextSelection !== next.onRichTextSelection
+  ) return false;
+
+  if (
+    previous.activeEditRenderId !== next.activeEditRenderId &&
+    (renderSubtreeContainsRenderId(previous.node, previous.activeEditRenderId) ||
+      renderSubtreeContainsRenderId(next.node, next.activeEditRenderId))
   ) return false;
 
   if (
@@ -285,6 +389,17 @@ function renderSubtreeContains(node: RenderTreeNode, sourceNodeId: string | unde
   if (node.type === "component-instance") return renderSubtreeContains(node.child, sourceNodeId);
   if (node.type === "repeater") {
     return node.items.some((item) => renderSubtreeContains(item.child, sourceNodeId));
+  }
+  return false;
+}
+
+function renderSubtreeContainsRenderId(node: RenderTreeNode, renderId: string | undefined): boolean {
+  if (!renderId) return false;
+  if (node.renderId === renderId) return true;
+  if (node.type === "container") return node.children.some((child) => renderSubtreeContainsRenderId(child, renderId));
+  if (node.type === "component-instance") return renderSubtreeContainsRenderId(node.child, renderId);
+  if (node.type === "repeater") {
+    return node.items.some((item) => renderSubtreeContainsRenderId(item.child, renderId));
   }
   return false;
 }

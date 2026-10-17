@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { DocumentData } from "../../../../../foundation/documentModel.ts";
 import { NodeRenderer } from "./NodeRenderer.tsx";
-import type { RenderSelectionTarget } from "./NodeRenderer.tsx";
+import type { RenderSelectionMode, RenderSelectionTarget } from "./NodeRenderer.tsx";
 import type { DirectEditValue, DocumentEditTarget, TextRange } from "../../../../../foundation/documentEditing.ts";
 import type { DirectTextSelection } from "./EditableTextValue.tsx";
 import { buildRenderTree } from "./renderTree.ts";
@@ -15,7 +15,10 @@ export function DocumentRenderer({
   selectedNodeId,
   selectedRepeaterItem,
   selectableNodeIds,
+  selectionMode = "content",
   onSelect,
+  activeEditRenderId,
+  onEditActivate,
   onEditValueChange,
   onRichTextSelection,
   richTextSelection,
@@ -27,7 +30,10 @@ export function DocumentRenderer({
   selectedNodeId?: string;
   selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
+  selectionMode?: RenderSelectionMode;
   onSelect?: (target: RenderSelectionTarget) => void;
+  activeEditRenderId?: string;
+  onEditActivate?: (target: DocumentEditTarget, renderId: string, event?: Event) => void;
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
   richTextSelection?: DirectTextSelection;
@@ -44,7 +50,10 @@ export function DocumentRenderer({
         selectedNodeId={selectedNodeId}
         selectedRepeaterItem={selectedRepeaterItem}
         selectableNodeIds={selectableNodeIds}
+        selectionMode={selectionMode}
         onSelect={onSelect}
+        activeEditRenderId={mode === "screen" ? activeEditRenderId : undefined}
+        onEditActivate={mode === "screen" ? onEditActivate : undefined}
         onEditValueChange={mode === "screen" ? onEditValueChange : undefined}
         onRichTextSelection={mode === "screen" ? onRichTextSelection : undefined}
         richTextSelection={mode === "screen" ? richTextSelection : undefined}

@@ -2,7 +2,7 @@ import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } 
 import type { DocumentData } from "../../../../../foundation/documentModel.ts";
 import type { DocumentUpdate } from "../../../../../foundation/documentUpdates.ts";
 import type { DirectEditValue, DocumentEditTarget, TextRange } from "../../../../../foundation/documentEditing.ts";
-import { NodeRenderer, type RenderSelectionTarget } from "./NodeRenderer.tsx";
+import { NodeRenderer, type RenderSelectionMode, type RenderSelectionTarget } from "./NodeRenderer.tsx";
 import type { DirectTextSelection } from "./EditableTextValue.tsx";
 import {
   collectPaginationUnits,
@@ -29,7 +29,10 @@ type PaginatedDocumentRendererProps = {
   selectedNodeId?: string;
   selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
+  selectionMode?: RenderSelectionMode;
   onSelect?: (target: RenderSelectionTarget, event?: Event) => void;
+  activeEditRenderId?: string;
+  onEditActivate?: (target: DocumentEditTarget, renderId: string, event?: Event) => void;
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
   richTextSelection?: DirectTextSelection;
@@ -44,7 +47,10 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
   selectedNodeId,
   selectedRepeaterItem,
   selectableNodeIds,
+  selectionMode = "content",
   onSelect,
+  activeEditRenderId,
+  onEditActivate,
   onEditValueChange,
   onRichTextSelection,
   richTextSelection,
@@ -180,7 +186,10 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
                 selectedNodeId={selectedNodeId}
                 selectedRepeaterItem={selectedRepeaterItem}
                 selectableNodeIds={selectableNodeIds}
+                selectionMode={selectionMode}
                 onSelect={mode === "screen" ? onSelect : undefined}
+                activeEditRenderId={mode === "screen" ? activeEditRenderId : undefined}
+                onEditActivate={mode === "screen" ? onEditActivate : undefined}
                 onEditValueChange={mode === "screen" ? onEditValueChange : undefined}
                 onRichTextSelection={mode === "screen" ? onRichTextSelection : undefined}
                 richTextSelection={mode === "screen" ? richTextSelection : undefined}
@@ -223,7 +232,10 @@ function samePaginatedRendererProps(
     previous.selectedRepeaterItem?.nodeId === next.selectedRepeaterItem?.nodeId &&
     previous.selectedRepeaterItem?.itemId === next.selectedRepeaterItem?.itemId &&
     previous.selectableNodeIds === next.selectableNodeIds &&
+    previous.selectionMode === next.selectionMode &&
     previous.onSelect === next.onSelect &&
+    previous.activeEditRenderId === next.activeEditRenderId &&
+    previous.onEditActivate === next.onEditActivate &&
     previous.onEditValueChange === next.onEditValueChange &&
     previous.onRichTextSelection === next.onRichTextSelection &&
     previous.richTextSelection === next.richTextSelection &&

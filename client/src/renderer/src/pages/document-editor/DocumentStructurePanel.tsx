@@ -54,6 +54,7 @@ type AddableNodeType = "container" | "text" | "rich-text" | "markdown" | "image"
 export function DocumentStructurePanel({
   document,
   rootNodeId = document.rootNodeId,
+  includeComponentStructure = false,
   selection,
   focusRequest,
   onSelectionChange,
@@ -61,6 +62,7 @@ export function DocumentStructurePanel({
 }: {
   document: DocumentData;
   rootNodeId?: string;
+  includeComponentStructure?: boolean;
   selection?: DocumentSelection;
   focusRequest?: DocumentLayerFocusRequest;
   onSelectionChange: (selection?: DocumentSelection) => void;
@@ -74,7 +76,7 @@ export function DocumentStructurePanel({
   const treeRef = useRef<HTMLDivElement>(null);
   const lastHandledFocusRequestRef = useRef(0);
   const root = document.nodes[rootNodeId];
-  const layerIndentWidth = documentLayerMaxDepth(document, rootNodeId) * 12;
+  const layerIndentWidth = documentLayerMaxDepth(document, rootNodeId, includeComponentStructure) * 12;
   const archived = rootNodeId === document.rootNodeId
     ? Object.values(document.nodes).filter((node) => node.archivedFrom)
     : [];
@@ -163,6 +165,7 @@ export function DocumentStructurePanel({
             document={document}
             node={root}
             scopeRootNodeId={rootNodeId}
+            includeComponentStructure={includeComponentStructure}
             selection={selection}
             onSelectionChange={onSelectionChange}
             onChange={onChange}
@@ -273,6 +276,7 @@ function TreeRow({
   document,
   node,
   scopeRootNodeId,
+  includeComponentStructure,
   depth,
   selection,
   onSelectionChange,
@@ -289,6 +293,7 @@ function TreeRow({
   document: DocumentData;
   node: DocumentNode;
   scopeRootNodeId: string;
+  includeComponentStructure: boolean;
   depth: number;
   selection?: DocumentSelection;
   onSelectionChange: (selection?: DocumentSelection) => void;
@@ -311,7 +316,7 @@ function TreeRow({
   const index = siblings.indexOf(node.id);
   const hasChildren = (node.type === "container" && node.childIds.length > 0) ||
     (node.type === "repeater" && node.items.length > 0) ||
-    (node.type === "component-instance" && Boolean(document.components[node.componentId]));
+    (includeComponentStructure && node.type === "component-instance" && Boolean(document.components[node.componentId]));
   const open = hasChildren && !collapsedNodeIds.has(node.id);
 
   return (
@@ -420,6 +425,7 @@ function TreeRow({
               document={document}
               node={document.nodes[childId]}
               scopeRootNodeId={scopeRootNodeId}
+              includeComponentStructure={includeComponentStructure}
               depth={depth + 1}
               selection={selection}
               onSelectionChange={onSelectionChange}
@@ -436,7 +442,7 @@ function TreeRow({
           ))}
         </CollapsibleContent>
       )}
-      {node.type === "component-instance" && (
+      {includeComponentStructure && node.type === "component-instance" && (
         <CollapsibleContent>
           <ComponentStructureRow
             document={document}
@@ -462,6 +468,7 @@ function TreeRow({
               repeater={node}
               item={item}
               index={itemIndex}
+              includeComponentStructure={includeComponentStructure}
               depth={depth + 1}
               selection={selection}
               onSelectionChange={onSelectionChange}
@@ -484,6 +491,7 @@ function RepeaterItemRow({
   repeater,
   item,
   index,
+  includeComponentStructure,
   depth,
   selection,
   onSelectionChange,
@@ -498,6 +506,7 @@ function RepeaterItemRow({
   repeater: Extract<DocumentNode, { type: "repeater" }>;
   item: ComponentInstanceValue;
   index: number;
+  includeComponentStructure: boolean;
   depth: number;
   selection?: DocumentSelection;
   onSelectionChange: (selection?: DocumentSelection) => void;
@@ -514,18 +523,19 @@ function RepeaterItemRow({
   const select = () => onSelectionChange(selectRepeaterItem(repeater.id, item.id));
   const component = document.components[repeater.itemComponentId];
   const layerId = repeaterItemLayerId(repeater.id, item.id);
-  const open = Boolean(component) && !collapsedNodeIds.has(layerId);
+  const hasComponentStructure = includeComponentStructure && Boolean(component);
+  const open = hasComponentStructure && !collapsedNodeIds.has(layerId);
 
   return (
     <Collapsible
       open={open}
       onOpenChange={() => {
-        if (component) onToggleCollapsed(layerId);
+        if (hasComponentStructure) onToggleCollapsed(layerId);
       }}
       role="treeitem"
       aria-selected={selected}
       aria-level={depth + 1}
-      aria-expanded={component ? open : undefined}
+      aria-expanded={hasComponentStructure ? open : undefined}
     >
       <div
         className={`group relative flex items-center gap-1 rounded-md border px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 ${selected ? "border-ring bg-accent" : "border-transparent hover:bg-accent/50"}`}
@@ -561,7 +571,7 @@ function RepeaterItemRow({
           onDragEnd();
         }}
       >
-        {component ? (
+        {hasComponentStructure ? (
           <CollapsibleTrigger
             className={buttonVariants({
               variant: "ghost",
@@ -610,7 +620,7 @@ function RepeaterItemRow({
           ><Trash2Icon /></IconButton>
         </div>
       </div>
-      {component && (
+      {hasComponentStructure && component && (
         <CollapsibleContent>
           <ComponentStructureRow
             document={document}
@@ -792,7 +802,11 @@ function initialCollapsedLayerIds(document: DocumentData, rootNodeId: string): S
   return result;
 }
 
-function documentLayerMaxDepth(document: DocumentData, rootNodeId: string): number {
+function documentLayerMaxDepth(
+  document: DocumentData,
+  rootNodeId: string,
+  includeComponentStructure: boolean,
+): number {
   const visitComponent = (componentId: string, depth: number, componentPath: ReadonlySet<string>): number => {
     if (componentPath.has(componentId)) return depth;
     const component = document.components[componentId];
@@ -813,7 +827,7 @@ function documentLayerMaxDepth(document: DocumentData, rootNodeId: string): numb
         maximum = Math.max(maximum, visitComponentNode(childId, depth + 1, componentPath));
       });
     }
-    if (node.type === "component-instance") {
+    if (includeComponentStructure && node.type === "component-instance") {
       maximum = Math.max(maximum, visitComponent(node.componentId, depth + 1, componentPath));
     }
     return maximum;
@@ -831,7 +845,9 @@ function documentLayerMaxDepth(document: DocumentData, rootNodeId: string): numb
       maximum = Math.max(maximum, visitComponent(node.componentId, depth + 1, new Set()));
     }
     if (node.type === "repeater" && node.items.length > 0) {
-      maximum = Math.max(maximum, visitComponent(node.itemComponentId, depth + 2, new Set()));
+      maximum = Math.max(maximum, includeComponentStructure
+        ? visitComponent(node.itemComponentId, depth + 2, new Set())
+        : depth + 1);
     }
     return maximum;
   };

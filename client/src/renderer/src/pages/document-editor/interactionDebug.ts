@@ -4,9 +4,11 @@ const MAX_INTERACTION_RECORDS = 200;
 export type InteractionDebugRecord = {
   sequence: number;
   timestampMs: number;
-  kind: "dom-event" | "node-handler" | "selection-request" | "selection-state" | "dom-settled";
+  kind: "dom-event" | "node-handler" | "focus-boundary" | "selection-request" | "selection-state" | "dom-settled";
   detail: Record<string, unknown>;
 };
+
+export type InteractionDebugScope = "content-preview" | "component-preview";
 
 export type InteractionSelectionSnapshot = {
   kind: string;
@@ -65,12 +67,14 @@ export function interactionDebugEnabled(): boolean {
 export function installPreviewInteractionCapture(
   root: HTMLElement,
   readSelection: () => SelectionLike | undefined,
+  scope: InteractionDebugScope = "content-preview",
 ): () => void {
   const eventTypes = ["pointerdown", "mousedown", "click", "focusin", "focusout"] as const;
   const handleEvent = (event: Event) => {
     if (!enabled) return;
     const eventId = registerEvent(event);
     recordInteraction("dom-event", {
+      scope,
       eventId,
       event: snapshotEvent(event),
       target: snapshotEventTarget(event.target),
@@ -83,6 +87,7 @@ export function installPreviewInteractionCapture(
     setTimeout(() => {
       if (!enabled) return;
       recordInteraction("dom-settled", {
+        scope,
         eventId,
         activeElement: snapshotEventTarget(globalThis.document.activeElement),
         selection: snapshotSelection(readSelection()),
@@ -123,6 +128,10 @@ export function snapshotEventTarget(target: EventTarget | null | undefined): Rec
   copyAttribute(snapshot, target, "data-document-node-id", "documentNodeId");
   copyAttribute(snapshot, target, "data-document-render-id", "documentRenderId");
   copyAttribute(snapshot, target, "data-document-node-type", "documentNodeType");
+  copyAttribute(snapshot, target, "data-document-edit-target", "documentEditTarget");
+  copyAttribute(snapshot, target, "data-document-content-edit-target", "documentContentEditTarget");
+  copyAttribute(snapshot, target, "data-document-edit-active", "documentEditActive");
+  copyAttribute(snapshot, target, "data-markdown-edit-source-id", "markdownEditSourceId");
   copyAttribute(snapshot, target, "data-repeater-item-id", "repeaterItemId");
   copyAttribute(snapshot, target, "data-document-selected", "documentSelected");
   return snapshot;

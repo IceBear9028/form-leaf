@@ -24,6 +24,7 @@
 | 05 | 범용 문서·컴포넌트 모델 | 완료 | [05-document-components](05-document-components/README.md) |
 | 06 | 범용 문서 시각 시스템 복구 | 구현 중 | [06-restore-document-visual-system](06-restore-document-visual-system/README.md) |
 | 07 | Canonical Document migration | 완료 | [07-canonical-document-migration](07-canonical-document-migration/README.md) |
+| 08 | Preview와 Component 선택 경계 분리 | 완료 | [08-preview-component-selection-boundary](08-preview-component-selection-boundary/README.md) |
 
 ## References
 
@@ -41,3 +42,5 @@
 `06`은 `05` 전환 중 함께 사라진 작업 전 문서 스타일과 editor 시각 품질을 범용 CSS·style definition 위에 복구한다.
 
 `07`은 과거 파일을 schemaVersion 4로 한 번 migration하고 최신 runtime의 legacy identity와 과거 원본 의존성을 제거한다.
+
+`08`은 내용 preview에서 component definition 내부 선택을 제거하고, 데이터 소유 단위의 직접 편집과 component 구조 편집 화면의 책임을 분리한다.

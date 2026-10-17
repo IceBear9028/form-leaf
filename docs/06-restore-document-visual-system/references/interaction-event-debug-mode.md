@@ -2,7 +2,7 @@
 
 ## 목적
 
-Document 미리보기에서 한 요소를 클릭했는데 다른 node가 선택되거나, 중첩된 component node의 여러 클릭 핸들러가 의도와 다르게 반응하는 증상을 확인한다.
+Document 내용 미리보기와 component 편집 미리보기에서 한 요소를 클릭했는데 다른 node가 선택되거나, 중첩된 component node의 여러 클릭 핸들러가 의도와 다르게 반응하는 증상을 확인한다.
 
 이 모드는 기능을 수정하기 전에 다음 세 단계를 같은 시간 순서로 관찰하기 위한 진단 도구다.
 
@@ -53,22 +53,29 @@ window.__RESUME_STUDIO_DEBUG__.interactions.recent()
 |---|---|---|
 | `dom-event` | `pointerdown`, `mousedown`, `click`, `focusin`, `focusout`의 target, phase, 좌표, 버튼, modifier, composed path | 실제 브라우저 이벤트가 어느 요소에서 시작해 어떤 경로를 거쳤는가 |
 | `node-handler` | 실행된 `NodeRenderer`의 render/source node, repeater item, 가장 가까운 DOM node | 중첩된 handler 중 어떤 handler가 선택을 요청했는가 |
+| `focus-boundary` | 직접 편집 target과 개별 render ID의 활성화 action | 클릭한 Text, rich text 또는 Markdown fragment 하나만 활성화됐는가 |
 | `selection-request` | `RenderSelectionTarget`과 변환된 `DocumentSelection` | 렌더 node가 실제 편집 selection으로 어떻게 해석되었는가 |
 | `selection-state` | 선택 변경 전·후 | 요청과 최종 session 상태가 일치하는가 |
 | `dom-settled` | 이벤트 처리 뒤 active element와 최종 selection | focus와 selection이 서로 다른 node를 가리키는가 |
+
+각 record의 `scope`는 `content-preview` 또는 `component-preview`이며, `node-handler`의 `selectionMode`는 `content` 또는 `structure`다. `action`은 직접 편집 요소 내부 클릭(`preserve-direct-edit`), 내용 소유 단위 선택(`select-owner`), component 구조 선택(`select-structure`) 중 하나다. 직접 편집 요소가 활성화되면 `focus-boundary`의 `activate-single-edit-target`과 edit target key, 개별 pagination fragment의 render ID가 기록되고, 기존 구조 selection을 교체하면 `replace-structure-selection-with-edit-target`도 기록된다. `data-document-content-edit-target` snapshot으로 공통 Preview 편집 경계를, `data-document-edit-active` snapshot으로 현재 단일 활성 fragment를 확인할 수 있다.
 
 각 로그에는 증가하는 번호와 시간이 포함된다. DOM 요소는 tag, id, role, contenteditable 여부와 다음 식별 속성만 기록한다.
 
 - `data-document-node-id`
 - `data-document-render-id`
 - `data-document-node-type`
+- `data-document-edit-target`
+- `data-document-content-edit-target`
+- `data-document-edit-active`
+- `data-markdown-edit-source-id`
 - `data-repeater-item-id`
 - `data-document-selected`
 
 ## 안전 경계
 
 - 입력한 이력서 본문, `innerText`, `textContent`, input value는 기록하지 않는다.
-- `mode="screen"`인 Document 미리보기에서만 DOM 이벤트를 수집한다.
+- `mode="screen"`인 내용 미리보기와 component 편집 미리보기에서만 DOM 이벤트를 수집한다.
 - print surface와 measure tree에는 listener나 진단 attribute를 추가하지 않는다.
 - 비활성 상태에서는 snapshot 생성, composed path 순회, console 출력이 실행되지 않는다.
 - 진단 모드는 선택 동작, propagation, focus, pagination을 변경하지 않는다.

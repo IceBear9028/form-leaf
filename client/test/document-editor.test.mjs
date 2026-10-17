@@ -12,12 +12,14 @@ import {
   updateNodeStyle,
 } from "../src/foundation/document.ts";
 import {
+  contentSelectionFromRenderTarget,
   documentInsertionParentId,
   documentSelectableNodeIds,
   reconcileDocumentSelection,
   selectComponentNode,
   selectNode,
   selectRepeaterItem,
+  structureSelectionFromRenderTarget,
 } from "../src/renderer/src/pages/document-editor/documentSelection.ts";
 import { repeaterItemLabel } from "../src/renderer/src/pages/document-editor/repeaterItemPresentation.ts";
 import {
@@ -129,6 +131,32 @@ test("preview 선택 대상은 document tree만 포함하고 component 정의 �
   assert.deepEqual([...ids], ["node-root", "node-visible"]);
   assert.equal(ids.has("component-root"), false);
   assert.equal(ids.has("component-text"), false);
+});
+
+test("content 선택은 component 내부 render target을 데이터 소유 단위로 접는다", () => {
+  const instanceTarget = {
+    nodeId: "instance-a",
+    componentNodeId: "component-label",
+  };
+  const itemTarget = {
+    nodeId: "repeater-a",
+    repeaterItemId: "item-a",
+    componentNodeId: "component-label",
+  };
+
+  assert.deepEqual(contentSelectionFromRenderTarget(instanceTarget), selectNode("instance-a"));
+  assert.deepEqual(
+    contentSelectionFromRenderTarget(itemTarget),
+    selectRepeaterItem("repeater-a", "item-a"),
+  );
+  assert.deepEqual(
+    structureSelectionFromRenderTarget(instanceTarget),
+    selectComponentNode("instance-a", "component-label"),
+  );
+  assert.deepEqual(
+    structureSelectionFromRenderTarget(itemTarget),
+    selectComponentNode("repeater-a", "component-label", "item-a"),
+  );
 });
 
 test("Document 요소 추가 위치는 선택한 container, 부모 container, root 순서로 결정한다", () => {

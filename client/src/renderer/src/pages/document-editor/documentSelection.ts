@@ -17,6 +17,12 @@ export type DocumentLayerFocusRequest = {
   moveFocus?: boolean;
 };
 
+export type RenderSelectionContext = {
+  nodeId: string;
+  repeaterItemId?: string;
+  componentNodeId?: string;
+};
+
 export function selectNode(nodeId: string): DocumentSelection {
   return { kind: "node", nodeId };
 }
@@ -36,6 +42,23 @@ export function selectComponentNode(
     componentNodeId,
     ...(itemId ? { itemId } : {}),
   };
+}
+
+export function contentSelectionFromRenderTarget(
+  target: RenderSelectionContext,
+): DocumentSelection {
+  return target.repeaterItemId
+    ? selectRepeaterItem(target.nodeId, target.repeaterItemId)
+    : selectNode(target.nodeId);
+}
+
+export function structureSelectionFromRenderTarget(
+  target: RenderSelectionContext,
+): DocumentSelection {
+  if (target.componentNodeId) {
+    return selectComponentNode(target.nodeId, target.componentNodeId, target.repeaterItemId);
+  }
+  return contentSelectionFromRenderTarget(target);
 }
 
 export function selectedNode(

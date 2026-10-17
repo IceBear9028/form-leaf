@@ -4,6 +4,7 @@ import type { DocumentData, RichTextMark, RichTextValue } from "../../../../foun
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
 import type { DocumentUpdate, DocumentUpdateOperation } from "../../../../foundation/documentUpdates.ts";
 import {
+  documentEditTargetKey,
   readDocumentEditValue,
   removeRichTextMark,
   setRichTextMark,
@@ -30,11 +31,12 @@ import { DocumentElementToolbar, DocumentStructurePanel } from "./DocumentStruct
 import { PropertyInspector } from "./PropertyInspector.tsx";
 import { RichTextSelectionToolbar } from "./RichTextSelectionToolbar.tsx";
 import {
+  contentSelectionFromRenderTarget,
   documentSelectableNodeIds,
   reconcileDocumentSelection,
-  selectComponentNode,
   selectNode,
   selectRepeaterItem,
+  structureSelectionFromRenderTarget,
   type DocumentLayerFocusRequest,
   type DocumentSelection,
 } from "./documentSelection.ts";
@@ -79,6 +81,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   const undoRef = useRef<DocumentData[]>([]);
   const redoRef = useRef<DocumentData[]>([]);
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
+  const [activeEditRenderId, setActiveEditRenderId] = useState<string>();
   const [zoom, setZoom] = useState(DEFAULT_PREVIEW_ZOOM);
   const [exporting, setExporting] = useState(false);
   const [returning, setReturning] = useState(false);
@@ -141,6 +144,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   }, [session.updateDocument]);
 
   const selectAndReveal = useCallback((selection?: DocumentSelection, moveFocus?: boolean) => {
+    setActiveEditRenderId(undefined);
     session.setSelection(selection);
     if (!selection) {
       setLayerFocusRequest(undefined);
@@ -157,6 +161,8 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   }, [session.setSelection]);
 
   const selectFromLayer = useCallback((selection?: DocumentSelection) => {
+    setActiveEditRenderId(undefined);
+    setRichTextSelection(undefined);
     session.setSelection(selection);
     if (selection) schedulePreviewFocus(previewRef.current, selection);
   }, [session.setSelection]);
@@ -179,16 +185,48 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     );
   }, [updateDocument]);
 
+  const activateDirectEdit = useCallback((target: DocumentEditTarget, renderId: string, event?: Event) => {
+    const eventId = interactionEventId(event);
+    const previousSelection = interactionSelectionRef.current;
+    if (previousSelection) {
+      pendingSelectionEventIdRef.current = eventId;
+      recordInteraction("selection-request", {
+        scope: "content-preview",
+        action: "replace-structure-selection-with-edit-target",
+        eventId,
+        editTarget: documentEditTargetKey(target),
+        previousSelection: snapshotSelection(previousSelection),
+      });
+    }
+    setActiveEditRenderId(renderId);
+    session.setSelection(undefined);
+    setLayerFocusRequest(undefined);
+    setRichTextSelection((current) => (
+      current && documentEditTargetKey(current.target) === documentEditTargetKey(target)
+        ? current
+        : undefined
+    ));
+    recordInteraction("focus-boundary", {
+      scope: "content-preview",
+      action: "activate-single-edit-target",
+      eventId,
+      editTarget: documentEditTargetKey(target),
+      renderId,
+    });
+  }, [session.setSelection]);
+
   const selectFromPreview = useCallback((target: RenderSelectionTarget, event?: Event) => {
-    const selection = selectionFromRenderTarget(target);
+    const selection = contentSelectionFromRenderTarget(target);
     const eventId = interactionEventId(event);
     pendingSelectionEventIdRef.current = eventId;
     recordInteraction("selection-request", {
+      scope: "content-preview",
       eventId,
       renderTarget: target,
       previousSelection: snapshotSelection(interactionSelectionRef.current),
       requestedSelection: snapshotSelection(selection),
     });
+    setRichTextSelection(undefined);
     selectAndReveal(selection, false);
   }, [selectAndReveal]);
 
@@ -233,6 +271,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     const previous = previousInteractionSelectionRef.current;
     if (previous === session.selection) return;
     recordInteraction("selection-state", {
+      scope: "content-preview",
       eventId: pendingSelectionEventIdRef.current,
       previousSelection: snapshotSelection(previous),
       nextSelection: snapshotSelection(session.selection),
@@ -428,7 +467,10 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
               selectedNodeId={selectionPreviewNodeId(session.selection)}
               selectedRepeaterItem={selectionPreviewRepeaterItem(session.selection)}
               selectableNodeIds={selectableNodeIds}
+              selectionMode="content"
               onSelect={selectFromPreview}
+              activeEditRenderId={activeEditRenderId}
+              onEditActivate={activateDirectEdit}
               onEditValueChange={commitDirectEdit}
               onRichTextSelection={setRichTextSelection}
               richTextSelection={richTextSelection}
@@ -486,6 +528,10 @@ function ComponentEditorScreen({
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
   const componentCanvasRef = useRef<HTMLDivElement>(null);
   const previewScrollRef = useRef<HTMLDivElement>(null);
+  const interactionSelectionRef = useRef(selection);
+  const previousInteractionSelectionRef = useRef(selection);
+  const pendingSelectionEventIdRef = useRef<number | undefined>(undefined);
+  interactionSelectionRef.current = selection;
   const selectableNodeIds = useMemoComponentNodeIds(draft, component.rootNodeId);
 
   const updateDraft = (change: DocumentData | ((current: DocumentData) => DocumentData)) => {
@@ -504,8 +550,17 @@ function ComponentEditorScreen({
     setLayerFocusRequest({ nodeId, itemId, requestId: layerFocusRequestIdRef.current, moveFocus: false });
   };
 
-  const selectRenderTarget = (target: RenderSelectionTarget) => {
-    const nextSelection = selectionFromRenderTarget(target);
+  const selectRenderTarget = (target: RenderSelectionTarget, event?: Event) => {
+    const nextSelection = structureSelectionFromRenderTarget(target);
+    const eventId = interactionEventId(event);
+    pendingSelectionEventIdRef.current = eventId;
+    recordInteraction("selection-request", {
+      scope: "component-preview",
+      eventId,
+      renderTarget: target,
+      previousSelection: snapshotSelection(interactionSelectionRef.current),
+      requestedSelection: snapshotSelection(nextSelection),
+    });
     setSelection(nextSelection);
     layerFocusRequestIdRef.current += 1;
     setLayerFocusRequest({
@@ -529,6 +584,29 @@ function ComponentEditorScreen({
     const activeElement = globalThis.document.activeElement;
     if (activeElement instanceof HTMLElement) activeElement.blur();
   };
+
+  useEffect(() => {
+    const preview = previewScrollRef.current;
+    if (!preview) return;
+    return installPreviewInteractionCapture(
+      preview,
+      () => interactionSelectionRef.current,
+      "component-preview",
+    );
+  }, []);
+
+  useEffect(() => {
+    const previous = previousInteractionSelectionRef.current;
+    if (previous === selection) return;
+    recordInteraction("selection-state", {
+      scope: "component-preview",
+      eventId: pendingSelectionEventIdRef.current,
+      previousSelection: snapshotSelection(previous),
+      nextSelection: snapshotSelection(selection),
+    });
+    pendingSelectionEventIdRef.current = undefined;
+    previousInteractionSelectionRef.current = selection;
+  }, [selection]);
 
   useEffect(() => {
     setSelection((current) => {
@@ -608,6 +686,7 @@ function ComponentEditorScreen({
           <DocumentStructurePanel
             document={draft}
             rootNodeId={component.rootNodeId}
+            includeComponentStructure
             selection={selection}
             focusRequest={layerFocusRequest}
             onSelectionChange={selectFromLayer}
@@ -638,6 +717,7 @@ function ComponentEditorScreen({
                 selectedNodeId={selectionPreviewNodeId(selection)}
                 selectedRepeaterItem={selectionPreviewRepeaterItem(selection)}
                 selectableNodeIds={selectableNodeIds}
+                selectionMode="structure"
                 onSelect={selectRenderTarget}
                 onEditValueChange={commitDirectEdit}
                 onRichTextSelection={setRichTextSelection}
@@ -701,15 +781,6 @@ function selectionPreviewRepeaterItem(
 ): { nodeId: string; itemId: string } | undefined {
   const itemId = selection ? selectionItemId(selection) : undefined;
   return selection && itemId ? { nodeId: selection.nodeId, itemId } : undefined;
-}
-
-function selectionFromRenderTarget(target: RenderSelectionTarget): DocumentSelection {
-  if (target.componentNodeId) {
-    return selectComponentNode(target.nodeId, target.componentNodeId, target.repeaterItemId);
-  }
-  return target.repeaterItemId
-    ? selectRepeaterItem(target.nodeId, target.repeaterItemId)
-    : selectNode(target.nodeId);
 }
 
 function schedulePreviewFocus(container: HTMLElement | null, selection: DocumentSelection): void {

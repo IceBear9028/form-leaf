@@ -33,14 +33,18 @@ export type DirectTextSelection = {
 export function EditableTextValue({
   hostProps,
   target,
+  renderId,
   value,
+  onActivateTarget,
   onChange,
   onRichTextSelection,
   selectionToRestore,
 }: {
   hostProps: HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string | undefined>;
   target: DocumentEditTarget;
+  renderId: string;
   value: DirectEditValue;
+  onActivateTarget?: (target: DocumentEditTarget, renderId: string, event?: Event) => void;
   onChange: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
   selectionToRestore?: DirectTextSelection;
@@ -106,6 +110,10 @@ export function EditableTextValue({
       aria-multiline="true"
       data-document-edit-target="true"
       data-placeholder={source ? undefined : "텍스트 입력"}
+      onClick={(event) => {
+        hostProps.onClick?.(event);
+        onActivateTarget?.(target, renderId, event.nativeEvent);
+      }}
       onBeforeInput={(event) => {
         if (composingRef.current || event.nativeEvent.isComposing) return;
         event.preventDefault();

@@ -129,7 +129,8 @@
 }
 
 .document-renderer--screen .document-node:focus,
-.document-renderer--screen .document-repeater-item:focus {
+.document-renderer--screen .document-repeater-item:focus,
+.document-renderer--screen [data-document-edit-active="true"] {
   outline: 1.5px solid #1768e5;
   outline-offset: 2px;
 }
@@ -380,15 +381,6 @@
 .markdown-editable-block:focus {
   background: rgb(23 104 229 / 2.5%);
   outline: 0;
-}
-
-.document-markdown-focus-ring {
-  position: fixed;
-  z-index: 30;
-  border-radius: 3px;
-  outline: 1.5px solid #1768e5;
-  outline-offset: 2px;
-  pointer-events: none;
 }
 
 .markdown-edit-leading-lines,
