@@ -29,7 +29,7 @@ type PaginatedDocumentRendererProps = {
   selectedNodeId?: string;
   selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
-  onSelect?: (target: RenderSelectionTarget) => void;
+  onSelect?: (target: RenderSelectionTarget, event?: Event) => void;
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
   richTextSelection?: DirectTextSelection;

@@ -12,6 +12,7 @@ app.setName("Document");
 app.setPath("userData", legacyUserDataDirectory);
 
 let mainWindow: BrowserWindow | null = null;
+const interactionDebugEnabled = process.env.DOCUMENT_INTERACTION_DEBUG === "1";
 
 function workspaceDirectory(): string {
   return join(app.getPath("userData"), "workspaces");
@@ -50,9 +51,13 @@ function createWindow(): void {
   });
 
   if (process.env.ELECTRON_RENDERER_URL) {
-    void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
+    const rendererUrl = new URL(process.env.ELECTRON_RENDERER_URL);
+    if (interactionDebugEnabled) rendererUrl.searchParams.set("interactionDebug", "1");
+    void mainWindow.loadURL(rendererUrl.toString());
   } else {
-    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"), {
+      query: interactionDebugEnabled ? { interactionDebug: "1" } : undefined,
+    });
   }
 }
 

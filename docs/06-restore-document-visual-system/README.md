@@ -58,4 +58,5 @@
 - [렌더링 아키텍처 개선](architecture-improvement/README.md)
 - [현재 Document 렌더 파이프라인](references/current-document-render-pipeline.md)
 - [목표 Document 렌더 파이프라인](references/to-be-document-render-pipeline.md)
+- [Document 상호작용 이벤트 디버그 모드](references/interaction-event-debug-mode.md)
 - [세션 인수인계](handoff.md)

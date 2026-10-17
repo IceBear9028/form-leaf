@@ -8,7 +8,8 @@
   "scripts": {
     "postinstall": "install-electron",
     "start": "electron .",
-    "app": "npm run build && npm start",
+    "app": "node scripts/run-app.mjs",
+    "app:debug": "node scripts/run-app.mjs --debug",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",

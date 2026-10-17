@@ -11,6 +11,12 @@ import { MarkdownView } from "./MarkdownView.tsx";
 import type { RenderTreeNode } from "./renderTree.ts";
 import { safeHref } from "./safeHref.ts";
 import { colorToCss, styleToCss } from "./styleToCss.ts";
+import {
+  interactionEvent,
+  interactionEventId,
+  recordInteraction,
+  snapshotEventTarget,
+} from "../interactionDebug.ts";
 
 export type RenderSelectionTarget = {
   renderId: string;
@@ -26,7 +32,7 @@ type NodeRendererProps = {
   selectedNodeId?: string;
   selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
-  onSelect?: (target: RenderSelectionTarget) => void;
+  onSelect?: (target: RenderSelectionTarget, event?: Event) => void;
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
   richTextSelection?: DirectTextSelection;
@@ -59,7 +65,7 @@ export const NodeRenderer = memo(function NodeRenderer({
     (node.type === "text" || node.type === "rich-text" || node.type === "markdown"),
   );
   const select = selectable
-    ? (event: { currentTarget: EventTarget | null; target: EventTarget | null; stopPropagation: () => void }) => {
+    ? (event: { currentTarget: EventTarget | null; target: EventTarget | null; nativeEvent?: Event; stopPropagation: () => void }) => {
       event.stopPropagation();
       const clickedNode = event.target instanceof Element
         ? event.target.closest<HTMLElement>("[data-document-node-id]")
@@ -67,12 +73,25 @@ export const NodeRenderer = memo(function NodeRenderer({
       (clickedNode ?? (event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined))
         ?.focus({ preventScroll: true });
       const clickedNodeId = clickedNode?.dataset.documentNodeId;
-      onSelect?.({
+      const nativeEvent = interactionEvent(event);
+      const selectionTarget: RenderSelectionTarget = {
         renderId: node.renderId,
         nodeId: node.sourceNodeId,
         nodeType: node.type,
         ...(clickedNodeId && clickedNodeId !== node.sourceNodeId ? { componentNodeId: clickedNodeId } : {}),
+      };
+      recordInteraction("node-handler", {
+        eventId: interactionEventId(nativeEvent),
+        eventType: nativeEvent?.type,
+        handlerNodeId: node.sourceNodeId,
+        handlerRenderId: node.renderId,
+        handlerNodeType: node.type,
+        target: snapshotEventTarget(event.target),
+        currentTarget: snapshotEventTarget(event.currentTarget),
+        closestDocumentNode: snapshotEventTarget(clickedNode),
+        selectionTarget,
       });
+      onSelect?.(selectionTarget, nativeEvent);
     }
     : undefined;
   const attributes = {
@@ -118,7 +137,7 @@ export const NodeRenderer = memo(function NodeRenderer({
           if (!item.visible) return null;
           const itemSelectable = Boolean(selectable && onSelect);
           const selectItem = itemSelectable
-            ? (event: { currentTarget: EventTarget | null; target: EventTarget | null; stopPropagation: () => void }) => {
+            ? (event: { currentTarget: EventTarget | null; target: EventTarget | null; nativeEvent?: Event; stopPropagation: () => void }) => {
               event.stopPropagation();
               const clickedNode = event.target instanceof Element
                 ? event.target.closest<HTMLElement>("[data-document-node-id]")
@@ -126,13 +145,27 @@ export const NodeRenderer = memo(function NodeRenderer({
               (clickedNode ?? (event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined))
                 ?.focus({ preventScroll: true });
               const componentNodeId = clickedNode?.dataset.documentNodeId;
-              onSelect?.({
+              const nativeEvent = interactionEvent(event);
+              const selectionTarget: RenderSelectionTarget = {
                 renderId: `${node.renderId}/item:${item.id}`,
                 nodeId: node.sourceNodeId,
                 nodeType: node.type,
                 repeaterItemId: item.id,
                 ...(componentNodeId ? { componentNodeId } : {}),
+              };
+              recordInteraction("node-handler", {
+                eventId: interactionEventId(nativeEvent),
+                eventType: nativeEvent?.type,
+                handlerNodeId: node.sourceNodeId,
+                handlerRenderId: node.renderId,
+                handlerNodeType: node.type,
+                repeaterItemId: item.id,
+                target: snapshotEventTarget(event.target),
+                currentTarget: snapshotEventTarget(event.currentTarget),
+                closestDocumentNode: snapshotEventTarget(clickedNode),
+                selectionTarget,
               });
+              onSelect?.(selectionTarget, nativeEvent);
             }
             : undefined;
           return (

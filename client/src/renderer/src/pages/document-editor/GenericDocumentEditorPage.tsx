@@ -43,6 +43,12 @@ import { PaginatedDocumentRenderer } from "./rendering/PaginatedDocumentRenderer
 import type { DirectTextSelection } from "./rendering/EditableTextValue.tsx";
 import type { RenderSelectionTarget } from "./rendering/NodeRenderer.tsx";
 import {
+  installPreviewInteractionCapture,
+  interactionEventId,
+  recordInteraction,
+  snapshotSelection,
+} from "./interactionDebug.ts";
+import {
   type GenericDocumentChange,
   type SaveStateStore,
   useGenericDocumentSession,
@@ -82,6 +88,10 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   const [layerFocusRequest, setLayerFocusRequest] = useState<DocumentLayerFocusRequest>();
   const layerFocusRequestIdRef = useRef(0);
   const previousSelectableNodeIdsRef = useRef<ReadonlySet<string>>(new Set());
+  const interactionSelectionRef = useRef(session.selection);
+  const previousInteractionSelectionRef = useRef(session.selection);
+  const pendingSelectionEventIdRef = useRef<number | undefined>(undefined);
+  interactionSelectionRef.current = session.selection;
   const selectableNodeIds = useMemo(() => {
     const next = documentSelectableNodeIds(session.document);
     const previous = previousSelectableNodeIdsRef.current;
@@ -169,8 +179,17 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     );
   }, [updateDocument]);
 
-  const selectFromPreview = useCallback((target: RenderSelectionTarget) => {
-    selectAndReveal(selectionFromRenderTarget(target), false);
+  const selectFromPreview = useCallback((target: RenderSelectionTarget, event?: Event) => {
+    const selection = selectionFromRenderTarget(target);
+    const eventId = interactionEventId(event);
+    pendingSelectionEventIdRef.current = eventId;
+    recordInteraction("selection-request", {
+      eventId,
+      renderTarget: target,
+      previousSelection: snapshotSelection(interactionSelectionRef.current),
+      requestedSelection: snapshotSelection(selection),
+    });
+    selectAndReveal(selection, false);
   }, [selectAndReveal]);
 
   const selectWithoutLayerFocus = useCallback((selection?: DocumentSelection) => {
@@ -203,6 +222,24 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       richTextSelection.range,
     );
   };
+
+  useEffect(() => {
+    const preview = previewRef.current;
+    if (!preview) return;
+    return installPreviewInteractionCapture(preview, () => interactionSelectionRef.current);
+  }, []);
+
+  useEffect(() => {
+    const previous = previousInteractionSelectionRef.current;
+    if (previous === session.selection) return;
+    recordInteraction("selection-state", {
+      eventId: pendingSelectionEventIdRef.current,
+      previousSelection: snapshotSelection(previous),
+      nextSelection: snapshotSelection(session.selection),
+    });
+    pendingSelectionEventIdRef.current = undefined;
+    previousInteractionSelectionRef.current = session.selection;
+  }, [session.selection]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
