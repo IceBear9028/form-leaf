@@ -378,9 +378,17 @@
 .markdown-editable-block:hover { background: rgb(23 104 229 / 2.5%); }
 
 .markdown-editable-block:focus {
-  background: rgb(23 104 229 / 6.5%);
+  background: rgb(23 104 229 / 2.5%);
+  outline: 0;
+}
+
+.document-markdown-focus-ring {
+  position: fixed;
+  z-index: 30;
+  border-radius: 3px;
   outline: 1.5px solid #1768e5;
   outline-offset: 2px;
+  pointer-events: none;
 }
 
 .markdown-edit-leading-lines,

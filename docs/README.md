@@ -24,6 +24,11 @@
 | 05 | 범용 문서·컴포넌트 모델 | 완료 | [05-document-components](05-document-components/README.md) |
 | 06 | 범용 문서 시각 시스템 복구 | 구현 중 | [06-restore-document-visual-system](06-restore-document-visual-system/README.md) |
 
+## References
+
+- [현재 Document 입력·렌더링·저장 과정](06-restore-document-visual-system/references/current-document-render-pipeline.md)
+- [To-Be Document 입력·렌더링·저장 과정](06-restore-document-visual-system/references/to-be-document-render-pipeline.md)
+
 `04`의 승인된 12단계 계획은 단계별 검증과 커밋까지 완료했다.
 
 `05`는 특정 문서 목적을 코드에 내장하지 않는 범용 문서 편집기를 구현했다. 범용 core, DOM editor, component 재사용, preview 직접 편집, 저장소·library·IPC와 앱 진입점 전환을 완료하고 과거 runtime을 제거했다.

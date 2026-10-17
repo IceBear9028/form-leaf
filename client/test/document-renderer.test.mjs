@@ -367,6 +367,102 @@ test("component instance와 원자 콘텐츠는 wrapper를 유지하며 서로 �
   assert.deepEqual(units.map((unit) => unit.node.child.children[0].type), ["text", "image"]);
 });
 
+test("고정 왼쪽 컬럼과 흐름 오른쪽 컬럼은 트리를 유지하며 오른쪽 내용만 분할한다", () => {
+  const fixedStyle = {
+    id: "meta",
+    name: "Meta",
+    layout: { width: { mode: "fixed", valuePt: 88 } },
+  };
+  const contentStyle = {
+    id: "content",
+    name: "Content",
+    layout: {
+      direction: "column",
+      paddingPt: [4, 0, 12, 23],
+      width: { mode: "fill" },
+      grow: 1,
+    },
+    decoration: {
+      borderColor: { kind: "hex", value: "#d9d9d9" },
+      borderWidthPt: 0.75,
+      borderEdges: ["left"],
+    },
+  };
+  const tree = {
+    renderId: "node:root",
+    sourceNodeId: "root",
+    type: "container",
+    name: "Root",
+    visible: true,
+    children: [{
+      renderId: "node:item",
+      sourceNodeId: "item",
+      type: "container",
+      name: "Item",
+      visible: true,
+      style: {
+        id: "row",
+        name: "Row",
+        layout: { direction: "row", gapPt: 18, width: { mode: "fill" } },
+      },
+      children: [
+        {
+          renderId: "node:meta",
+          sourceNodeId: "meta",
+          type: "container",
+          name: "Meta",
+          visible: true,
+          style: fixedStyle,
+          children: [{ renderId: "node:date", sourceNodeId: "date", type: "text", name: "Date", visible: true, value: "2026" }],
+        },
+        {
+          renderId: "node:content",
+          sourceNodeId: "content",
+          type: "container",
+          name: "Content",
+          visible: true,
+          style: contentStyle,
+          children: [
+            { renderId: "node:title", sourceNodeId: "title", type: "text", name: "Title", visible: true, value: "Title" },
+            { renderId: "node:body", sourceNodeId: "body", type: "markdown", name: "Body", visible: true, source: "First\n\nSecond" },
+            { renderId: "node:tags", sourceNodeId: "tags", type: "text", name: "Tags", visible: true, value: "Tags" },
+          ],
+        },
+      ],
+    }],
+  };
+
+  const units = collectPaginationUnits(tree);
+  assert.equal(units.length, 4);
+  units.forEach((unit, index) => {
+    assert.equal(unit.node.type, "container");
+    assert.equal(unit.node.style.layout.position, "relative");
+    const content = unit.node.children.at(-1);
+    assert.equal(content.sourceNodeId, "content");
+    assert.equal(content.children.length, 1);
+    assert.deepEqual(content.style.decoration.borderEdges, ["left"]);
+    const placeholder = unit.node.children.at(-2);
+    assert.equal(placeholder.sourceNodeId, "layout-placeholder:meta");
+    assert.equal(placeholder.children.length, 0);
+    if (index === 0) {
+      assert.equal(unit.node.children.length, 3);
+      assert.equal(unit.node.children[0].sourceNodeId, "meta");
+      assert.equal(unit.node.children[0].children[0].sourceNodeId, "date");
+      assert.equal(unit.node.children[0].style.layout.position, "absolute");
+      assert.equal(unit.node.children[0].layoutRole, "fixed-overlay");
+      assert.equal(placeholder.layoutFragmentIndex, 0);
+    } else {
+      assert.equal(unit.node.children.length, 2);
+    }
+  });
+  assert.deepEqual(units.map((unit) => unit.node.children.at(-1).style.layout.paddingPt), [
+    [4, 0, 0, 23],
+    [0, 0, 0, 23],
+    [0, 0, 0, 23],
+    [0, 0, 12, 23],
+  ]);
+});
+
 test("link renderer는 실행 가능한 위험 protocol을 허용하지 않는다", () => {
   assert.equal(safeHref("https://example.com"), "https://example.com");
   assert.equal(safeHref("mailto:user@example.com"), "mailto:user@example.com");

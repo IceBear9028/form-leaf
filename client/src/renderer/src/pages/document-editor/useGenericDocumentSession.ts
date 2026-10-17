@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DocumentData } from "../../../../foundation/documentModel.ts";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
 import {
+  fullDocumentUpdate,
+  inferDocumentUpdateOperations,
+  type DocumentUpdate,
+  type DocumentUpdateOperation,
+} from "../../../../foundation/documentUpdates.ts";
+import {
   reconcileDocumentSelection,
   type DocumentSelection,
 } from "./documentSelection.ts";
@@ -12,6 +18,12 @@ export type SaveState =
   | { type: "saved"; at: string }
   | { type: "error"; message: string };
 
+export type SaveStateStore = {
+  getSnapshot: () => SaveState;
+  subscribe: (listener: () => void) => () => void;
+  set: (state: SaveState) => void;
+};
+
 export type GenericDocumentChange =
   | DocumentData
   | ((current: DocumentData) => DocumentData);
@@ -21,10 +33,16 @@ export function useGenericDocumentSession(
   onSummaryChange?: (summary: DocumentSummary) => void,
 ) {
   const [document, setDocument] = useState(initialDocument);
+  const [documentUpdate, setDocumentUpdate] = useState<DocumentUpdate>(() => fullDocumentUpdate(0));
   const [selection, setSelection] = useState<DocumentSelection>();
-  const [saveState, setSaveState] = useState<SaveState>({ type: "saved", at: initialDocument.updatedAt });
-  const [exportedPath, setExportedPath] = useState<string | null>(null);
+  const saveStateStoreRef = useRef<SaveStateStore | undefined>(undefined);
+  if (!saveStateStoreRef.current) {
+    saveStateStoreRef.current = createSaveStateStore({ type: "saved", at: initialDocument.updatedAt });
+  }
+  const saveStateStore = saveStateStoreRef.current;
+  const exportedPathRef = useRef<string | null>(null);
   const documentRef = useRef(initialDocument);
+  const revisionRef = useRef(0);
   const dirtyRef = useRef(false);
   const saveTimerRef = useRef<number | undefined>(undefined);
   const inFlightSaveRef = useRef<Promise<boolean> | undefined>(undefined);
@@ -36,7 +54,7 @@ export function useGenericDocumentSession(
     }
     if (!onSummaryChange) {
       dirtyRef.current = false;
-      setSaveState({ type: "saved", at: new Date().toISOString() });
+      saveStateStore.set({ type: "saved", at: new Date().toISOString() });
       return true;
     }
     if (inFlightSaveRef.current) {
@@ -47,23 +65,23 @@ export function useGenericDocumentSession(
 
     const current = documentRef.current;
     dirtyRef.current = false;
-    setSaveState({ type: "saving" });
+    saveStateStore.set({ type: "saving" });
     const request = window.documents.saveDocument(current.documentId, current)
       .then((summary) => {
         onSummaryChange(summary);
-        setSaveState(dirtyRef.current ? { type: "dirty" } : { type: "saved", at: summary.updatedAt });
+        saveStateStore.set(dirtyRef.current ? { type: "dirty" } : { type: "saved", at: summary.updatedAt });
         return true;
       })
       .catch((error: unknown) => {
         dirtyRef.current = true;
-        setSaveState({ type: "error", message: errorMessage(error) });
+        saveStateStore.set({ type: "error", message: errorMessage(error) });
         return false;
       });
     inFlightSaveRef.current = request;
     const completed = await request;
     if (inFlightSaveRef.current === request) inFlightSaveRef.current = undefined;
     return completed;
-  }, [onSummaryChange]);
+  }, [onSummaryChange, saveStateStore]);
 
   const saveUntilClean = useCallback(async (): Promise<boolean> => {
     let saved = await saveNow();
@@ -71,18 +89,27 @@ export function useGenericDocumentSession(
     return saved;
   }, [saveNow]);
 
-  const updateDocument = useCallback((change: GenericDocumentChange) => {
+  const updateDocument = useCallback((
+    change: GenericDocumentChange,
+    operations?: readonly DocumentUpdateOperation[],
+  ) => {
     const current = documentRef.current;
     const next = typeof change === "function" ? change(current) : change;
+    if (next === current) return;
+    revisionRef.current += 1;
     documentRef.current = next;
     setDocument(next);
-    setExportedPath(null);
+    const inferredOperations = operations ?? inferDocumentUpdateOperations(current, next);
+    setDocumentUpdate(inferredOperations.length
+      ? { revision: revisionRef.current, operations: inferredOperations }
+      : fullDocumentUpdate(revisionRef.current));
+    exportedPathRef.current = null;
     dirtyRef.current = true;
-    setSaveState({ type: "dirty" });
+    saveStateStore.set({ type: "dirty" });
     if (!onSummaryChange) return;
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => void saveNow(), 650);
-  }, [onSummaryChange, saveNow]);
+  }, [onSummaryChange, saveNow, saveStateStore]);
 
   useEffect(() => {
     setSelection((current) => reconcileDocumentSelection(document, current));
@@ -105,21 +132,47 @@ export function useGenericDocumentSession(
 
   return useMemo(() => ({
     document,
+    documentUpdate,
     selection,
-    dirty: saveState.type === "dirty" || saveState.type === "error",
-    saveState,
-    exportedPath,
+    saveStateStore,
     updateDocument,
     setSelection,
     saveNow,
     saveUntilClean,
-    setExportedPath,
-    setSaveError: (message: string) => setSaveState({ type: "error", message }),
+    getCurrentDocument: () => documentRef.current,
+    setExportedPath: (path: string | null) => {
+      exportedPathRef.current = path;
+    },
+    setSaveError: (message: string) => saveStateStore.set({ type: "error", message }),
     markSaved: () => {
       dirtyRef.current = false;
-      setSaveState({ type: "saved", at: new Date().toISOString() });
+      saveStateStore.set({ type: "saved", at: new Date().toISOString() });
     },
-  }), [document, exportedPath, saveNow, saveState, saveUntilClean, selection, updateDocument]);
+  }), [document, documentUpdate, saveNow, saveStateStore, saveUntilClean, selection, updateDocument]);
+}
+
+export function createSaveStateStore(initialState: SaveState): SaveStateStore {
+  let state = initialState;
+  const listeners = new Set<() => void>();
+  return {
+    getSnapshot: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    set: (next) => {
+      if (sameSaveState(state, next)) return;
+      state = next;
+      listeners.forEach((listener) => listener());
+    },
+  };
+}
+
+function sameSaveState(left: SaveState, right: SaveState): boolean {
+  if (left.type !== right.type) return false;
+  if (left.type === "saved" && right.type === "saved") return left.at === right.at;
+  if (left.type === "error" && right.type === "error") return left.message === right.message;
+  return true;
 }
 
 function errorMessage(error: unknown): string {

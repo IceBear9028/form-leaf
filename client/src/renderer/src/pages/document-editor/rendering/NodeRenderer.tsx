@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, memo, type ReactNode } from "react";
 import type { RichTextMark } from "../../../../../foundation/documentModel.ts";
 import type {
   DirectEditValue,
@@ -20,17 +20,7 @@ export type RenderSelectionTarget = {
   componentNodeId?: string;
 };
 
-export function NodeRenderer({
-  node,
-  measure = false,
-  selectedNodeId,
-  selectedRepeaterItem,
-  selectableNodeIds,
-  onSelect,
-  onEditValueChange,
-  onRichTextSelection,
-  richTextSelection,
-}: {
+type NodeRendererProps = {
   node: RenderTreeNode;
   measure?: boolean;
   selectedNodeId?: string;
@@ -40,10 +30,29 @@ export function NodeRenderer({
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
   richTextSelection?: DirectTextSelection;
-}) {
+};
+
+export const NodeRenderer = memo(function NodeRenderer({
+  node,
+  measure = false,
+  selectedNodeId,
+  selectedRepeaterItem,
+  selectableNodeIds,
+  onSelect,
+  onEditValueChange,
+  onRichTextSelection,
+  richTextSelection,
+}: NodeRendererProps) {
   if (!node.visible) return null;
   const isStructure = node.type === "container" || node.type === "component-instance" || node.type === "repeater";
   const style = styleToCss(node.style);
+  const measurementLayoutStyle = measure
+    ? node.layoutRole === "fixed-overlay"
+      ? { position: "static" as const, top: undefined, left: undefined }
+      : node.layoutRole === "fixed-placeholder" && node.layoutFragmentIndex === 0
+        ? { display: "none" as const }
+        : undefined
+    : undefined;
   const selectable = Boolean(onSelect && selectableNodeIds?.has(node.sourceNodeId));
   const directlyEditable = Boolean(
     node.editTarget && onEditValueChange &&
@@ -69,8 +78,8 @@ export function NodeRenderer({
   const attributes = {
     className: `document-node document-node--${node.type}`,
     style: isStructure
-      ? { display: "flex", flexDirection: "column" as const, ...style }
-      : style,
+      ? { display: "flex", flexDirection: "column" as const, ...style, ...measurementLayoutStyle }
+      : { ...style, ...measurementLayoutStyle },
     "data-document-render-id": node.renderId,
     "data-document-node-id": node.sourceNodeId,
     "data-document-node-type": node.type,
@@ -198,6 +207,67 @@ export function NodeRenderer({
         : <span className="document-image-placeholder" aria-label={node.alt || "Image"} />}
     </div>
   );
+}, sameNodeRendererProps);
+
+function sameNodeRendererProps(previous: NodeRendererProps, next: NodeRendererProps): boolean {
+  if (
+    previous.node !== next.node ||
+    previous.measure !== next.measure ||
+    previous.selectableNodeIds !== next.selectableNodeIds ||
+    previous.onSelect !== next.onSelect ||
+    previous.onEditValueChange !== next.onEditValueChange ||
+    previous.onRichTextSelection !== next.onRichTextSelection
+  ) return false;
+
+  if (
+    previous.selectedNodeId !== next.selectedNodeId &&
+    (renderSubtreeContains(previous.node, previous.selectedNodeId) ||
+      renderSubtreeContains(next.node, next.selectedNodeId))
+  ) return false;
+
+  if (!sameRepeaterSelection(previous.selectedRepeaterItem, next.selectedRepeaterItem)) {
+    const previousNodeId = previous.selectedRepeaterItem?.nodeId;
+    const nextNodeId = next.selectedRepeaterItem?.nodeId;
+    if (
+      renderSubtreeContains(previous.node, previousNodeId) ||
+      renderSubtreeContains(next.node, nextNodeId)
+    ) return false;
+  }
+
+  if (previous.richTextSelection !== next.richTextSelection) {
+    const previousNodeId = editTargetOwnerNodeId(previous.richTextSelection?.target);
+    const nextNodeId = editTargetOwnerNodeId(next.richTextSelection?.target);
+    if (
+      renderSubtreeContains(previous.node, previousNodeId) ||
+      renderSubtreeContains(next.node, nextNodeId)
+    ) return false;
+  }
+  return true;
+}
+
+function renderSubtreeContains(node: RenderTreeNode, sourceNodeId: string | undefined): boolean {
+  if (!sourceNodeId) return false;
+  if (node.sourceNodeId === sourceNodeId) return true;
+  if (node.type === "container") return node.children.some((child) => renderSubtreeContains(child, sourceNodeId));
+  if (node.type === "component-instance") return renderSubtreeContains(node.child, sourceNodeId);
+  if (node.type === "repeater") {
+    return node.items.some((item) => renderSubtreeContains(item.child, sourceNodeId));
+  }
+  return false;
+}
+
+function sameRepeaterSelection(
+  previous: NodeRendererProps["selectedRepeaterItem"],
+  next: NodeRendererProps["selectedRepeaterItem"],
+): boolean {
+  return previous?.nodeId === next?.nodeId && previous?.itemId === next?.itemId;
+}
+
+function editTargetOwnerNodeId(target: DocumentEditTarget | undefined): string | undefined {
+  if (!target) return undefined;
+  if (target.kind === "node") return target.nodeId;
+  if (target.kind === "component-prop") return target.instanceNodeId;
+  return target.repeaterNodeId;
 }
 
 function renderMarkedText(text: string, marks: RichTextMark[], key: string): ReactNode {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { DocumentData } from "../../../foundation/document";
 import { GenericDocumentEditorPage } from "../pages/document-editor/GenericDocumentEditorPage";
 import {
@@ -34,6 +34,11 @@ function AppContent() {
     if (document) setView({ type: "editor", document });
   };
 
+  const returnToLibrary = useCallback(async () => {
+    await library.load(false);
+    setView({ type: "library" });
+  }, [library.load]);
+
   if (library.loading) {
     return <LoadingScreen label="문서 목록을 불러오는 중…" />;
   }
@@ -44,10 +49,7 @@ function AppContent() {
         key={view.document.documentId}
         initialDocument={view.document}
         onSummaryChange={library.updateSummary}
-        onBack={async () => {
-          await library.load(false);
-          setView({ type: "library" });
-        }}
+        onBack={returnToLibrary}
       />
     );
   }

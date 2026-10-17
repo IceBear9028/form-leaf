@@ -55,4 +55,7 @@
 
 - [구현 계획](plan.md)
 - [기술 설계](design.md)
+- [렌더링 아키텍처 개선](architecture-improvement/README.md)
+- [현재 Document 렌더 파이프라인](references/current-document-render-pipeline.md)
+- [목표 Document 렌더 파이프라인](references/to-be-document-render-pipeline.md)
 - [세션 인수인계](handoff.md)

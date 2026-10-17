@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeftIcon, CheckIcon, FileDownIcon, MinusIcon, PlusIcon, SaveIcon, XIcon } from "lucide-react";
 import type { DocumentData, RichTextMark, RichTextValue } from "../../../../foundation/documentModel.ts";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
+import type { DocumentUpdate, DocumentUpdateOperation } from "../../../../foundation/documentUpdates.ts";
 import {
   readDocumentEditValue,
   removeRichTextMark,
@@ -43,7 +44,7 @@ import type { DirectTextSelection } from "./rendering/EditableTextValue.tsx";
 import type { RenderSelectionTarget } from "./rendering/NodeRenderer.tsx";
 import {
   type GenericDocumentChange,
-  type SaveState,
+  type SaveStateStore,
   useGenericDocumentSession,
 } from "./useGenericDocumentSession.ts";
 import {
@@ -53,7 +54,12 @@ import {
   stepPreviewZoom,
 } from "./previewZoom.ts";
 
-export function GenericDocumentEditorPage({
+const MemoDocumentStructurePanel = memo(DocumentStructurePanel);
+const MemoDocumentComponentNavigator = memo(DocumentComponentNavigator);
+const MemoDocumentElementToolbar = memo(DocumentElementToolbar);
+const MemoPropertyInspector = memo(PropertyInspector);
+
+export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage({
   initialDocument,
   onSummaryChange,
   onBack,
@@ -71,21 +77,60 @@ export function GenericDocumentEditorPage({
   const [exporting, setExporting] = useState(false);
   const [returning, setReturning] = useState(false);
   const [editingComponentId, setEditingComponentId] = useState<string>();
+  const [printSnapshot, setPrintSnapshot] = useState<DocumentData>();
+  const printReadyRef = useRef<(() => void) | undefined>(undefined);
   const [layerFocusRequest, setLayerFocusRequest] = useState<DocumentLayerFocusRequest>();
   const layerFocusRequestIdRef = useRef(0);
-  const selectableNodeIds = useMemo(() => documentSelectableNodeIds(session.document), [session.document]);
+  const previousSelectableNodeIdsRef = useRef<ReadonlySet<string>>(new Set());
+  const selectableNodeIds = useMemo(() => {
+    const next = documentSelectableNodeIds(session.document);
+    const previous = previousSelectableNodeIdsRef.current;
+    if (sameStringSet(previous, next)) return previous;
+    previousSelectableNodeIdsRef.current = next;
+    return next;
+  }, [session.document]);
+  const layerDocumentRef = useRef(session.document);
+  const layerDocument = useMemo(() => {
+    if (updateAffectsLayer(session.documentUpdate, session.document)) {
+      layerDocumentRef.current = session.document;
+    }
+    return layerDocumentRef.current;
+  }, [session.document, session.documentUpdate]);
+  const componentDocumentRef = useRef(session.document);
+  const componentDocument = useMemo(() => {
+    if (updateAffectsComponentNavigator(session.documentUpdate)) {
+      componentDocumentRef.current = session.document;
+    }
+    return componentDocumentRef.current;
+  }, [session.document, session.documentUpdate]);
+  const inspectorDocumentRef = useRef(session.document);
+  const inspectorSelectionKeyRef = useRef(selectionKey(session.selection));
+  const inspectorDocument = useMemo(() => {
+    const nextSelectionKey = selectionKey(session.selection);
+    if (
+      inspectorSelectionKeyRef.current !== nextSelectionKey ||
+      updateAffectsSelection(session.documentUpdate, session.selection)
+    ) {
+      inspectorDocumentRef.current = session.document;
+    }
+    inspectorSelectionKeyRef.current = nextSelectionKey;
+    return inspectorDocumentRef.current;
+  }, [session.document, session.documentUpdate, session.selection]);
 
-  const updateDocument = (change: GenericDocumentChange) => {
+  const updateDocument = useCallback((
+    change: GenericDocumentChange,
+    operations?: readonly DocumentUpdateOperation[],
+  ) => {
     session.updateDocument((current) => {
       const next = typeof change === "function" ? change(current) : change;
       if (next === current) return current;
       pushUndoSnapshot(undoRef.current, current);
       redoRef.current = [];
       return next;
-    });
-  };
+    }, operations);
+  }, [session.updateDocument]);
 
-  const selectAndReveal = (selection?: DocumentSelection, moveFocus?: boolean) => {
+  const selectAndReveal = useCallback((selection?: DocumentSelection, moveFocus?: boolean) => {
     session.setSelection(selection);
     if (!selection) {
       setLayerFocusRequest(undefined);
@@ -99,12 +144,12 @@ export function GenericDocumentEditorPage({
       requestId: layerFocusRequestIdRef.current,
       moveFocus,
     });
-  };
+  }, [session.setSelection]);
 
-  const selectFromLayer = (selection?: DocumentSelection) => {
+  const selectFromLayer = useCallback((selection?: DocumentSelection) => {
     session.setSelection(selection);
     if (selection) schedulePreviewFocus(previewRef.current, selection);
-  };
+  }, [session.setSelection]);
 
   const clearPreviewSelection = () => {
     selectAndReveal(undefined);
@@ -113,9 +158,30 @@ export function GenericDocumentEditorPage({
     if (activeElement instanceof HTMLElement) activeElement.blur();
   };
 
-  const commitDirectEdit = (target: DocumentEditTarget, value: DirectEditValue, _selection: TextRange) => {
-    updateDocument((current) => updateDocumentEditValue(current, target, value));
-  };
+  const commitDirectEdit = useCallback((
+    target: DocumentEditTarget,
+    value: DirectEditValue,
+    _selection: TextRange,
+  ) => {
+    updateDocument(
+      (current) => updateDocumentEditValue(current, target, value),
+      [{ type: "node-content-updated", nodeId: editTargetOwnerNodeId(target) }],
+    );
+  }, [updateDocument]);
+
+  const selectFromPreview = useCallback((target: RenderSelectionTarget) => {
+    selectAndReveal(selectionFromRenderTarget(target), false);
+  }, [selectAndReveal]);
+
+  const selectWithoutLayerFocus = useCallback((selection?: DocumentSelection) => {
+    selectAndReveal(selection, false);
+  }, [selectAndReveal]);
+
+  const markPrintReady = useCallback(() => {
+    const resolve = printReadyRef.current;
+    printReadyRef.current = undefined;
+    resolve?.();
+  }, []);
 
   const formatRichText = (mark: RichTextMark) => {
     if (!richTextSelection) return;
@@ -189,8 +255,13 @@ export function GenericDocumentEditorPage({
     }
     try {
       await window.document.fonts.ready;
-      await afterNextPaint();
-      const result = await window.documents.exportPdf(session.document.name);
+      const snapshot = session.getCurrentDocument();
+      const printReady = new Promise<void>((resolve) => {
+        printReadyRef.current = resolve;
+      });
+      setPrintSnapshot(snapshot);
+      await printReady;
+      const result = await window.documents.exportPdf(snapshot.name);
       if (!result.canceled) {
         session.setExportedPath(result.filePath);
         toast.add({
@@ -206,6 +277,8 @@ export function GenericDocumentEditorPage({
     } catch (error) {
       session.setSaveError(`PDF 생성 실패: ${errorMessage(error)}`);
     } finally {
+      printReadyRef.current = undefined;
+      setPrintSnapshot(undefined);
       setExporting(false);
     }
   };
@@ -236,7 +309,7 @@ export function GenericDocumentEditorPage({
           </Button>
           <strong className="truncate text-sm font-medium">{session.document.name || "제목 없는 문서"}</strong>
         </div>
-        <SaveIndicator state={session.saveState} onRetry={() => void session.saveNow()} />
+        <SaveIndicator store={session.saveStateStore} onRetry={() => void session.saveNow()} />
         <div className="flex items-center justify-self-end gap-3 [-webkit-app-region:no-drag]">
           <ButtonGroup aria-label="미리보기 배율">
             <Tooltip>
@@ -285,17 +358,17 @@ export function GenericDocumentEditorPage({
       </header>
       <div className="workspace grid min-h-0 flex-1 grid-cols-[288px_minmax(0,1fr)_320px]">
         <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(220px,0.72fr)]">
-          <DocumentStructurePanel
-            document={session.document}
+          <MemoDocumentStructurePanel
+            document={layerDocument}
             selection={session.selection}
             focusRequest={layerFocusRequest}
             onSelectionChange={selectFromLayer}
             onChange={updateDocument}
           />
-          <DocumentComponentNavigator
-            document={session.document}
+          <MemoDocumentComponentNavigator
+            document={componentDocument}
             selection={session.selection}
-            onSelectionChange={(selection) => selectAndReveal(selection, false)}
+            onSelectionChange={selectWithoutLayerFocus}
             onChange={updateDocument}
             onEditComponent={setEditingComponentId}
           />
@@ -313,11 +386,12 @@ export function GenericDocumentEditorPage({
           >
             <PaginatedDocumentRenderer
               document={session.document}
+              documentUpdate={session.documentUpdate}
               mode="screen"
               selectedNodeId={selectionPreviewNodeId(session.selection)}
               selectedRepeaterItem={selectionPreviewRepeaterItem(session.selection)}
               selectableNodeIds={selectableNodeIds}
-              onSelect={(target) => selectAndReveal(selectionFromRenderTarget(target), false)}
+              onSelect={selectFromPreview}
               onEditValueChange={commitDirectEdit}
               onRichTextSelection={setRichTextSelection}
               richTextSelection={richTextSelection}
@@ -325,28 +399,34 @@ export function GenericDocumentEditorPage({
             />
           </div>
           <div className="absolute bottom-5 left-1/2 z-20 -translate-x-1/2">
-            <DocumentElementToolbar
-              document={session.document}
+            <MemoDocumentElementToolbar
+              document={layerDocument}
               selection={session.selection}
-              onSelectionChange={(selection) => selectAndReveal(selection, false)}
+              onSelectionChange={selectWithoutLayerFocus}
               onChange={updateDocument}
             />
           </div>
         </main>
-        <PropertyInspector
-          document={session.document}
+        <MemoPropertyInspector
+          document={inspectorDocument}
           selection={session.selection}
-          onSelectionChange={(selection) => selectAndReveal(selection, false)}
+          onSelectionChange={selectWithoutLayerFocus}
           onChange={updateDocument}
         />
       </div>
-      <div className="document-print-surface">
-        <PaginatedDocumentRenderer document={session.document} mode="print" />
-      </div>
+      {printSnapshot && (
+        <div className="document-print-surface">
+          <PaginatedDocumentRenderer
+            document={printSnapshot}
+            mode="print"
+            onLayoutReady={markPrintReady}
+          />
+        </div>
+      )}
       {richTextSelection && <RichTextSelectionToolbar rect={richTextSelection.rect} onFormat={formatRichText} onRemove={removeInlineMark} />}
     </div>
   );
-}
+});
 
 function ComponentEditorScreen({
   sourceDocument,
@@ -681,7 +761,8 @@ function useMemoComponentNodeIds(document: DocumentData, rootNodeId: string): Re
   }, [document, rootNodeId]);
 }
 
-function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => void }) {
+function SaveIndicator({ store, onRetry }: { store: SaveStateStore; onRetry: () => void }) {
+  const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
   if (state.type === "dirty") return <Badge variant="secondary" className="[-webkit-app-region:no-drag]">저장 대기</Badge>;
   if (state.type === "saving") return <Badge variant="secondary" className="[-webkit-app-region:no-drag]"><Spinner /> 저장 중</Badge>;
   if (state.type === "error") return <Button type="button" variant="destructive" size="sm" className="[-webkit-app-region:no-drag]" title={state.message} onClick={onRetry}>저장 실패 · 다시 시도</Button>;
@@ -697,13 +778,68 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function afterNextPaint(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-}
-
 function pushUndoSnapshot(history: DocumentData[], document: DocumentData): void {
   history.push(document);
   if (history.length > 100) history.shift();
+}
+
+function editTargetOwnerNodeId(target: DocumentEditTarget): string {
+  if (target.kind === "node") return target.nodeId;
+  if (target.kind === "component-prop") return target.instanceNodeId;
+  return target.repeaterNodeId;
+}
+
+function sameStringSet(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+  return left.size === right.size && [...left].every((value) => right.has(value));
+}
+
+function updateAffectsLayer(update: DocumentUpdate, document: DocumentData): boolean {
+  return update.operations.some((operation) => {
+    if (
+      operation.type === "document-replaced" ||
+      operation.type === "page-settings-updated" ||
+      operation.type === "component-definition-updated" ||
+      operation.type === "node-inserted" ||
+      operation.type === "node-removed" ||
+      operation.type === "node-moved" ||
+      operation.type === "node-visibility-updated"
+    ) return true;
+    return operation.type === "node-content-updated" && document.nodes[operation.nodeId]?.type === "repeater";
+  });
+}
+
+function updateAffectsComponentNavigator(update: DocumentUpdate): boolean {
+  return update.operations.some((operation) => (
+    operation.type === "document-replaced" ||
+    operation.type === "component-definition-updated" ||
+    operation.type === "node-inserted" ||
+    operation.type === "node-removed" ||
+    operation.type === "node-moved"
+  ));
+}
+
+function updateAffectsSelection(
+  update: DocumentUpdate,
+  selection: DocumentSelection | undefined,
+): boolean {
+  if (!selection) return false;
+  return update.operations.some((operation) => {
+    if (
+      operation.type === "document-replaced" ||
+      operation.type === "page-settings-updated" ||
+      operation.type === "component-definition-updated"
+    ) return true;
+    if (operation.type === "document-metadata-updated") return false;
+    return operation.nodeId === selection.nodeId ||
+      (selection.kind === "component-node" && operation.nodeId === selection.componentNodeId);
+  });
+}
+
+function selectionKey(selection: DocumentSelection | undefined): string {
+  if (!selection) return "";
+  if (selection.kind === "node") return `node:${selection.nodeId}`;
+  if (selection.kind === "repeater-item") return `item:${selection.nodeId}:${selection.itemId}`;
+  return `component:${selection.nodeId}:${selection.componentNodeId}`;
 }
 
 function usesNativeUndo(activeElement: Element | null, preview: HTMLElement | null): boolean {

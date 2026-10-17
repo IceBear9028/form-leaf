@@ -41,6 +41,9 @@ const markdownProcessor = unified()
   .use(remarkParse)
   .use(remarkGfm);
 
+const markdownBlockCache = new Map<string, MarkdownBlock[]>();
+const MARKDOWN_BLOCK_CACHE_LIMIT = 128;
+
 export function parseMarkdownTree(source: string): Root {
   const parsed = markdownProcessor.parse(normalizeLineEndings(source));
   const tree = markdownProcessor.runSync(parsed) as Root;
@@ -49,8 +52,14 @@ export function parseMarkdownTree(source: string): Root {
 }
 
 export function parseMarkdownBlocks(source: string): MarkdownBlock[] {
+  const cached = markdownBlockCache.get(source);
+  if (cached) {
+    markdownBlockCache.delete(source);
+    markdownBlockCache.set(source, cached);
+    return cached;
+  }
   const children = parseMarkdownTree(source).children;
-  return children.map((node, index) => {
+  const blocks = children.map((node, index) => {
     const previous = children[index - 1];
     const linesBetween = previous?.position?.end.line && node.position?.start.line
       ? node.position.start.line - previous.position.end.line - 1
@@ -61,6 +70,16 @@ export function parseMarkdownBlocks(source: string): MarkdownBlock[] {
       extraBlankLinesBefore: Math.max(0, linesBetween - 1),
     };
   });
+  markdownBlockCache.set(source, blocks);
+  if (markdownBlockCache.size > MARKDOWN_BLOCK_CACHE_LIMIT) {
+    const oldest = markdownBlockCache.keys().next().value;
+    if (oldest !== undefined) markdownBlockCache.delete(oldest);
+  }
+  return blocks;
+}
+
+export function clearMarkdownBlockCache(): void {
+  markdownBlockCache.clear();
 }
 
 export function markdownEditableBlankLineOffsets(

@@ -22,6 +22,7 @@ import {
 } from "../../../../../foundation/documentEditing.ts";
 import { safeHref } from "./safeHref.ts";
 import { colorToCss } from "./styleToCss.ts";
+import { useBufferedStringEdit } from "./useBufferedEditValue.ts";
 
 export type DirectTextSelection = {
   target: DocumentEditTarget;
@@ -48,7 +49,11 @@ export function EditableTextValue({
   const composingRef = useRef(false);
   const compositionSourceRef = useRef("");
   const pendingSelectionRef = useRef<TextRange | undefined>(undefined);
-  const source = typeof value === "string" ? value : richTextPlainText(value);
+  const bufferedText = useBufferedStringEdit(
+    typeof value === "string" ? value : "",
+    (nextValue, selection) => onChange(target, nextValue, selection),
+  );
+  const source = typeof value === "string" ? bufferedText.value : richTextPlainText(value);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -67,10 +72,11 @@ export function EditableTextValue({
 
   const commitReplacement = (range: TextRange, replacement: string) => {
     const result = typeof value === "string"
-      ? replaceTextRange(value, range, replacement)
+      ? replaceTextRange(bufferedText.valueRef.current, range, replacement)
       : replaceRichTextRange(value, range, replacement);
     pendingSelectionRef.current = result.selection;
-    onChange(target, result.value, result.selection);
+    if (typeof result.value === "string") bufferedText.update(result.value, result.selection);
+    else onChange(target, result.value, result.selection);
   };
 
   const applyInput = (root: HTMLElement, inputType: string, data?: string) => {
@@ -136,11 +142,12 @@ export function EditableTextValue({
       }}
       onBlur={(event) => {
         hostProps.onBlur?.(event);
+        if (typeof value === "string") bufferedText.flush();
         onRichTextSelection?.(undefined);
       }}
     >
       {typeof value === "string"
-        ? value
+        ? bufferedText.value
         : value.runs.map((run, index) => (
           <Fragment key={`${index}-${run.text.length}`}>
             {renderMarkedText(run.text, run.marks ?? [], `editable-run-${index}`)}

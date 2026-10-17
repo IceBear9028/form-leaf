@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  clearMarkdownBlockCache,
   markdownTextSegments,
   markdownEditableBlankLineOffsets,
   parseMarkdownBlocks,
@@ -118,6 +119,17 @@ test("본문을 페이지네이션 가능한 Markdown 블록으로 분리한다"
     "text",
   ]);
   assert.equal(blocks[3].node.depth, 1);
+});
+
+test("동일 Markdown source는 parse 결과를 screen·measure에서 재사용한다", () => {
+  clearMarkdownBlockCache();
+  const source = "### 제목\n\n본문입니다.";
+  const screenBlocks = parseMarkdownBlocks(source);
+  const measureBlocks = parseMarkdownBlocks(source);
+  const changedBlocks = parseMarkdownBlocks(`${source}\n`);
+
+  assert.equal(measureBlocks, screenBlocks);
+  assert.notEqual(changedBlocks, screenBlocks);
 });
 
 test("인라인 강제 줄바꿈은 제목을 나누지 않고 같은 Markdown 블록에 유지한다", () => {

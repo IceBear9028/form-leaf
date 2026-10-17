@@ -7,11 +7,6 @@ import type {
   RichTextValue,
 } from "./documentModel.ts";
 import type { DocumentTransactionOptions } from "./documentTransactions.ts";
-import { updateNode } from "./documentTransactions.ts";
-import {
-  setComponentInstanceProp,
-  setRepeaterItemProp,
-} from "./documentComponentOperations.ts";
 
 export type DocumentEditTarget =
   | { kind: "node"; nodeId: string }
@@ -62,24 +57,62 @@ export function updateDocumentEditValue(
   const current = readDocumentEditValue(document, target);
   if (typeof current !== typeof value) throw new Error("편집 값의 type이 target과 일치하지 않습니다.");
   if (target.kind === "node") {
-    return updateNode(document, target.nodeId, (node) => {
-      if (node.type === "text" && typeof value === "string") return { ...node, value };
-      if (node.type === "markdown" && typeof value === "string") return { ...node, source: value };
-      if (node.type === "rich-text" && isRichTextValue(value)) return { ...node, value: structuredClone(value) };
-      throw new Error("직접 편집 값과 node type이 일치하지 않습니다.");
+    const node = document.nodes[target.nodeId];
+    if (!node) throw new Error(`node를 찾을 수 없습니다: ${target.nodeId}`);
+    const nextNode = node.type === "text" && typeof value === "string"
+      ? { ...node, value }
+      : node.type === "markdown" && typeof value === "string"
+        ? { ...node, source: value }
+        : node.type === "rich-text" && isRichTextValue(value)
+          ? { ...node, value: structuredClone(value) }
+          : undefined;
+    if (!nextNode) throw new Error("직접 편집 값과 node type이 일치하지 않습니다.");
+    return touchDocument({
+      ...document,
+      nodes: { ...document.nodes, [node.id]: nextNode },
     }, options);
   }
   if (target.kind === "component-prop") {
-    return setComponentInstanceProp(document, target.instanceNodeId, target.propId, value, options);
+    const node = document.nodes[target.instanceNodeId];
+    if (node?.type !== "component-instance") throw new Error("component instance를 찾을 수 없습니다.");
+    return touchDocument({
+      ...document,
+      nodes: {
+        ...document.nodes,
+        [node.id]: {
+          ...node,
+          props: { ...node.props, [target.propId]: cloneDirectEditValue(value) },
+        },
+      },
+    }, options);
   }
-  return setRepeaterItemProp(
-    document,
-    target.repeaterNodeId,
-    target.itemId,
-    target.propId,
-    value,
-    options,
-  );
+  const node = document.nodes[target.repeaterNodeId];
+  if (node?.type !== "repeater") throw new Error("repeater를 찾을 수 없습니다.");
+  const itemIndex = node.items.findIndex((item) => item.id === target.itemId);
+  if (itemIndex < 0) throw new Error(`repeater item을 찾을 수 없습니다: ${target.itemId}`);
+  const items = [...node.items];
+  items[itemIndex] = {
+    ...items[itemIndex],
+    props: { ...items[itemIndex].props, [target.propId]: cloneDirectEditValue(value) },
+  };
+  return touchDocument({
+    ...document,
+    nodes: { ...document.nodes, [node.id]: { ...node, items } },
+  }, options);
+}
+
+function touchDocument(
+  document: DocumentData,
+  options?: DocumentTransactionOptions,
+): DocumentData {
+  return {
+    ...document,
+    updatedAt: (options?.now ?? (() => new Date().toISOString()))(),
+  };
+}
+
+function cloneDirectEditValue(value: DirectEditValue): DirectEditValue {
+  return typeof value === "string" ? value : structuredClone(value);
 }
 
 export function replaceTextRange(source: string, range: TextRange, replacement: string): {

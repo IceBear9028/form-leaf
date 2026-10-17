@@ -130,11 +130,11 @@ export function useDocumentLibrary() {
     }
   };
 
-  const updateSummary = (summary: DocumentSummary) => {
+  const updateSummary = useCallback((summary: DocumentSummary) => {
     setDocuments((current) => sortDocumentSummaries(current.map((item) =>
       item.id === summary.id ? summary : item,
     )));
-  };
+  }, []);
 
   return {
     documents,

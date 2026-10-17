@@ -3,8 +3,10 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type HTMLAttributes,
 } from "react";
+import { createPortal } from "react-dom";
 import type { DocumentEditTarget, TextRange } from "../../../../../foundation/documentEditing.ts";
 import {
   replaceMarkdownRange,
@@ -33,6 +35,7 @@ import {
 } from "../markdown/MarkdownContent.tsx";
 import { MarkdownSelectionToolbar } from "../markdown/MarkdownSelectionToolbar.tsx";
 import type { RenderMarkdownNode } from "./renderTree.ts";
+import { useBufferedStringEdit } from "./useBufferedEditValue.ts";
 
 export function EditableMarkdownValue({
   hostProps,
@@ -48,15 +51,55 @@ export function EditableMarkdownValue({
   onChange: (target: DocumentEditTarget, value: string, selection: TextRange) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const sourceRef = useRef(source);
   const pendingSelectionRef = useRef<MarkdownSourceRange | undefined>(undefined);
   const [selection, setSelection] = useState<MarkdownDomSelection>();
-  const blocks = parseMarkdownBlocks(source);
+  const bufferedSource = useBufferedStringEdit(
+    source,
+    (nextSource, nextSelection) => onChange(target, nextSource, nextSelection),
+  );
+  const activeSource = bufferedSource.value;
+  const sourceRef = bufferedSource.valueRef;
+  const blocks = parseMarkdownBlocks(activeSource);
   const renderedBlocks = fragment
     ? fragment.blockIndexes.flatMap((index) => blocks[index] ? [blocks[index]] : [])
     : blocks;
   const sourceId = editTargetSourceId(target);
-  sourceRef.current = source;
+  const [focusedPage, setFocusedPage] = useState<HTMLElement>();
+  const [focusRect, setFocusRect] = useState<MarkdownFocusRect>();
+
+  useLayoutEffect(() => {
+    if (!focusedPage) {
+      setFocusRect(undefined);
+      return;
+    }
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const hosts = [...focusedPage.querySelectorAll<HTMLElement>("[data-markdown-edit-source-id]")]
+          .filter((element) => element.dataset.markdownEditSourceId === sourceId);
+        const previewViewport = focusedPage.closest(".paginated-document")?.parentElement?.getBoundingClientRect();
+        const next = unionVisibleRects(
+          hosts.map((element) => element.getBoundingClientRect()),
+          previewViewport,
+        );
+        setFocusRect((current) => sameFocusRect(current, next) ? current : next);
+      });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    focusedPage.querySelectorAll<HTMLElement>("[data-markdown-edit-source-id]").forEach((element) => {
+      if (element.dataset.markdownEditSourceId === sourceId) observer.observe(element);
+    });
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [activeSource, focusedPage, sourceId]);
 
   useEffect(() => {
     const updateSelection = () => {
@@ -77,16 +120,15 @@ export function EditableMarkdownValue({
     if (!pending || !root || !restoreMarkdownSelection(root, sourceId, pending)) return;
     pendingSelectionRef.current = undefined;
     setSelection(readMarkdownSelection(root));
-  }, [source, sourceId]);
+  }, [activeSource, sourceId]);
 
   const updateSource = (
     edit: (current: string) => { source: string; selection: MarkdownSourceRange },
   ) => {
     const result = edit(sourceRef.current);
     if (result.source === sourceRef.current) return;
-    sourceRef.current = result.source;
     pendingSelectionRef.current = result.selection;
-    onChange(target, result.source, result.selection);
+    bufferedSource.update(result.source, result.selection);
   };
 
   const editText = (
@@ -201,7 +243,25 @@ export function EditableMarkdownValue({
   });
 
   return (
-    <div {...hostProps} ref={rootRef} data-document-edit-target="true">
+    <div
+      {...hostProps}
+      ref={rootRef}
+      data-document-edit-target="true"
+      data-markdown-edit-source-id={sourceId}
+      onFocusCapture={(event) => {
+        setFocusedPage(event.currentTarget.closest<HTMLElement>(".document-page") ?? undefined);
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) bufferedSource.flush();
+        requestAnimationFrame(() => {
+          const active = document.activeElement;
+          const activeHost = active instanceof Element
+            ? active.closest<HTMLElement>("[data-markdown-edit-source-id]")
+            : undefined;
+          if (activeHost?.dataset.markdownEditSourceId !== sourceId) setFocusedPage(undefined);
+        });
+      }}
+    >
       {renderedBlocks.length ? renderedBlocks.map((block) => (
         <MarkdownBlockContent
           key={block.id}
@@ -210,7 +270,7 @@ export function EditableMarkdownValue({
           context="document"
           idPrefix={`markdown-${sourceId}`}
           editing={{
-            source,
+            source: activeSource,
             sourceId,
             onTextEdit: editText,
             onEditIntent: editFromInput,
@@ -254,8 +314,49 @@ export function EditableMarkdownValue({
           onBlockquote={applyBlockquote}
         />
       )}
+      {focusRect && createPortal(
+        <div
+          className="document-markdown-focus-ring"
+          style={{
+            top: focusRect.top,
+            left: focusRect.left,
+            width: focusRect.width,
+            height: focusRect.height,
+          } as CSSProperties}
+          aria-hidden="true"
+        />,
+        document.body,
+      )}
     </div>
   );
+}
+
+type MarkdownFocusRect = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
+function unionVisibleRects(rects: DOMRect[], clip?: DOMRect): MarkdownFocusRect | undefined {
+  const visible = rects.filter((rect) => rect.width > 0 && rect.height > 0);
+  if (!visible.length) return undefined;
+  const left = Math.max(Math.min(...visible.map((rect) => rect.left)), clip?.left ?? -Infinity);
+  const top = Math.max(Math.min(...visible.map((rect) => rect.top)), clip?.top ?? -Infinity);
+  const right = Math.min(Math.max(...visible.map((rect) => rect.right)), clip?.right ?? Infinity);
+  const bottom = Math.min(Math.max(...visible.map((rect) => rect.bottom)), clip?.bottom ?? Infinity);
+  if (right <= left || bottom <= top) return undefined;
+  return { top, left, width: right - left, height: bottom - top };
+}
+
+function sameFocusRect(
+  left: MarkdownFocusRect | undefined,
+  right: MarkdownFocusRect | undefined,
+): boolean {
+  return left?.top === right?.top &&
+    left?.left === right?.left &&
+    left?.width === right?.width &&
+    left?.height === right?.height;
 }
 
 function editTargetSourceId(target: DocumentEditTarget): string {

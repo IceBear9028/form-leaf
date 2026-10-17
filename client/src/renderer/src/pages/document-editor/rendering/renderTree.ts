@@ -6,8 +6,10 @@ import type {
   RichTextValue,
   StyleDefinition,
 } from "../../../../../foundation/documentModel.ts";
-import type { DocumentEditTarget } from "../../../../../foundation/documentEditing.ts";
-import { assertDocumentData } from "../../../../../foundation/documentValidation.ts";
+import {
+  documentEditTargetKey,
+  type DocumentEditTarget,
+} from "../../../../../foundation/documentEditing.ts";
 
 type RenderNodeBase = {
   renderId: string;
@@ -16,6 +18,8 @@ type RenderNodeBase = {
   visible: boolean;
   style?: StyleDefinition;
   editTarget?: DocumentEditTarget;
+  layoutRole?: "fixed-overlay" | "fixed-placeholder";
+  layoutFragmentIndex?: number;
 };
 
 export type RenderContainerNode = RenderNodeBase & {
@@ -80,8 +84,47 @@ export function buildRenderTree(
   document: DocumentData,
   rootNodeId: string = document.rootNodeId,
 ): RenderTreeNode {
-  assertDocumentData(document);
   return resolveNode(document, rootNodeId, `node:${rootNodeId}`, new Map(), true);
+}
+
+export function reuseRenderTree(
+  previous: RenderTreeNode | undefined,
+  next: RenderTreeNode,
+): RenderTreeNode {
+  if (!previous || !sameRenderNodeBase(previous, next) || previous.type !== next.type) return next;
+  if (next.type === "container" && previous.type === "container") {
+    if (previous.children.length !== next.children.length) return next;
+    const children = next.children.map((child, index) => reuseRenderTree(previous.children[index], child));
+    return children.every((child, index) => child === previous.children[index])
+      ? previous
+      : { ...next, children };
+  }
+  if (next.type === "component-instance" && previous.type === "component-instance") {
+    if (previous.componentId !== next.componentId) return next;
+    const child = reuseRenderTree(previous.child, next.child);
+    return child === previous.child ? previous : { ...next, child };
+  }
+  if (next.type === "repeater" && previous.type === "repeater") {
+    if (previous.componentId !== next.componentId || previous.items.length !== next.items.length) return next;
+    const items = next.items.map((item, index) => {
+      const previousItem = previous.items[index];
+      if (!previousItem || previousItem.id !== item.id || previousItem.visible !== item.visible) return item;
+      const child = reuseRenderTree(previousItem.child, item.child);
+      return child === previousItem.child ? previousItem : { ...item, child };
+    });
+    return items.every((item, index) => item === previous.items[index]) ? previous : { ...next, items };
+  }
+  if (next.type === "text" && previous.type === "text" && previous.value === next.value) return previous;
+  if (next.type === "rich-text" && previous.type === "rich-text" && previous.value === next.value) return previous;
+  if (
+    next.type === "markdown" && previous.type === "markdown" &&
+    previous.source === next.source && sameFragment(previous.fragment, next.fragment)
+  ) return previous;
+  if (
+    next.type === "image" && previous.type === "image" &&
+    previous.asset === next.asset && previous.alt === next.alt
+  ) return previous;
+  return next;
 }
 
 type RenderOverride = {
@@ -121,7 +164,7 @@ function resolveNode(
     };
   }
   if (node.type === "text") return { ...base, type: node.type, value: node.value };
-  if (node.type === "rich-text") return { ...base, type: node.type, value: structuredClone(node.value) };
+  if (node.type === "rich-text") return { ...base, type: node.type, value: node.value };
   if (node.type === "markdown") return { ...base, type: node.type, source: node.source };
   if (node.type === "image") {
     return {
@@ -223,4 +266,30 @@ function isImageValue(
   value: ComponentPropValue,
 ): value is Extract<ComponentPropValue, { alt: string }> {
   return typeof value === "object" && "alt" in value;
+}
+
+function sameRenderNodeBase(left: RenderTreeNode, right: RenderTreeNode): boolean {
+  return left.renderId === right.renderId &&
+    left.sourceNodeId === right.sourceNodeId &&
+    left.name === right.name &&
+    left.visible === right.visible &&
+    left.style === right.style &&
+    left.layoutRole === right.layoutRole &&
+    left.layoutFragmentIndex === right.layoutFragmentIndex &&
+    editTargetKey(left.editTarget) === editTargetKey(right.editTarget);
+}
+
+function editTargetKey(target: DocumentEditTarget | undefined): string | undefined {
+  return target ? documentEditTargetKey(target) : undefined;
+}
+
+function sameFragment(
+  left: RenderMarkdownNode["fragment"],
+  right: RenderMarkdownNode["fragment"],
+): boolean {
+  if (!left || !right) return left === right;
+  return left.first === right.first &&
+    left.last === right.last &&
+    left.blockIndexes.length === right.blockIndexes.length &&
+    left.blockIndexes.every((value, index) => value === right.blockIndexes[index]);
 }
