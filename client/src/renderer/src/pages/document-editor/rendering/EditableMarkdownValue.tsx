@@ -15,7 +15,6 @@ import {
   insertMarkdownTextWithFormats,
   insertMarkdownParagraphBreak,
   replaceMarkdownRange,
-  replaceMarkdownText,
   replaceMarkdownTextWithInputRules,
   setMarkdownTaskItemChecked,
   type MarkdownCommand,
@@ -35,7 +34,9 @@ import {
 } from "../markdown/sourceSelection.ts";
 import {
   MarkdownBlockContent,
+  MarkdownEmptyContent,
   MarkdownFootnotesContent,
+  type MarkdownEditingContext,
 } from "../markdown/MarkdownContent.tsx";
 import { MarkdownSelectionToolbar } from "../markdown/MarkdownSelectionToolbar.tsx";
 import { MarkdownQuickInsertMenu } from "../markdown/MarkdownQuickInsertMenu.tsx";
@@ -113,6 +114,7 @@ export function EditableMarkdownValue({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const pendingInlineFormatsRef = useRef(new Set<MarkdownInlineFormat>());
+  const committedCompositionRef = useRef<string | undefined>(undefined);
   const [selection, setSelection] = useState<MarkdownDomSelection>();
   const [caretSelection, setCaretSelection] = useState<MarkdownDomSelection>();
   const [dismissedQuickInsertAt, setDismissedQuickInsertAt] = useState<number>();
@@ -162,6 +164,21 @@ export function EditableMarkdownValue({
     const exactRoots = roots.filter((candidate) => (
       rootContainsMarkdownRange(candidate, sourceId, pending)
     ));
+    const composingRoot = roots.find((candidate) => (
+      candidate.querySelector('[data-markdown-composing="true"]')
+    ));
+    if (composingRoot) {
+      if (interactionDebugEnabled()) {
+        recordInteraction("markdown-render", {
+          sourceId,
+          pending,
+          ownerRenderId: pendingEntry.ownerRenderId,
+          skipped: "composition-active",
+          activeElement: snapshotEventTarget(document.activeElement),
+        });
+      }
+      return;
+    }
     const restoreOwner = exactRoots.find((candidate) => (
       candidate.dataset.documentRenderId === pendingEntry.ownerRenderId
     )) ?? exactRoots.find((candidate) => (
@@ -256,18 +273,34 @@ export function EditableMarkdownValue({
     updateSource(() => entry, false);
   };
 
-  const editText = (
-    range: MarkdownSourceRange,
-    visibleText: string,
-    visibleSelection: MarkdownSourceRange,
-  ) => updateSource((current) => replaceMarkdownText(current, range, visibleText, visibleSelection));
-
-  const editFromInput = (root: HTMLElement, inputType: string, data?: string) => {
+  const editFromInput = (
+    root: HTMLElement,
+    inputType: string,
+    data?: string,
+    targetSelection?: MarkdownDomSelection,
+  ) => {
     if (inputType === "historyUndo" || inputType === "historyRedo") {
       applyHistory(inputType === "historyUndo" ? "undo" : "redo");
       return;
     }
-    const currentSelection = readMarkdownSourceSelection(root, true);
+    const sourceSelection = targetSelection ?? readMarkdownSourceSelection(root, true) ?? (
+      sourceRef.current.length === 0 && root.contains(document.activeElement)
+        ? {
+            sourceId,
+            groupId: `${sourceId}:empty`,
+            range: { start: 0, end: 0 },
+            rect: root.getBoundingClientRect(),
+          }
+        : undefined
+    );
+    const queuedSelection = pendingMarkdownSelections.get(sourceId);
+    const queuedRange = sourceRef.current !== activeSource &&
+      queuedSelection?.ownerRenderId === renderId
+      ? queuedSelection.range
+      : undefined;
+    const currentSelection = sourceSelection && queuedRange
+      ? { ...sourceSelection, range: queuedRange }
+      : sourceSelection;
     if (interactionDebugEnabled()) {
       recordInteraction("markdown-input", {
         sourceId,
@@ -379,11 +412,13 @@ export function EditableMarkdownValue({
     const lineBreak = inputType === "insertLineBreak";
     const insertedText = paragraphBreak ? "\n\n" : lineBreak ? "<br>" : data;
     if (insertedText === undefined) return;
-    if (/^[ \t]+$/.test(insertedText) && range.start === range.end) {
+    if ((paragraphBreak || lineBreak || /^[ \t]+$/.test(insertedText)) &&
+        range.start === range.end) {
       const outside = whitespaceOffsetOutsideInlineFormat(root, range.start, current);
       if (outside !== undefined) range = { start: outside, end: outside };
     }
-    const block = blocks.find((entry) => (
+    const currentBlocks = current === activeSource ? blocks : parseMarkdownBlocks(current);
+    const block = currentBlocks.find((entry) => (
       entry.node.position?.start.offset !== undefined &&
       entry.node.position?.end.offset !== undefined &&
       range.start >= entry.node.position.start.offset &&
@@ -497,6 +532,51 @@ export function EditableMarkdownValue({
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
+  const markdownEditing: MarkdownEditingContext = {
+    source: activeSource,
+    sourceId,
+    onEditIntent: editFromInput,
+    onCompositionCommit: (initialRange, text) => {
+      committedCompositionRef.current = text;
+      const queuedSelection = pendingMarkdownSelections.get(sourceId);
+      const range = sourceRef.current !== activeSource &&
+          queuedSelection?.ownerRenderId === renderId
+        ? queuedSelection.range
+        : initialRange;
+      if (interactionDebugEnabled()) {
+        recordInteraction("markdown-input", {
+          sourceId,
+          inputType: "insertCompositionText",
+          dataKind: text === "\n" ? "newline" : text ? "text" : "empty",
+          dataLength: text.length,
+          initialRange,
+          selection: range,
+        });
+      }
+      updateSource((current) => replaceMarkdownTextWithInputRules(
+        current,
+        range,
+        text,
+        { start: text.length, end: text.length },
+        "typing",
+      ));
+    },
+    consumeCompositionEcho: (inputType, data, isComposing) => {
+      const committedComposition = committedCompositionRef.current;
+      if (committedComposition === undefined) return false;
+      committedCompositionRef.current = undefined;
+      return !isComposing &&
+        data === committedComposition &&
+        ["insertText", "insertCompositionText", "insertFromComposition"].includes(inputType);
+    },
+    clearCompositionEcho: () => {
+      committedCompositionRef.current = undefined;
+    },
+    onTaskToggle: (itemStart, checked) => updateSource((current) => (
+      setMarkdownTaskItemChecked(current, itemStart, checked)
+    )),
+  };
+
   return (
     <div
       {...hostProps}
@@ -518,6 +598,10 @@ export function EditableMarkdownValue({
       }}
       onClick={(event) => {
         hostProps.onClick?.(event);
+        const editableSurface = event.target instanceof Element
+          ? event.target.closest<HTMLElement>('[contenteditable="true"]')
+          : undefined;
+        if (!editableSurface || !event.currentTarget.contains(editableSurface)) return;
         onActivateTarget?.(target, renderId, event.nativeEvent);
       }}
       onBlurCapture={(event) => {
@@ -535,67 +619,10 @@ export function EditableMarkdownValue({
           documentBlocks={blocks}
           context="document"
           idPrefix={`markdown-${sourceId}`}
-          editing={{
-            source: activeSource,
-            sourceId,
-            onTextEdit: editText,
-            onEditIntent: editFromInput,
-            onTaskToggle: (itemStart, checked) => updateSource((current) => (
-              setMarkdownTaskItemChecked(current, itemStart, checked)
-            )),
-          }}
+          editing={markdownEditing}
         />
       )) : (
-        <div
-          className="document-empty-editable"
-          contentEditable
-          suppressContentEditableWarning
-          role="textbox"
-          aria-label="Markdown 입력"
-          data-placeholder="텍스트 입력"
-          onBeforeInput={(event) => {
-            event.preventDefault();
-            const inputType = event.nativeEvent.inputType;
-            const text = event.nativeEvent.data ?? "";
-            if (
-              inputType !== "insertParagraph" &&
-              inputType !== "insertLineBreak" &&
-              pendingInlineFormatsRef.current.size > 0
-            ) {
-              const formats = [...pendingInlineFormatsRef.current];
-              pendingInlineFormatsRef.current.clear();
-              updateSource((current) => insertMarkdownTextWithFormats(
-                current,
-                { start: 0, end: current.length },
-                text,
-                formats,
-              ));
-              return;
-            }
-            updateSource((current) => inputType === "insertParagraph"
-              ? insertMarkdownParagraphBreak(current, { start: 0, end: current.length })
-              : inputType === "insertLineBreak"
-                ? replaceMarkdownRange(current, { start: 0, end: current.length }, "<br>")
-                : replaceMarkdownTextWithInputRules(
-                  current,
-                  { start: 0, end: current.length },
-                  text,
-                  { start: text.length, end: text.length },
-                  "typing",
-                ));
-          }}
-          onPaste={(event) => {
-            event.preventDefault();
-            const text = event.clipboardData.getData("text/plain");
-            updateSource((current) => replaceMarkdownTextWithInputRules(
-              current,
-              { start: 0, end: current.length },
-              text,
-              { start: text.length, end: text.length },
-              "paste",
-            ));
-          }}
-        />
+        <MarkdownEmptyContent editing={markdownEditing} />
       )}
       {(!fragment || fragment.last) && (
         <MarkdownFootnotesContent documentBlocks={blocks} context="document" idPrefix={`markdown-${sourceId}`} />

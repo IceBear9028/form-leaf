@@ -1,8 +1,21 @@
-import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  memo,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from "react";
 import type { DocumentData } from "../../../../../foundation/documentModel.ts";
 import type { DocumentUpdate } from "../../../../../foundation/documentUpdates.ts";
 import type { DirectEditValue, DocumentEditTarget, TextRange } from "../../../../../foundation/documentEditing.ts";
-import { NodeRenderer, type RenderSelectionMode, type RenderSelectionTarget } from "./NodeRenderer.tsx";
+import {
+  NodeRenderer,
+  type ActiveEditTarget,
+  type RenderSelectionMode,
+  type RenderSelectionTarget,
+} from "./NodeRenderer.tsx";
 import type { DirectTextSelection } from "./EditableTextValue.tsx";
 import {
   collectPaginationUnits,
@@ -31,7 +44,7 @@ type PaginatedDocumentRendererProps = {
   selectableNodeIds?: ReadonlySet<string>;
   selectionMode?: RenderSelectionMode;
   onSelect?: (target: RenderSelectionTarget, event?: Event) => void;
-  activeEditRenderId?: string;
+  activeEditTarget?: ActiveEditTarget;
   onEditActivate?: (target: DocumentEditTarget, renderId: string, event?: Event) => void;
   onEditValueChange?: (target: DocumentEditTarget, value: DirectEditValue, selection: TextRange) => void;
   onRichTextSelection?: (selection?: DirectTextSelection) => void;
@@ -49,7 +62,7 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
   selectableNodeIds,
   selectionMode = "content",
   onSelect,
-  activeEditRenderId,
+  activeEditTarget,
   onEditActivate,
   onEditValueChange,
   onRichTextSelection,
@@ -188,12 +201,20 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
                 selectableNodeIds={selectableNodeIds}
                 selectionMode={selectionMode}
                 onSelect={mode === "screen" ? onSelect : undefined}
-                activeEditRenderId={mode === "screen" ? activeEditRenderId : undefined}
+                activeEditTarget={mode === "screen" ? activeEditTarget : undefined}
                 onEditActivate={mode === "screen" ? onEditActivate : undefined}
                 onEditValueChange={mode === "screen" ? onEditValueChange : undefined}
                 onRichTextSelection={mode === "screen" ? onRichTextSelection : undefined}
                 richTextSelection={mode === "screen" ? richTextSelection : undefined}
               />
+              {mode === "screen" && (
+                <PageSelectionOutline
+                  selectedNodeId={selectedNodeId}
+                  selectedRepeaterItem={selectedRepeaterItem}
+                  layoutKey={page.units}
+                  zoom={zoom}
+                />
+              )}
             </div>
             <footer className="document-page-footer" aria-label={`${pageIndex + 1}페이지`}>
               <span>{pageIndex + 1}</span>
@@ -211,6 +232,117 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
     </div>
   );
 }, samePaginatedRendererProps);
+
+type SelectionOutlineRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+function PageSelectionOutline({
+  selectedNodeId,
+  selectedRepeaterItem,
+  layoutKey,
+  zoom,
+}: {
+  selectedNodeId?: string;
+  selectedRepeaterItem?: { nodeId: string; itemId: string };
+  layoutKey: readonly Unit[];
+  zoom: number;
+}) {
+  const markerRef = useRef<HTMLDivElement>(null);
+  const rect = useSelectionOutlineRect(
+    markerRef,
+    selectedNodeId,
+    selectedRepeaterItem,
+    layoutKey,
+    zoom,
+  );
+  return (
+    <div
+      ref={markerRef}
+      className="document-selection-outline"
+      data-document-selection-outline={rect ? "true" : undefined}
+      data-document-selection-kind={selectedRepeaterItem ? "repeater-item" : selectedNodeId ? "node" : undefined}
+      style={rect}
+      aria-hidden="true"
+    />
+  );
+}
+
+function useSelectionOutlineRect(
+  markerRef: RefObject<HTMLDivElement | null>,
+  selectedNodeId: string | undefined,
+  selectedRepeaterItem: { nodeId: string; itemId: string } | undefined,
+  layoutKey: readonly Unit[],
+  zoom: number,
+): SelectionOutlineRect | undefined {
+  const [rect, setRect] = useState<SelectionOutlineRect>();
+
+  useLayoutEffect(() => {
+    const container = markerRef.current?.parentElement;
+    if (!container || (!selectedNodeId && !selectedRepeaterItem)) {
+      setRect(undefined);
+      return;
+    }
+    const selectedElements = () => Array.from(
+      container.querySelectorAll<HTMLElement>('[data-document-selected="true"]'),
+    ).filter((element) => selectedRepeaterItem
+      ? element.classList.contains("document-repeater-item") &&
+        element.dataset.repeaterNodeId === selectedRepeaterItem.nodeId &&
+        element.dataset.repeaterItemId === selectedRepeaterItem.itemId
+      : element.classList.contains("document-node") &&
+        element.dataset.documentNodeId === selectedNodeId);
+    const update = () => {
+      const elements = selectedElements().filter((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.width > 0 && bounds.height > 0;
+      });
+      if (!elements.length) {
+        setRect(undefined);
+        return;
+      }
+      const containerBounds = container.getBoundingClientRect();
+      const bounds = elements.map((element) => element.getBoundingClientRect());
+      const left = Math.min(...bounds.map((entry) => entry.left));
+      const top = Math.min(...bounds.map((entry) => entry.top));
+      const right = Math.max(...bounds.map((entry) => entry.right));
+      const bottom = Math.max(...bounds.map((entry) => entry.bottom));
+      const scaleX = container.offsetWidth > 0 ? containerBounds.width / container.offsetWidth : 1;
+      const scaleY = container.offsetHeight > 0 ? containerBounds.height / container.offsetHeight : 1;
+      const next = {
+        left: (left - containerBounds.left) / (scaleX || 1),
+        top: (top - containerBounds.top) / (scaleY || 1),
+        width: (right - left) / (scaleX || 1),
+        height: (bottom - top) / (scaleY || 1),
+      };
+      setRect((current) => sameSelectionOutlineRect(current, next) ? current : next);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(container);
+    selectedElements().forEach((element) => observer.observe(element));
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [layoutKey, markerRef, selectedNodeId, selectedRepeaterItem, zoom]);
+
+  return rect;
+}
+
+function sameSelectionOutlineRect(
+  current: SelectionOutlineRect | undefined,
+  next: SelectionOutlineRect,
+): boolean {
+  return Boolean(current) &&
+    Math.abs(current!.left - next.left) < 0.1 &&
+    Math.abs(current!.top - next.top) < 0.1 &&
+    Math.abs(current!.width - next.width) < 0.1 &&
+    Math.abs(current!.height - next.height) < 0.1;
+}
 
 function requireContainer(node: ReturnType<typeof buildRenderTree>): RenderContainerNode {
   if (node.type !== "container") throw new Error("document root는 container여야 합니다.");
@@ -234,7 +366,7 @@ function samePaginatedRendererProps(
     previous.selectableNodeIds === next.selectableNodeIds &&
     previous.selectionMode === next.selectionMode &&
     previous.onSelect === next.onSelect &&
-    previous.activeEditRenderId === next.activeEditRenderId &&
+    previous.activeEditTarget === next.activeEditTarget &&
     previous.onEditActivate === next.onEditActivate &&
     previous.onEditValueChange === next.onEditValueChange &&
     previous.onRichTextSelection === next.onRichTextSelection &&

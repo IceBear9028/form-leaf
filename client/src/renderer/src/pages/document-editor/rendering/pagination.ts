@@ -93,13 +93,13 @@ function splitFlowRow(node: RenderContainerNode): PaginationUnit[] | undefined {
     const last = index === flowUnits.length - 1;
     const flowFragment: RenderContainerNode = {
       ...flow,
-      renderId: `${flow.renderId}/flow-unit:${unit.id}`,
+      renderId: first ? flow.renderId : `${flow.renderId}/flow-unit:${unit.id}`,
       style: fragmentStyle(flow.style, first, last),
       children: [unit.node],
     };
     const rowFragment: RenderContainerNode = {
       ...node,
-      renderId: `${node.renderId}/flow-unit:${unit.id}`,
+      renderId: first ? node.renderId : `${node.renderId}/flow-unit:${unit.id}`,
       style: positionedRowStyle(fragmentStyle(node.style, first, last)),
       children: node.children.flatMap((child, childIndex) => {
         if (childIndex === flowIndex) return [flowFragment];
@@ -216,7 +216,7 @@ function splitMarkdown(node: RenderMarkdownNode): PaginationUnit[] {
     const quoteBeforeList = block.node.type === "blockquote" && nextBlock?.node.type === "list";
     const fragment: RenderMarkdownNode = {
       ...node,
-      renderId: `${node.renderId}/markdown-block:${block.id}`,
+      renderId: fragmentIndex === 0 ? node.renderId : `${node.renderId}/markdown-block:${block.id}`,
       style: fragmentIndex === 0 ? node.style : continuationStyle(node.style),
       fragment: {
         blockIndexes: [blockIndex],
@@ -243,7 +243,7 @@ function splitComponent(node: RenderComponentNode): PaginationUnit[] {
   return childUnits.map((unit, index) => {
     const wrapper: RenderComponentNode = {
       ...node,
-      renderId: `${node.renderId}/page-unit:${unit.id}`,
+      renderId: index === 0 ? node.renderId : `${node.renderId}/page-unit:${unit.id}`,
       style: index === 0 ? node.style : continuationStyle(node.style),
       child: unit.node,
     };
@@ -279,7 +279,9 @@ function splitRepeater(node: RenderRepeaterNode): PaginationUnit[] {
     childUnits.forEach((unit, unitIndex) => {
       const wrapper: RenderRepeaterNode = {
         ...node,
-        renderId: `${node.renderId}/page-item:${item.id}/unit:${unit.id}`,
+        renderId: result.length === 0
+          ? node.renderId
+          : `${node.renderId}/page-item:${item.id}/unit:${unit.id}`,
         style: result.length === 0 ? node.style : continuationStyle(node.style),
         items: [{ ...item, child: unit.node }],
       };
@@ -303,7 +305,7 @@ function wrapContainerUnit(
 ): RenderContainerNode {
   return {
     ...node,
-    renderId: `${node.renderId}/page-unit:${unit.id}`,
+    renderId: index === 0 ? node.renderId : `${node.renderId}/page-unit:${unit.id}`,
     style: index === 0 ? node.style : continuationStyle(node.style),
     children: [unit.node],
   };

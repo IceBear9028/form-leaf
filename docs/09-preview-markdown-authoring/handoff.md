@@ -2,10 +2,10 @@
 
 ## 현재 상태
 
-- 상태: 실제 Space·Tab 입력 회귀 수정 및 자동 검증 완료, 사용자 실제 앱 확인 대기
-- 현재 단계: 7. hidden Playwright 검증 완료, 실제 앱 확인 대기
-- 작업 트리: Jira 레퍼런스 backlog 보강과 09 문서가 미커밋 상태
-- 마지막 커밋: `7e9d4d9 docs: plan preview markdown authoring`
+- 상태: 실제 Space·Tab·IME 입력 회귀 수정 및 자동 검증 완료, 사용자 실제 앱 확인 대기
+- 현재 단계: 7. 표준 IME 이벤트 흐름과 hidden Playwright 반복 검증 완료, 실제 앱 확인 대기
+- 작업 트리: Preview 선택·Markdown 편집 회귀 수정과 09 문서가 미커밋 상태
+- 마지막 커밋: `19ec27a feat: improve preview markdown authoring`
 
 ## 완료된 작업
 
@@ -29,7 +29,7 @@
 - `DOCUMENT_E2E_HEADLESS=1`에서는 app window를 표시하지 않아 테스트가 사용자의 실제 키보드·마우스 focus를 가져가지 않는다.
 - PDF E2E는 native 저장창을 자동 조작하지 않고 임시 저장 경로 응답만 대체하며 production `printToPDF` handler를 실행한다.
 - 기존 E2E가 `keyboard.insertText()`로 Space keydown을 우회해 실제 회귀를 놓친 원인을 확인했다.
-- 일반 Space를 Markdown 편집기의 명시적 keydown command로 연결해 `- ` 블록 전환과 연속 공백 입력을 같은 source transaction으로 처리한다.
+- 일반 Space를 가로채던 상위 container/repeater 선택 keydown을 자기 자신에서 발생한 이벤트로 제한하고, Markdown은 Chromium의 표준 `beforeinput`으로 `- ` 블록 전환과 연속 공백을 처리한다.
 - 두 번째 목록 항목의 Tab 들여쓰기와 Shift+Tab 내어쓰기를 hidden Playwright 흐름에 추가했다.
 - Tab을 고정 2칸 추가에서 논리적 한 단계 중첩으로 바꿨다. 기본은 4칸이며 긴 번호 목록은 marker 폭에 맞추고, Shift+Tab·빈 항목 Enter·시작 Backspace는 부모 깊이로 한 번에 복귀한다.
 - 첫 Tab 뒤 바로 아래 제목이 대신 렌더되던 보고를 `불릿 → 하위 불릿 → 다음 최상위 항목 → 제목` fixture로 고정해, 한 번의 Tab 뒤 하위 불릿과 제목 DOM이 동시에 유지됨을 확인했다.
@@ -38,6 +38,19 @@
 - 빈 목록 marker는 파서 입력에서만 placeholder로 명확하게 만든 뒤 AST position을 원본 offset으로 복원한다. 원본·저장 source에는 숨은 문자를 넣지 않는다.
 - 편집 fragment가 canonical pagination보다 먼저 새 source를 렌더하는 구간에는 pending range 소유 block을 유지하고, 정확한 fragment 하나만 selection을 복원하게 했다.
 - 실제 사용자 문서의 저장 source를 수정하지 않고 구조 정보만 read-only로 대조했으며, 기존 문제 줄이 새 파서에서 빈 3단계 list item으로 해석되고 다음 제목은 별도 block으로 유지됨을 확인했다.
+- 일반 입력 범위는 Chromium의 `beforeinput.getTargetRanges()`를 Markdown source range로 변환해 사용한다.
+- IME 조합은 `compositionstart`의 source range를 fallback으로 기록하고, 첫 `insertCompositionText.getTargetRanges()`가 있으면 실제 source 교체 범위로 갱신한다. 조합 중 browser DOM 변경을 유지한 뒤 `compositionend.data`를 한 번만 source에 반영한다.
+- 실제 저장 파일의 최신본과 직전 backup을 read-only로 비교해, 중복 표시는 저장 충돌이 아니라 잘못 누적된 Markdown source가 그대로 저장된 결과임을 확인했다.
+- macOS 한글 IME가 기존 조합 글자를 target range로 교체하는 흐름을 재현했다. 수정 전 `치환: ㅎ`에 `하`를 조합하면 `치환: ㅎ하`가 저장됐고, 첫 `insertCompositionText.getTargetRanges()`를 source 교체 범위로 사용한 뒤 `치환: 하`로 통과한다.
+- interaction debug에 `markdown-composition` 단계와 selection·target·commit range를 추가해 실제 IME 이벤트 범위를 확인할 수 있게 했다.
+- Chromium이 조합 확정 뒤 보내는 동일 문자열 final `beforeinput`은 `inputType`·`data` 일치 조건으로만 one-shot 제거한다. 기존 `setTimeout(0)` 기반의 무조건적인 다음 이벤트 억제는 제거했다.
+- macOS에서 조합을 끝낸 Space의 `keydown`이 final composition `beforeinput`보다 먼저 올 수 있는데, 기존 코드는 이 `keydown`에서 echo 억제 상태를 지워 직전 한글을 다시 삽입했다. 수정 전 회귀는 `공백: 한글한글 `처럼 저장됐고, echo 상태를 다음 `beforeinput`에서만 판정·소비하도록 바꿨다.
+- `띄어쓰기가 자주 일어나도 중복되지 않는다 `를 단어별 composition 확정 → Space `keydown` → composition echo → Space `beforeinput` 순서로 입력하는 회귀를 추가했다.
+- 빠른 입력에서 첫 음절의 buffered publish가 다음 composition 도중 부모 문서에 반영되면, 이전 pending selection이 현재 IME caret을 덮어써 caret 뒤에 한 글자가 남는 현상을 재현했다. 수정 전에는 composition 표식도 렌더 과정에서 사라졌다.
+- Markdown editing host listener가 렌더마다 재등록되지 않도록 최신 callback을 ref로 읽고, composition 활성 중에는 pending selection 복원을 보류한다. `가` 확정 직후 `나` 조합을 유지한 채 부모 갱신을 기다리는 회귀에서 caret과 composition 상태를 보존하고 `경쟁: 가나`만 저장한다.
+- Markdown 전용 Space `keydown` 명령을 제거했다. 실제 Space가 사라진 원인은 상위 container와 repeater item의 선택용 `keydown`이 하위 contenteditable에서 버블링된 Space까지 `preventDefault()`한 것이었고, 이 핸들러들은 자기 자신이 이벤트 target일 때만 동작하도록 제한했다.
+- 빈 Markdown도 별도 React `onBeforeInput` 구현을 제거하고 일반 Markdown과 같은 native `beforeinput`·composition lifecycle을 사용한다.
+- `/Users/isang-yun/Desktop/화면 기록 2026-10-18 오후 5.13.49.mov`와 실제 저장 source를 read-only로 대조해, 한글 단어 경계에서 조합 문자열이 중복·분리된 상태로 저장되는 현상을 확인했다.
 
 ## 변경 파일
 
@@ -70,13 +83,16 @@
 | Electron composition | `ㅎ` → `한` 조합 후 `한글` 확정이 한 번만 저장됨 |
 | undo/redo | 마지막 inline 자동 변환을 원문 상태로 되돌리고 다시 적용함 |
 | 저장·재열기 | 임시 userData 재실행 뒤 heading·strong·list 의미 유지 |
-| `npm run build && npx playwright test e2e/markdown-user-flow.spec.ts` | hidden Electron 사용자 흐름 1개 통과: Space 불릿 전환, 연속 공백, Tab/Shift+Tab, 빈 중첩 불릿과 다음 제목 보존 포함 |
+| `npm run build && npx playwright test e2e/markdown-user-flow.spec.ts` | hidden Electron 사용자 흐름 1개 통과: 실제 Space 기반 불릿·체크리스트 전환, 연속 공백, Tab/Shift+Tab, 빈 중첩 불릿과 다음 제목 보존 포함 |
+| `npx playwright test e2e/markdown-user-flow.spec.ts --repeat-each=3 --workers=1` | 최신 코드 3회 연속 통과: target range 한글 교체, 빠른 문장 조합, CDP 조합, final echo 억제, 조합 직후 Space, 빈 Markdown 첫 조합, 저장·재열기·PDF 유지 |
+| Space로 조합을 확정하는 순서 회귀 | 수정 전 `공백: 한글한글 ` 재현, 수정 후 여러 단어 연속 입력 포함 3회 통과 |
+| 빠른 연속 composition/caret 경쟁 회귀 | 수정 전 caret 뒤에 조합 글자 1개가 남고 composition 표식이 사라지는 현상 재현, 수정 후 3회 연속 통과 |
 | Playwright prop target | component instance prop과 repeater A만 변경되고 기본값·repeater B는 불변 |
 | Playwright PDF | print DOM 의미·편집 UI 제외·checked 상태 확인, 실제 `%PDF-` 파일 1KB 초과 |
 
 ## 남은 작업
 
-- 수정 build의 debug 앱이 실행 중이다. 사용자가 실제 문제 위치에서 빈 중첩 불릿과 Tab/Shift+Tab을 확인한다.
+- 현재 실제 앱 process는 최신 Space/IME 수정 build보다 먼저 시작됐다. 사용자가 저장 상태를 확인하고 앱을 완전히 재실행한 뒤, 실제 한글 문장을 여러 단어 입력하며 Space로 확정해 중복 여부를 확인한다.
 - 확인 뒤 단계 7과 backlog를 완료 처리한다.
 - 변경은 아직 커밋하지 않았다. 사용자가 요청할 때만 커밋한다.
 

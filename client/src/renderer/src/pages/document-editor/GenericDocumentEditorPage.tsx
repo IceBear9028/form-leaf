@@ -43,7 +43,7 @@ import {
 import { DocumentRenderer } from "./rendering/DocumentRenderer.tsx";
 import { PaginatedDocumentRenderer } from "./rendering/PaginatedDocumentRenderer.tsx";
 import type { DirectTextSelection } from "./rendering/EditableTextValue.tsx";
-import type { RenderSelectionTarget } from "./rendering/NodeRenderer.tsx";
+import type { ActiveEditTarget, RenderSelectionTarget } from "./rendering/NodeRenderer.tsx";
 import {
   installPreviewInteractionCapture,
   interactionEventId,
@@ -81,7 +81,8 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   const undoRef = useRef<DocumentData[]>([]);
   const redoRef = useRef<DocumentData[]>([]);
   const [richTextSelection, setRichTextSelection] = useState<DirectTextSelection>();
-  const [activeEditRenderId, setActiveEditRenderId] = useState<string>();
+  const [activeEditTarget, setActiveEditTarget] = useState<ActiveEditTarget>();
+  const activeEditTargetRef = useRef<ActiveEditTarget | undefined>(undefined);
   const [zoom, setZoom] = useState(DEFAULT_PREVIEW_ZOOM);
   const [exporting, setExporting] = useState(false);
   const [returning, setReturning] = useState(false);
@@ -144,7 +145,8 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   }, [session.updateDocument]);
 
   const selectAndReveal = useCallback((selection?: DocumentSelection, moveFocus?: boolean) => {
-    setActiveEditRenderId(undefined);
+    activeEditTargetRef.current = undefined;
+    setActiveEditTarget(undefined);
     session.setSelection(selection);
     if (!selection) {
       setLayerFocusRequest(undefined);
@@ -161,7 +163,8 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   }, [session.setSelection]);
 
   const selectFromLayer = useCallback((selection?: DocumentSelection) => {
-    setActiveEditRenderId(undefined);
+    activeEditTargetRef.current = undefined;
+    setActiveEditTarget(undefined);
     setRichTextSelection(undefined);
     session.setSelection(selection);
     if (selection) schedulePreviewFocus(previewRef.current, selection);
@@ -187,6 +190,15 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
 
   const activateDirectEdit = useCallback((target: DocumentEditTarget, renderId: string, event?: Event) => {
     const eventId = interactionEventId(event);
+    const targetKey = documentEditTargetKey(target);
+    const currentEditTarget = activeEditTargetRef.current;
+    const renderedAnchor = globalThis.document.querySelector<HTMLElement>('[data-document-edit-active="true"]');
+    const preserveCurrentAnchor = currentEditTarget?.targetKey === targetKey &&
+      renderedAnchor?.dataset.documentRenderId === currentEditTarget.anchorRenderId &&
+      renderedAnchor.dataset.documentEditTargetKey === targetKey;
+    const nextEditTarget = preserveCurrentAnchor
+      ? currentEditTarget
+      : { targetKey, anchorRenderId: renderId };
     const previousSelection = interactionSelectionRef.current;
     if (previousSelection) {
       pendingSelectionEventIdRef.current = eventId;
@@ -194,24 +206,28 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
         scope: "content-preview",
         action: "replace-structure-selection-with-edit-target",
         eventId,
-        editTarget: documentEditTargetKey(target),
+        editTarget: targetKey,
         previousSelection: snapshotSelection(previousSelection),
       });
     }
-    setActiveEditRenderId(renderId);
+    activeEditTargetRef.current = nextEditTarget;
+    setActiveEditTarget(nextEditTarget);
     session.setSelection(undefined);
     setLayerFocusRequest(undefined);
     setRichTextSelection((current) => (
-      current && documentEditTargetKey(current.target) === documentEditTargetKey(target)
+      current && documentEditTargetKey(current.target) === targetKey
         ? current
         : undefined
     ));
     recordInteraction("focus-boundary", {
       scope: "content-preview",
-      action: "activate-single-edit-target",
+      action: preserveCurrentAnchor
+        ? "preserve-active-edit-target"
+        : "activate-single-edit-target",
       eventId,
-      editTarget: documentEditTargetKey(target),
+      editTarget: targetKey,
       renderId,
+      anchorRenderId: nextEditTarget.anchorRenderId,
     });
   }, [session.setSelection]);
 
@@ -469,7 +485,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
               selectableNodeIds={selectableNodeIds}
               selectionMode="content"
               onSelect={selectFromPreview}
-              activeEditRenderId={activeEditRenderId}
+              activeEditTarget={activeEditTarget}
               onEditActivate={activateDirectEdit}
               onEditValueChange={commitDirectEdit}
               onRichTextSelection={setRichTextSelection}

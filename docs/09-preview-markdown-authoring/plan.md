@@ -10,7 +10,7 @@
 | 4 | shortcut·toolbar·빠른 삽입 통합 | 완료 | 공통 command 결과와 `/` keyboard 탐색 Electron 검증 |
 | 5 | DOM event·IME·caret 통합 | 완료 | composition·undo/redo·pagination 실제 입력 검증 |
 | 6 | 전체 회귀와 실제 기존 문서 검증 | 완료 | hidden Playwright Electron에서 전체 사용자 흐름·prop target·저장/재열기·실제 PDF 확인 |
-| 7 | 실제 Space·Tab 입력 회귀 수정 | 진행 중 | hidden Playwright keydown 경로는 통과, 사용자 실제 앱 확인 대기 |
+| 7 | 실제 Space·Tab·IME 입력 회귀 수정 | 진행 중 | 표준 composition 흐름과 hidden Playwright 반복 검증 통과, 사용자 실제 앱 확인 대기 |
 
 상태는 `대기`, `진행 중`, `완료`, `차단` 중 하나만 사용한다. 동시에 하나의 단계만 `진행 중`으로 둔다.
 
@@ -56,8 +56,13 @@
 ### 7. 실제 Space·Tab 입력 회귀 수정
 
 - 기존 E2E가 `keyboard.insertText()`로 Space 입력 경로를 우회한 문제를 회귀로 기록한다.
-- Markdown 편집 focus 안의 일반 Space를 명시적인 `insertText` intent로 처리한다.
+- Markdown 편집 focus 안의 일반 Space는 상위 container/repeater가 가로채지 않고 Chromium의 `beforeinput`으로 처리한다.
 - `-` 다음 Space의 불릿 전환, 두 번째 목록 항목의 Tab/Shift+Tab과 연속 Space 3회 보존을 hidden Playwright에서 확인한다.
+- 일반 편집은 `beforeinput.getTargetRanges()`의 DOM 범위를 Markdown source range로 변환한다.
+- IME는 조합 중 DOM 변경을 허용하고, 첫 `insertCompositionText.getTargetRanges()`를 실제 source 교체 범위로 고정한 뒤 `compositionend.data`를 한 번만 반영한다. 조합 확정 직후 같은 `inputType`·`data`로 오는 final echo만 one-shot으로 제거하며, `setTimeout(0)` 보정은 사용하지 않는다.
+- `ㅎ`을 target range로 교체해 `하`를 만드는 회귀에서 `ㅎ하`가 아니라 `하`만 저장되는지 검증한다.
+- Space `keydown`이 final composition `beforeinput`보다 먼저 오는 순서를 고정하고, 여러 단어를 Space로 연속 확정해도 직전 한글이 중복되지 않는지 검증한다.
+- 이전 음절의 buffered publish가 다음 한글 composition 도중 반영되는 순서를 고정하고, composition 상태와 현재 caret을 유지한 뒤 최종 source가 중복 없이 저장되는지 검증한다.
 - 사용자의 실제 앱 확인 전에는 작업을 완료 처리하지 않는다.
 
 ## 회귀 검증

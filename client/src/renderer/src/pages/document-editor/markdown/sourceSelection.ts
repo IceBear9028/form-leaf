@@ -28,8 +28,16 @@ export function readMarkdownSourceSelection(
   if (!selection || (!allowCollapsed && selection.isCollapsed) || !selection.rangeCount) {
     return undefined;
   }
-  const range = selection.getRangeAt(0);
-  if (!root.contains(range.commonAncestorContainer)) return undefined;
+  return readMarkdownSourceRange(root, selection.getRangeAt(0), allowCollapsed);
+}
+
+export function readMarkdownSourceRange(
+  root: HTMLElement,
+  range: AbstractRange,
+  allowCollapsed: boolean,
+): MarkdownDomSelection | undefined {
+  if (!allowCollapsed && range.collapsed) return undefined;
+  if (!root.contains(range.startContainer) || !root.contains(range.endContainer)) return undefined;
   const start = markdownSourcePoint(
     range.startContainer,
     range.startOffset,
@@ -50,8 +58,15 @@ export function readMarkdownSourceSelection(
     sourceId: start.sourceId,
     groupId: start.groupId,
     range: sourceRange,
-    rect: range.getBoundingClientRect(),
+    rect: domRectForRange(range),
   };
+}
+
+function domRectForRange(range: AbstractRange): DOMRect {
+  const domRange = document.createRange();
+  domRange.setStart(range.startContainer, range.startOffset);
+  domRange.setEnd(range.endContainer, range.endOffset);
+  return domRange.getBoundingClientRect();
 }
 
 export function visualLineDeletionRange(
@@ -292,12 +307,16 @@ function sourceCaretLocation(
         sourceOffset: offset,
         offset: Math.min(localOffset, node.textContent?.length ?? 0),
         atStart: localOffset === 0,
+        atEnd: localOffset === boundaries.length - 1,
         isAnchor: element.classList.contains("markdown-caret-anchor"),
+        isHardBreak: element.classList.contains("markdown-hard-break"),
       };
     });
   });
   const exactLocations = locations.filter((location) => location.sourceOffset === sourceOffset);
   const location = exactLocations.find(({ isAnchor }) => isAnchor)
+    ?? exactLocations.find(({ atStart, isHardBreak }) => atStart && !isHardBreak)
+    ?? exactLocations.find(({ atEnd, isHardBreak }) => atEnd && !isHardBreak)
     ?? exactLocations.find(({ atStart }) => atStart)
     ?? exactLocations.at(-1)
     ?? locations

@@ -10,10 +10,14 @@
 
 ```text
 DOM input intent
-├─ composition 중 → 브라우저 조합 유지
+├─ compositionstart → 현재 Markdown source range를 fallback으로 기록
+├─ 첫 insertCompositionText → getTargetRanges()의 실제 교체 범위를 source range로 고정
+├─ composition 중 → Chromium의 임시 DOM 조합 유지
+├─ compositionend → 최종 data를 source에 한 번 반영
 ├─ paste/drop → paste policy
 ├─ key command → MarkdownCommand
-└─ text input → context input rule
+└─ 일반 beforeinput → getTargetRanges()를 source range로 변환
+                     → context input rule
                  ↓
             MarkdownCommand
                  ↓
@@ -25,6 +29,12 @@ DOM input intent
 ```
 
 입력 규칙은 전체 source를 매 키마다 재작성하지 않고 현재 caret 주변 문맥만 해석한다. 렌더러는 계속 remark AST를 사용하지만 편집 결과의 canonical 값은 Markdown source다.
+
+일반 입력의 편집 위치는 전역 selection보다 `InputEvent.getTargetRanges()`를 우선한다. IME 조합 중 `beforeinput`은 취소하지 않는다. `compositionstart`의 selection은 fallback으로만 저장하고, 첫 `insertCompositionText`가 제공하는 target range를 canonical source의 실제 교체 범위로 고정한다. `compositionend`의 최종 문자열은 이 범위에 한 번만 적용한다. 이 구분이 없으면 macOS 한글 IME가 직전 조합 글자를 교체하는 `ㅎ → 하` 갱신을 collapsed caret 삽입으로 오해해 `ㅎ하`로 누적할 수 있다. Chromium이 조합 확정 뒤 같은 문자열의 final `beforeinput`을 추가로 보내는 경우에는 `inputType`과 `data`가 방금 확정한 조합과 모두 일치하는 이벤트만 one-shot으로 제거한다. 이 판정 상태는 Space를 포함한 `keydown`에서 지우지 않고 다음 `beforeinput`이 echo인지 실제 입력인지 판정할 때 소비한다. macOS에서는 조합을 끝낸 Space의 `keydown`이 final composition `beforeinput`보다 먼저 올 수 있기 때문이다. 시간으로 이벤트를 추측하는 타이머는 사용하지 않는다.
+
+Markdown editing host의 native composition listener는 렌더마다 교체하지 않는다. 최신 editing callback은 ref로 읽어 조합 세션 동안 `data-markdown-composing`과 target range가 유지되게 한다. 이전 입력의 buffered publish나 pagination 갱신이 다음 composition 도중 도착하면 pending source selection 복원을 보류한다. 그렇지 않으면 이전 caret이 현재 IME caret을 덮어써 caret 뒤에 조합 중인 한 글자가 남고, 다음 확정에서 해당 글자가 중복될 수 있다. 현재 composition이 끝나 source transaction이 렌더될 때 최신 pending selection을 복원한다.
+
+Space는 Markdown 전용 `keydown` 명령이 아니다. 하위 편집기에서 버블링된 Space를 상위 container/repeater 선택 핸들러가 취소하지 않게 하고, Chromium의 일반 `keydown → beforeinput` 경로에서 다른 텍스트와 동일하게 처리한다. 상위 구조 선택 핸들러는 `event.target === event.currentTarget`일 때만 Enter/Space를 처리한다.
 
 ## 데이터 흐름
 
@@ -57,6 +67,8 @@ Document schema는 변경하지 않는다. Markdown source 문자열과 기존 d
 - 코드 블록과 인라인 코드 안에서는 다른 marker rule을 실행하지 않는다.
 - 미완성 marker와 빈 inline content는 원문으로 보존한다.
 - IME 조합 중간값과 조합 확정 뒤 중복 input을 한 번만 반영한다.
+- IME의 첫 `insertCompositionText` target range가 기존 글자를 포함하면 해당 source 범위를 교체하며 collapsed caret 뒤에 추가하지 않는다.
+- IME composition이 활성화된 동안 이전 buffered publish의 caret을 복원하지 않고, composition listener와 상태를 렌더 사이에 유지한다.
 - 붙여넣기·자동 교정·drop을 순차 keyboard 입력으로 오인하지 않는다.
 - 중첩 목록의 첫 항목은 이전 sibling이 없으면 더 들여쓰지 않는다.
 - Tab은 source 공백을 고정 2칸씩 더하지 않고 논리적 목록 깊이를 한 단계 이동한다. 기본 중첩 폭은 4칸이며 긴 번호 marker는 CommonMark가 중첩으로 판정하는 데 필요한 marker 폭을 사용한다.

@@ -25,6 +25,11 @@ import {
   type MarkdownSourceRange,
 } from "./edits";
 import {
+  readMarkdownSourceRange,
+  readMarkdownSourceSelection,
+  type MarkdownDomSelection,
+} from "./sourceSelection";
+import {
   interactionDebugEnabled,
   recordInteraction,
 } from "../interactionDebug.ts";
@@ -41,16 +46,22 @@ type MarkdownRenderContext = {
 export type MarkdownEditingContext = {
   source: string;
   sourceId: string;
-  onTextEdit: (
-    range: MarkdownSourceRange,
-    visibleText: string,
-    visibleSelection: MarkdownSourceRange,
-  ) => void;
   onEditIntent: (
     root: HTMLElement,
     inputType: string,
     data?: string,
+    targetSelection?: MarkdownDomSelection,
   ) => void;
+  onCompositionCommit: (
+    range: MarkdownSourceRange,
+    text: string,
+  ) => void;
+  consumeCompositionEcho: (
+    inputType: string,
+    data: string | null,
+    isComposing: boolean,
+  ) => boolean;
+  clearCompositionEcho: () => void;
   onTaskToggle: (itemStart: number, checked: boolean) => void;
 };
 
@@ -188,6 +199,27 @@ export function MarkdownBlockContent({
   );
 }
 
+export function MarkdownEmptyContent({
+  editing,
+}: {
+  editing: MarkdownEditingContext;
+}) {
+  const rootRef = useMarkdownEditingHost(editing);
+  return (
+    <div
+      ref={rootRef}
+      className="document-empty-editable"
+      contentEditable
+      suppressContentEditableWarning
+      role="textbox"
+      aria-label="Markdown 입력"
+      data-placeholder="텍스트 입력"
+      data-markdown-editable-block={editing.sourceId}
+      onKeyDown={(event) => onMarkdownEditingKeyDown(event, editing)}
+    />
+  );
+}
+
 function MarkdownEmptyBlockContent({
   context,
   editing,
@@ -223,27 +255,69 @@ function MarkdownEmptyBlockContent({
 
 function useMarkdownEditingHost(editing?: MarkdownEditingContext) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const editingRef = useRef(editing);
+  const editingEnabled = Boolean(editing);
   const compositionRef = useRef<{
-    element: HTMLElement;
     range: MarkdownSourceRange;
+    targetRangeCaptured: boolean;
   } | undefined>(undefined);
-  const ignoreNextCompositionInputRef = useRef(false);
+
+  useLayoutEffect(() => {
+    editingRef.current = editing;
+  }, [editing]);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
-    if (!root || !editing) return;
+    if (!root || !editingRef.current) return;
 
     const onBeforeInput = (event: InputEvent) => {
-      if (ignoreNextCompositionInputRef.current) {
-        ignoreNextCompositionInputRef.current = false;
+      const editing = editingRef.current;
+      if (!editing) return;
+      if (editing.consumeCompositionEcho(event.inputType, event.data, event.isComposing)) {
         event.preventDefault();
         return;
       }
-      if (event.isComposing || compositionRef.current) return;
+      const targetRange = event.getTargetRanges()[0];
+      const targetSelection = targetRange
+        ? readMarkdownSourceRange(root, targetRange, true)
+        : undefined;
+      const composition = compositionRef.current;
+      if (event.isComposing || composition) {
+        if (
+          composition &&
+          !composition.targetRangeCaptured &&
+          event.inputType === "insertCompositionText" &&
+          targetSelection?.sourceId === editing.sourceId
+        ) {
+          composition.range = targetSelection.range;
+          composition.targetRangeCaptured = true;
+        }
+        if (interactionDebugEnabled()) {
+          recordInteraction("markdown-composition", {
+            sourceId: editing.sourceId,
+            phase: "beforeinput",
+            inputType: event.inputType,
+            data: event.data,
+            isComposing: event.isComposing,
+            selectionRange: readMarkdownSourceSelection(root, true)?.range,
+            targetRange: targetSelection?.range,
+            committedRange: composition?.range,
+            targetRangeCaptured: composition?.targetRangeCaptured,
+          });
+        }
+        return;
+      }
       event.preventDefault();
-      editing.onEditIntent(root, event.inputType, event.data ?? undefined);
+      editing.onEditIntent(
+        root,
+        event.inputType,
+        event.data ?? undefined,
+        targetSelection,
+      );
     };
     const onPaste = (event: ClipboardEvent) => {
+      const editing = editingRef.current;
+      if (!editing) return;
       event.preventDefault();
       editing.onEditIntent(
         root,
@@ -251,48 +325,70 @@ function useMarkdownEditingHost(editing?: MarkdownEditingContext) {
         event.clipboardData?.getData("text/plain") ?? "",
       );
     };
-    const onCompositionStart = () => {
-      const selection = window.getSelection();
-      if (!selection?.rangeCount) return;
-      const range = selection.getRangeAt(0);
-      const element = closestSourceSegment(range.startContainer);
-      const sourceRange = element ? sourceRangeForSegment(element) : undefined;
-      if (element && sourceRange) compositionRef.current = { element, range: sourceRange };
+    const onCompositionStart = (event: CompositionEvent) => {
+      const editing = editingRef.current;
+      if (!editing) return;
+      editing.clearCompositionEcho();
+      root.dataset.markdownComposing = "true";
+      const range = readMarkdownSourceSelection(root, true)?.range ??
+        (editing.source.length === 0 ? { start: 0, end: 0 } : undefined);
+      compositionRef.current = range
+        ? { range, targetRangeCaptured: false }
+        : undefined;
+      if (interactionDebugEnabled()) {
+        recordInteraction("markdown-composition", {
+          sourceId: editing.sourceId,
+          phase: "start",
+          data: event.data,
+          selectionRange: range,
+        });
+      }
     };
-    const onCompositionEnd = () => {
+    const onCompositionUpdate = (event: CompositionEvent) => {
+      const editing = editingRef.current;
+      if (!editing) return;
+      if (!interactionDebugEnabled()) return;
+      recordInteraction("markdown-composition", {
+        sourceId: editing.sourceId,
+        phase: "update",
+        data: event.data,
+        committedRange: compositionRef.current?.range,
+        targetRangeCaptured: compositionRef.current?.targetRangeCaptured,
+      });
+    };
+    const onCompositionEnd = (event: CompositionEvent) => {
+      const editing = editingRef.current;
+      if (!editing) return;
       const composition = compositionRef.current;
       compositionRef.current = undefined;
+      delete root.dataset.markdownComposing;
       if (!composition) return;
-      ignoreNextCompositionInputRef.current = true;
-      window.setTimeout(() => { ignoreNextCompositionInputRef.current = false; }, 0);
-      const rawText = composition.element.textContent ?? "";
-      const rawSelection = selectionInside(composition.element);
-      const placeholderBeforeStart = rawText.slice(0, rawSelection.start).split("\u200b").length - 1;
-      const placeholderBeforeEnd = rawText.slice(0, rawSelection.end).split("\u200b").length - 1;
-      if (composition.element.classList.contains("markdown-hard-break-caret")) {
-        composition.element.textContent = "\u200b";
+      const text = event.data ?? "";
+      if (interactionDebugEnabled()) {
+        recordInteraction("markdown-composition", {
+          sourceId: editing.sourceId,
+          phase: "end",
+          data: text,
+          committedRange: composition.range,
+          targetRangeCaptured: composition.targetRangeCaptured,
+        });
       }
-      editing.onTextEdit(
-        composition.range,
-        rawText.replaceAll("\u200b", ""),
-        {
-          start: rawSelection.start - placeholderBeforeStart,
-          end: rawSelection.end - placeholderBeforeEnd,
-        },
-      );
+      editing.onCompositionCommit(composition.range, text);
     };
-
     root.addEventListener("beforeinput", onBeforeInput);
     root.addEventListener("paste", onPaste);
     root.addEventListener("compositionstart", onCompositionStart);
+    root.addEventListener("compositionupdate", onCompositionUpdate);
     root.addEventListener("compositionend", onCompositionEnd);
     return () => {
       root.removeEventListener("beforeinput", onBeforeInput);
       root.removeEventListener("paste", onPaste);
       root.removeEventListener("compositionstart", onCompositionStart);
+      root.removeEventListener("compositionupdate", onCompositionUpdate);
       root.removeEventListener("compositionend", onCompositionEnd);
+      delete root.dataset.markdownComposing;
     };
-  }, [editing]);
+  }, [editingEnabled]);
 
   return rootRef;
 }
@@ -310,16 +406,12 @@ function onMarkdownEditingKeyDown(
       ctrlKey: event.ctrlKey,
       altKey: event.altKey,
       composing: event.nativeEvent.isComposing,
+      compositionActive: event.currentTarget.dataset.markdownComposing === "true",
     });
   }
-  if ((event.key === " " || event.code === "Space") &&
-      !event.metaKey && !event.ctrlKey && !event.altKey &&
-      !event.nativeEvent.isComposing) {
-    event.preventDefault();
-    editing.onEditIntent(event.currentTarget, "insertText", " ");
-    return;
-  }
-  if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+  const composing = event.nativeEvent.isComposing ||
+    event.currentTarget.dataset.markdownComposing === "true";
+  if (event.key === "Enter" && !composing) {
     event.preventDefault();
     editing.onEditIntent(
       event.currentTarget,
@@ -327,7 +419,7 @@ function onMarkdownEditingKeyDown(
     );
     return;
   }
-  if (event.key === "Tab" && !event.nativeEvent.isComposing) {
+  if (event.key === "Tab" && !composing) {
     event.preventDefault();
     editing.onEditIntent(
       event.currentTarget,
@@ -1160,33 +1252,6 @@ function markdownCodeContentBounds(
     start: start + opening[0].length,
     end: closing ? end - closing[0].length : end,
   };
-}
-
-function selectionInside(element: HTMLElement): MarkdownSourceRange {
-  const selection = window.getSelection();
-  if (!selection?.rangeCount) {
-    const end = element.textContent?.length ?? 0;
-    return { start: end, end };
-  }
-  const range = selection.getRangeAt(0);
-  return {
-    start: textOffset(element, range.startContainer, range.startOffset),
-    end: textOffset(element, range.endContainer, range.endOffset),
-  };
-}
-
-function closestSourceSegment(node: Node): HTMLElement | undefined {
-  return node.nodeType === Node.TEXT_NODE
-    ? node.parentElement?.closest<HTMLElement>("[data-markdown-source-map]") ?? undefined
-    : node instanceof HTMLElement
-      ? node.closest<HTMLElement>("[data-markdown-source-map]") ?? undefined
-      : undefined;
-}
-
-function sourceRangeForSegment(element: HTMLElement): MarkdownSourceRange | undefined {
-  const boundaries = element.dataset.markdownSourceMap?.split(",").map(Number);
-  if (!boundaries?.length || boundaries.some((value) => !Number.isFinite(value))) return undefined;
-  return { start: boundaries[0], end: boundaries[boundaries.length - 1] };
 }
 
 function leadingLineOffsets(

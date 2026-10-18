@@ -12,6 +12,7 @@ export type InteractionDebugRecord = {
     | "selection-state"
     | "dom-settled"
     | "markdown-key"
+    | "markdown-composition"
     | "markdown-input"
     | "markdown-transaction"
     | "markdown-render";
