@@ -8,7 +8,7 @@ import { LEGACY_APP_DIRECTORY_NAME } from "./document/legacy/legacyPaths";
 
 const legacyUserDataDirectory = process.env.DOCUMENT_USER_DATA_DIRECTORY ??
   join(app.getPath("appData"), LEGACY_APP_DIRECTORY_NAME);
-app.setName("Document");
+app.setName("Formleaf");
 app.setPath("userData", legacyUserDataDirectory);
 
 let mainWindow: BrowserWindow | null = null;
@@ -27,7 +27,7 @@ function createWindow(): void {
     height: 980,
     minWidth: 1120,
     minHeight: 720,
-    title: "Document",
+    title: "Formleaf",
     backgroundColor: "#eef1f5",
     show: false,
     webPreferences: {
@@ -44,7 +44,7 @@ function createWindow(): void {
   });
   if (interactionDebugEnabled) {
     mainWindow.webContents.on("console-message", (_event, _level, message) => {
-      if (message.startsWith("[Resume Studio debug]")) console.log(message);
+      if (message.startsWith("[Formleaf debug]")) console.log(message);
     });
   }
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

@@ -11,7 +11,7 @@ import { createDocumentPaths } from "../src/main/document/documentPaths.ts";
 import { createLegacyDocumentPaths } from "../src/main/document/legacy/legacyPaths.ts";
 
 async function temporaryDirectory(t) {
-  const directory = await mkdtemp(join(tmpdir(), "resume-studio-storage-"));
+  const directory = await mkdtemp(join(tmpdir(), "formleaf-storage-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   return directory;
 }

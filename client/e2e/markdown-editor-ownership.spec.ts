@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 test("active editor가 composition 중 DOM과 selection을 단독 소유한다", async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "resume-studio-editor-ownership."));
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "formleaf-editor-ownership."));
   let application: ElectronApplication | undefined;
   try {
     application = await electron.launch({

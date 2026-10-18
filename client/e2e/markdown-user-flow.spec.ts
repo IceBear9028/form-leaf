@@ -14,7 +14,7 @@ import {
 const documentId = "document-markdown-user-flow";
 
 test("Preview Markdown 사용자 흐름은 입력을 가로채지 않고 작성·저장·재열기·PDF를 유지한다", async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "resume-studio-playwright-markdown."));
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "formleaf-playwright-markdown."));
   const userData = join(temporaryRoot, "user-data");
   const pdfPath = join(temporaryRoot, "markdown-user-flow.pdf");
   await seedFixture(userData);
@@ -23,6 +23,9 @@ test("Preview Markdown 사용자 흐름은 입력을 가로채지 않고 작성�
   try {
     ({ application } = await launchApplication(userData));
     let page = await application.firstWindow();
+    expect(await application.evaluate(({ app }) => app.getName())).toBe("Formleaf");
+    await expect(page).toHaveTitle("Formleaf");
+    await expect(page.getByText("Formleaf", { exact: true })).toBeVisible();
     await openFixture(page);
 
     const directSelector = '[data-document-node-id="node-direct"][data-document-edit-target="true"]';

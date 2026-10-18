@@ -1,4 +1,5 @@
-const INTERACTION_DEBUG_STORAGE_KEY = "resume-studio:interaction-debug";
+const INTERACTION_DEBUG_STORAGE_KEY = "formleaf:interaction-debug";
+const LEGACY_INTERACTION_DEBUG_STORAGE_KEY = "resume-studio:interaction-debug";
 const MAX_INTERACTION_RECORDS = 200;
 
 export type InteractionDebugRecord = {
@@ -42,24 +43,24 @@ const eventIds = new WeakMap<Event, number>();
 
 export function installInteractionDebugApi(): void {
   if (typeof window === "undefined") return;
-  const debug = window.__RESUME_STUDIO_DEBUG__ ?? {};
+  const debug = window.__FORMLEAF_DEBUG__ ?? {};
   debug.interactions = {
     enable() {
       enabled = true;
       writeStoredEnabled(true);
-      console.info("[Resume Studio interaction debug] enabled");
+      console.info("[Formleaf interaction debug] enabled");
     },
     disable() {
       enabled = false;
       writeStoredEnabled(false);
-      console.info("[Resume Studio interaction debug] disabled");
+      console.info("[Formleaf interaction debug] disabled");
     },
     status() {
       return { enabled, recordCount: records.length, storageKey: INTERACTION_DEBUG_STORAGE_KEY };
     },
     clear() {
       records.splice(0, records.length);
-      console.info("[Resume Studio interaction debug] records cleared");
+      console.info("[Formleaf interaction debug] records cleared");
     },
     recent() {
       return records.map((record) => ({
@@ -68,7 +69,7 @@ export function installInteractionDebugApi(): void {
       }));
     },
   };
-  window.__RESUME_STUDIO_DEBUG__ = debug;
+  window.__FORMLEAF_DEBUG__ = debug;
 }
 
 export function interactionDebugEnabled(): boolean {
@@ -172,10 +173,10 @@ export function recordInteraction(
   records.push(record);
   if (records.length > MAX_INTERACTION_RECORDS) records.splice(0, records.length - MAX_INTERACTION_RECORDS);
 
-  console.groupCollapsed(`[Resume Studio interaction #${record.sequence}] ${kind}`);
+  console.groupCollapsed(`[Formleaf interaction #${record.sequence}] ${kind}`);
   console.log(record);
   console.groupEnd();
-  console.info(`[Resume Studio debug] ${JSON.stringify(record)}`);
+  console.info(`[Formleaf debug] ${JSON.stringify(record)}`);
   return record;
 }
 
@@ -240,7 +241,8 @@ function readStoredEnabled(): boolean {
   ) return true;
   if (typeof localStorage === "undefined") return false;
   try {
-    return localStorage.getItem(INTERACTION_DEBUG_STORAGE_KEY) === "1";
+    return localStorage.getItem(INTERACTION_DEBUG_STORAGE_KEY) === "1" ||
+      localStorage.getItem(LEGACY_INTERACTION_DEBUG_STORAGE_KEY) === "1";
   } catch {
     return false;
   }

@@ -412,9 +412,9 @@ function LibraryHeader({
   return (
     <header className="grid h-16 flex-none grid-cols-[1fr_auto] items-center border-b border-border bg-background px-5 [-webkit-app-region:drag]">
       <div className="flex items-center gap-3">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">D</div>
+        <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">F</div>
         <div>
-          <strong className="block text-sm font-medium">Document</strong>
+          <strong className="block text-sm font-medium">Formleaf</strong>
           <span className="block text-xs text-muted-foreground">로컬 문서 보관함</span>
         </div>
       </div>

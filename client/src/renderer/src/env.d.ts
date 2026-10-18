@@ -5,7 +5,7 @@ import type { DocumentApi } from "../../foundation/documentLibrary";
 declare global {
   interface Window {
     documents: DocumentApi;
-    __RESUME_STUDIO_DEBUG__?: {
+    __FORMLEAF_DEBUG__?: {
       interactions?: {
         enable: () => void;
         disable: () => void;
