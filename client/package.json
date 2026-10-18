@@ -25,6 +25,7 @@
     "test:component-reuse": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-component-reuse.test.mjs",
     "test:direct-edit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-direct-edit.test.mjs",
     "test:markdown": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/markdown.test.mjs",
+    "test:e2e:markdown": "npm run build && playwright test e2e/markdown-user-flow.spec.ts",
     "test:pagination": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/pagination.test.mjs",
     "test:migration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-migration.test.mjs",
     "test:storage": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-storage.test.mjs",
@@ -48,6 +49,7 @@
     "vite": "^7.1.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/mdast": "^4.0.4",
     "@types/node": "^24.5.2",

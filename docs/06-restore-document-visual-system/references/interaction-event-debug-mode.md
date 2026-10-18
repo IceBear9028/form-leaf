@@ -57,6 +57,10 @@ window.__RESUME_STUDIO_DEBUG__.interactions.recent()
 | `selection-request` | `RenderSelectionTarget`과 변환된 `DocumentSelection` | 렌더 node가 실제 편집 selection으로 어떻게 해석되었는가 |
 | `selection-state` | 선택 변경 전·후 | 요청과 최종 session 상태가 일치하는가 |
 | `dom-settled` | 이벤트 처리 뒤 active element와 최종 selection | focus와 selection이 서로 다른 node를 가리키는가 |
+| `markdown-key` | Space·Tab·Enter·Escape와 modifier, composition 상태 | 실제 구조 key가 편집 host에 도달했는가 |
+| `markdown-input` | input intent, source range, 현재 줄 종류·들여쓰기 깊이 | key가 어느 canonical source 위치를 편집하는가 |
+| `markdown-transaction` | 내용 없는 source 구조 요약과 selection 전후 | 한 번의 Tab이 실제로 한 단계 중첩 transaction을 만들었는가 |
+| `markdown-render` | caret 복원 결과와 렌더 block 종류 | source는 목록인데 DOM이 아래 제목으로 잘못 교체됐는가 |
 
 각 record의 `scope`는 `content-preview` 또는 `component-preview`이며, `node-handler`의 `selectionMode`는 `content` 또는 `structure`다. `action`은 직접 편집 요소 내부 클릭(`preserve-direct-edit`), 내용 소유 단위 선택(`select-owner`), component 구조 선택(`select-structure`) 중 하나다. 직접 편집 요소가 활성화되면 `focus-boundary`의 `activate-single-edit-target`과 edit target key, 개별 pagination fragment의 render ID가 기록되고, 기존 구조 selection을 교체하면 `replace-structure-selection-with-edit-target`도 기록된다. `data-document-content-edit-target` snapshot으로 공통 Preview 편집 경계를, `data-document-edit-active` snapshot으로 현재 단일 활성 fragment를 확인할 수 있다.
 
@@ -75,6 +79,7 @@ window.__RESUME_STUDIO_DEBUG__.interactions.recent()
 ## 안전 경계
 
 - 입력한 이력서 본문, `innerText`, `textContent`, input value는 기록하지 않는다.
+- Markdown 진단은 글자 내용 대신 길이, 줄 번호, prefix 종류, 들여쓰기 깊이와 block type만 기록한다.
 - `mode="screen"`인 내용 미리보기와 component 편집 미리보기에서만 DOM 이벤트를 수집한다.
 - print surface와 measure tree에는 listener나 진단 attribute를 추가하지 않는다.
 - 비활성 상태에서는 snapshot 생성, composed path 순회, console 출력이 실행되지 않는다.

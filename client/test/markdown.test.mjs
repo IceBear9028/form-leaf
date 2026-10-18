@@ -13,9 +13,20 @@ import {
   textContentToMarkdown,
 } from "../src/main/document/legacy/markdownSerialization.ts";
 import {
+  applyMarkdownCommand,
+  applyMarkdownQuickInsertCommand,
+  clearMarkdownFormatting,
+  deleteMarkdownBackwardAtBlockStart,
+  findMarkdownQuickInsertTrigger,
+  indentMarkdownListItem,
+  insertMarkdownParagraphBreak,
+  insertMarkdownTextWithFormats,
+  markdownEmptyListItemCaretOffset,
   replaceMarkdownRange,
   replaceMarkdownText,
   replaceMarkdownTextWithBlockShortcut,
+  replaceMarkdownTextWithInputRules,
+  setMarkdownTaskItemChecked,
   toggleMarkdownBlockquote,
   toggleMarkdownInlineFormat,
   toggleMarkdownLink,
@@ -62,6 +73,307 @@ test("문장 중간과 지원하지 않는 접두어는 일반 문자로 유지�
 
   assert.equal(middle.source, "내용 \\# ");
   assert.equal(unsupported.source, "\\#\\#\\#\\#\\#\\#\\# ");
+});
+
+test("연속 Space 입력은 Markdown source에서 공백 수를 그대로 보존한다", () => {
+  let source = "앞";
+  let caret = source.length;
+  for (let index = 0; index < 3; index += 1) {
+    const result = replaceMarkdownTextWithInputRules(
+      source,
+      { start: caret, end: caret },
+      " ",
+      { start: 1, end: 1 },
+      "typing",
+    );
+    source = result.source;
+    caret = result.selection.end;
+  }
+  const result = replaceMarkdownTextWithInputRules(
+    source,
+    { start: caret, end: caret },
+    "뒤",
+    { start: 1, end: 1 },
+    "typing",
+  );
+  assert.equal(result.source, "앞   뒤");
+});
+
+test("Jira형 block shortcut은 불릿·번호·작업 항목 문법을 마지막 Space에서 전환한다", () => {
+  const cases = [
+    ["\\*", "* "],
+    ["2)", "2) "],
+    ["\\[\\]", "- [ ] "],
+  ];
+
+  for (const [source, expected] of cases) {
+    const result = replaceMarkdownTextWithInputRules(
+      source,
+      { start: source.length, end: source.length },
+      " ",
+      { start: 1, end: 1 },
+      "typing",
+    );
+    assert.equal(result.source, expected);
+    assert.deepEqual(result.selection, { start: expected.length, end: expected.length });
+  }
+});
+
+test("Jira형 구분선과 code block은 마지막 marker 입력에서 편집 가능한 구조를 만든다", () => {
+  const cases = [
+    ["\\-\\-", "-", "---\n\n", 5],
+    ["\\*\\*", "*", "***\n\n", 5],
+    ["\\`\\`", "`", "```\n\n```", 4],
+  ];
+
+  for (const [source, input, expected, selection] of cases) {
+    assert.deepEqual(
+      replaceMarkdownTextWithInputRules(
+        source,
+        { start: source.length, end: source.length },
+        input,
+        { start: 1, end: 1 },
+        "typing",
+      ),
+      { source: expected, selection: { start: selection, end: selection } },
+    );
+  }
+});
+
+test("순차 inline Markdown은 마지막 marker에서 서식 source로 전환하고 paste는 literal로 보존한다", () => {
+  const cases = [
+    ["\\*\\*굵게\\*", "*", "**굵게**"],
+    ["\\*기울임", "*", "*기울임*"],
+    ["\\~\\~취소선\\~", "~", "~~취소선~~"],
+    ["\\`코드", "`", "`코드`"],
+    ["\\[링크\\](https://example.com", ")", "[링크](https://example.com)"],
+    ["\\[링크\\](www.example.com", ")", "[링크](https://www.example.com)"],
+  ];
+
+  for (const [source, input, expected] of cases) {
+    const result = replaceMarkdownTextWithInputRules(
+      source,
+      { start: source.length, end: source.length },
+      input,
+      { start: 1, end: 1 },
+      "typing",
+    );
+    assert.equal(result.source, expected);
+  }
+
+  const pasted = replaceMarkdownTextWithInputRules(
+    "",
+    { start: 0, end: 0 },
+    "**붙여넣기**",
+    { start: 10, end: 10 },
+    "paste",
+  );
+  assert.equal(pasted.source, "\\*\\*붙여넣기\\*\\*");
+
+  const unfinishedStrong = replaceMarkdownTextWithInputRules(
+    "\\*\\*굵게",
+    { start: 8, end: 8 },
+    "*",
+    { start: 1, end: 1 },
+    "typing",
+  );
+  assert.equal(unfinishedStrong.source, "\\*\\*굵게\\*");
+});
+
+test("목록 Enter는 다음 항목을 만들고 빈 최상위 항목에서는 목록을 종료한다", () => {
+  assert.deepEqual(
+    insertMarkdownParagraphBreak("- 첫 항목", { start: 6, end: 6 }),
+    { source: "- 첫 항목\n- ", selection: { start: 9, end: 9 } },
+  );
+  assert.deepEqual(
+    insertMarkdownParagraphBreak("2) 둘째", { start: 5, end: 5 }),
+    { source: "2) 둘째\n3) ", selection: { start: 9, end: 9 } },
+  );
+  assert.deepEqual(
+    insertMarkdownParagraphBreak("- 첫 항목\n- ", { start: 9, end: 9 }),
+    { source: "- 첫 항목\n\n", selection: { start: 8, end: 8 } },
+  );
+  assert.deepEqual(
+    insertMarkdownParagraphBreak("- [x] 완료", { start: 8, end: 8 }),
+    { source: "- [x] 완료\n- [ ] ", selection: { start: 15, end: 15 } },
+  );
+  assert.deepEqual(
+    insertMarkdownParagraphBreak("> 인용", { start: 4, end: 4 }),
+    { source: "> 인용\n> ", selection: { start: 7, end: 7 } },
+  );
+  assert.deepEqual(
+    insertMarkdownParagraphBreak("  - ", { start: 4, end: 4 }),
+    { source: "- ", selection: { start: 2, end: 2 } },
+  );
+});
+
+test("빈 목록 caret은 marker 뒤 content 시작 offset을 가리킨다", () => {
+  assert.equal(markdownEmptyListItemCaretOffset("- ", 0, 1), 2);
+  assert.equal(markdownEmptyListItemCaretOffset("2) ", 0, 1), 3);
+  assert.equal(markdownEmptyListItemCaretOffset("  - [ ] ", 0, 3), 8);
+});
+
+test("빈 중첩 불릿은 Setext 제목이 아니라 편집 가능한 목록 항목으로 파싱한다", () => {
+  const source = "- 상위\n    - 하위\n        - \n\n# 다음 제목";
+  const blocks = parseMarkdownBlocks(source);
+  const rootList = blocks[0].node;
+
+  assert.equal(blocks.length, 2);
+  assert.equal(rootList.type, "list");
+  const firstNestedList = rootList.children[0].children[1];
+  assert.equal(firstNestedList.type, "list");
+  const secondNestedList = firstNestedList.children[0].children[1];
+  assert.equal(secondNestedList.type, "list");
+  const emptyItem = secondNestedList.children[0];
+  assert.equal(emptyItem.type, "listItem");
+  assert.deepEqual(emptyItem.children, []);
+  assert.equal(emptyItem.position.start.offset, source.lastIndexOf("- "));
+  assert.equal(emptyItem.position.end.offset, source.indexOf("\n\n"));
+  assert.equal(blocks[1].node.type, "heading");
+  assert.equal(blocks[1].node.position.start.offset, source.indexOf("# 다음 제목"));
+});
+
+test("작업 항목 checkbox는 해당 source marker만 변경한다", () => {
+  const source = "- [ ] 첫째\n- [x] 둘째";
+  assert.deepEqual(setMarkdownTaskItemChecked(source, 0, true), {
+    source: "- [x] 첫째\n- [x] 둘째",
+    selection: { start: 3, end: 3 },
+  });
+  assert.deepEqual(setMarkdownTaskItemChecked(source, 9, false), {
+    source: "- [ ] 첫째\n- [ ] 둘째",
+    selection: { start: 12, end: 12 },
+  });
+});
+
+test("목록 시작 Backspace와 Tab은 내용을 잃지 않고 구조만 해제하거나 들여쓴다", () => {
+  assert.deepEqual(
+    deleteMarkdownBackwardAtBlockStart("- 항목", { start: 2, end: 2 }),
+    { source: "항목", selection: { start: 0, end: 0 } },
+  );
+  assert.deepEqual(
+    indentMarkdownListItem("- 첫째\n- 둘째", { start: 9, end: 9 }, "indent"),
+    { source: "- 첫째\n    - 둘째", selection: { start: 13, end: 13 } },
+  );
+  assert.deepEqual(
+    indentMarkdownListItem("- 첫째\n    - 둘째", { start: 13, end: 13 }, "outdent"),
+    { source: "- 첫째\n- 둘째", selection: { start: 9, end: 9 } },
+  );
+  assert.deepEqual(
+    indentMarkdownListItem("- 첫째", { start: 4, end: 4 }, "indent"),
+    { source: "- 첫째", selection: { start: 4, end: 4 } },
+  );
+  assert.deepEqual(
+    indentMarkdownListItem("- 첫째\n- 둘째\n- h", { start: 9, end: 9 }, "indent"),
+    { source: "- 첫째\n    - 둘째\n- h", selection: { start: 13, end: 13 } },
+  );
+  assert.deepEqual(
+    indentMarkdownListItem("1. 첫째\n2. 둘째\n# 아래 제목", { start: 11, end: 11 }, "indent"),
+    { source: "1. 첫째\n    2. 둘째\n# 아래 제목", selection: { start: 15, end: 15 } },
+  );
+  assert.deepEqual(
+    indentMarkdownListItem("100. 첫째\n2. 둘째", { start: 13, end: 13 }, "indent"),
+    { source: "100. 첫째\n     2. 둘째", selection: { start: 18, end: 18 } },
+  );
+});
+
+test("toolbar와 shortcut은 동일한 Markdown command로 블록 구조를 전환한다", () => {
+  const unordered = applyMarkdownCommand(
+    "첫 문단",
+    { start: 2, end: 2 },
+    { type: "list", style: "unordered" },
+  );
+  assert.deepEqual(unordered, {
+    source: "- 첫 문단",
+    selection: { start: 4, end: 4 },
+  });
+  assert.equal(
+    applyMarkdownCommand(unordered.source, unordered.selection, {
+      type: "list",
+      style: "unordered",
+    }).source,
+    "첫 문단",
+  );
+  assert.equal(
+    applyMarkdownCommand("- 첫 문단", { start: 4, end: 4 }, {
+      type: "list",
+      style: "ordered",
+    }).source,
+    "1. 첫 문단",
+  );
+
+  const heading = applyMarkdownCommand(
+    "제목",
+    { start: 0, end: 2 },
+    { type: "heading", level: 2 },
+  );
+  assert.equal(heading.source, "## 제목");
+  assert.equal(
+    applyMarkdownCommand(heading.source, heading.selection, { type: "paragraph" }).source,
+    "제목",
+  );
+  assert.deepEqual(
+    applyMarkdownCommand("코드", { start: 0, end: 2 }, { type: "code-block" }),
+    { source: "```\n코드\n```", selection: { start: 4, end: 6 } },
+  );
+  assert.deepEqual(
+    applyMarkdownCommand("", { start: 0, end: 0 }, { type: "divider" }),
+    { source: "---\n\n", selection: { start: 5, end: 5 } },
+  );
+});
+
+test("빠른 삽입은 빈 줄의 slash query만 소비하고 같은 Markdown command를 실행한다", () => {
+  const source = "앞 문단\n\n/제목";
+  const trigger = findMarkdownQuickInsertTrigger(source, {
+    start: source.length,
+    end: source.length,
+  });
+  assert.deepEqual(trigger, {
+    range: { start: 6, end: 9 },
+    query: "제목",
+  });
+  assert.deepEqual(
+    applyMarkdownQuickInsertCommand(source, trigger, { type: "heading", level: 2 }),
+    { source: "앞 문단\n\n## ", selection: { start: 9, end: 9 } },
+  );
+  assert.equal(
+    findMarkdownQuickInsertTrigger("문장 /제목", { start: 6, end: 6 }),
+    undefined,
+  );
+  assert.equal(
+    findMarkdownQuickInsertTrigger("/두 단어", { start: 5, end: 5 }),
+    undefined,
+  );
+});
+
+test("서식 지우기 command는 선택 내용은 보존하고 inline·block marker를 제거한다", () => {
+  const source = "## ***강조***";
+  const result = clearMarkdownFormatting(source, { start: 6, end: 8 });
+  assert.deepEqual(result, {
+    source: "강조",
+    selection: { start: 0, end: 2 },
+  });
+
+  const linked = "[문서](https://example.com)";
+  assert.deepEqual(
+    clearMarkdownFormatting(linked, { start: 1, end: 3 }),
+    { source: "문서", selection: { start: 0, end: 2 } },
+  );
+});
+
+test("caret 서식은 다음 입력을 같은 inline command marker로 감싼다", () => {
+  assert.deepEqual(
+    insertMarkdownTextWithFormats("앞 ", { start: 2, end: 2 }, "굵게", ["strong"]),
+    { source: "앞 **굵게**", selection: { start: 6, end: 6 } },
+  );
+  assert.deepEqual(
+    insertMarkdownTextWithFormats("", { start: 0, end: 0 }, "중첩", ["strong", "emphasis"]),
+    { source: "***중첩***", selection: { start: 5, end: 5 } },
+  );
+
+  assert.deepEqual(
+    toggleMarkdownLink("", { start: 0, end: 0 }, "https://example.com"),
+    { source: "[링크](https://example.com)", selection: { start: 1, end: 3 } },
+  );
 });
 
 test("선택한 문단을 인용문으로 전환하고 다시 해제한다", () => {

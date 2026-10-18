@@ -13,6 +13,7 @@ app.setPath("userData", legacyUserDataDirectory);
 
 let mainWindow: BrowserWindow | null = null;
 const interactionDebugEnabled = process.env.DOCUMENT_INTERACTION_DEBUG === "1";
+const headlessE2eEnabled = process.env.DOCUMENT_E2E_HEADLESS === "1";
 
 function workspaceDirectory(): string {
   return join(app.getPath("userData"), "workspaces");
@@ -36,10 +37,15 @@ function createWindow(): void {
     },
   });
 
-  mainWindow.once("ready-to-show", () => mainWindow?.show());
+  if (!headlessE2eEnabled) mainWindow.once("ready-to-show", () => mainWindow?.show());
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+  if (interactionDebugEnabled) {
+    mainWindow.webContents.on("console-message", (_event, _level, message) => {
+      if (message.startsWith("[Resume Studio debug]")) console.log(message);
+    });
+  }
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^(https?:|mailto:)/.test(url)) void shell.openExternal(url);
     return { action: "deny" };

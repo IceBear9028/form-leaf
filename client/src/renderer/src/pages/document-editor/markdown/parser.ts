@@ -40,15 +40,92 @@ const markOrder: MarkdownInlineMark[] = ["strong", "underline", "link"];
 const markdownProcessor = unified()
   .use(remarkParse)
   .use(remarkGfm);
+const emptyListItemPlaceholder = "\u200b";
 
 const markdownBlockCache = new Map<string, MarkdownBlock[]>();
 const MARKDOWN_BLOCK_CACHE_LIMIT = 128;
 
 export function parseMarkdownTree(source: string): Root {
-  const parsed = markdownProcessor.parse(normalizeLineEndings(source));
+  const normalizedSource = normalizeLineEndings(source);
+  const prepared = prepareEmptyListItems(normalizedSource);
+  const parsed = markdownProcessor.parse(prepared.source);
   const tree = markdownProcessor.runSync(parsed) as Root;
-  applySourcePositionedBreaks(tree, normalizeLineEndings(source));
+  if (prepared.insertedOffsets.length > 0) {
+    restoreEmptyListItems(tree, normalizedSource, prepared.insertedOffsets);
+  }
+  applySourcePositionedBreaks(tree, normalizedSource);
   return tree;
+}
+
+function prepareEmptyListItems(source: string): {
+  source: string;
+  insertedOffsets: number[];
+} {
+  const insertedOffsets: number[] = [];
+  const prepared = source.replace(
+    /^[ \t]*(?:[-+*]|[0-9]{1,9}[.)])[ \t]+$/gm,
+    (line, originalOffset: number) => {
+      insertedOffsets.push(originalOffset + line.length + insertedOffsets.length);
+      return `${line}${emptyListItemPlaceholder}`;
+    },
+  );
+  return { source: prepared, insertedOffsets };
+}
+
+function restoreEmptyListItems(
+  tree: Root,
+  source: string,
+  insertedOffsets: number[],
+) {
+  const lineStarts = [0];
+  for (let index = 0; index < source.length; index += 1) {
+    if (source[index] === "\n") lineStarts.push(index + 1);
+  }
+
+  visitMarkdownNodes(tree as unknown as MutableMarkdownNode, (node) => {
+    if (node.position) {
+      remapMarkdownPoint(node.position.start, insertedOffsets, lineStarts);
+      remapMarkdownPoint(node.position.end, insertedOffsets, lineStarts);
+    }
+    if (
+      node.type === "listItem" && node.children?.length === 1 &&
+      node.children[0]?.type === "paragraph" &&
+      node.children[0].children?.length === 1 &&
+      node.children[0].children[0]?.type === "text" &&
+      node.children[0].children[0].value === emptyListItemPlaceholder
+    ) {
+      node.children = [];
+    }
+  });
+}
+
+function visitMarkdownNodes(
+  node: MutableMarkdownNode,
+  visit: (node: MutableMarkdownNode) => void,
+) {
+  visit(node);
+  node.children?.forEach((child) => visitMarkdownNodes(child, visit));
+}
+
+function remapMarkdownPoint(
+  point: { line: number; column: number; offset?: number },
+  insertedOffsets: number[],
+  lineStarts: number[],
+) {
+  if (point.offset === undefined) return;
+  const removedBefore = insertedOffsets.filter((offset) => offset < point.offset!).length;
+  const offset = point.offset - removedBefore;
+  let low = 0;
+  let high = lineStarts.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (lineStarts[middle] <= offset) low = middle + 1;
+    else high = middle;
+  }
+  const lineIndex = Math.max(0, low - 1);
+  point.offset = offset;
+  point.line = lineIndex + 1;
+  point.column = offset - lineStarts[lineIndex] + 1;
 }
 
 export function parseMarkdownBlocks(source: string): MarkdownBlock[] {

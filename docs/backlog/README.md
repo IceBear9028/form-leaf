@@ -19,5 +19,5 @@
 |---|---|---|---|---|
 | ☐ | 2026-10-17 | [Document-owned Markdown styles](document-owned-markdown-styles.md) | Markdown의 시각값을 전역 `document.css`가 아니라 Document 데이터가 소유하도록 변경한다. | — |
 | ☐ | 2026-10-18 | [App data directory migration](app-data-directory-migration.md) | `Resume Studio`에 고정된 Electron userData 위치를 제품 이름과 일치시키되 기존 데이터를 안전하게 이관한다. | — |
-| ☐ | 2026-10-18 | [Preview Markdown authoring experience](preview-markdown-authoring-experience.md) | Preview에서 Markdown 문법 입력, 목록 연속 작성과 블록 전환을 일반 문서 편집기처럼 사용할 수 있게 한다. | — |
+| ☐ | 2026-10-18 | [Preview Markdown authoring experience](preview-markdown-authoring-experience.md) | 실제 Space·Tab 입력 회귀를 수정하고 Jira형 연속 작성 흐름을 재검증한다. | — |
 | ☑ | 2026-10-17 | [Canonical Document migration](canonical-document-migration.md) | 최신 문서에서 legacy identity와 load-time legacy 원본 의존성을 제거한다. | 2026-10-18 |

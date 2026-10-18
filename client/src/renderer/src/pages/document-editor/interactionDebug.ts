@@ -4,7 +4,17 @@ const MAX_INTERACTION_RECORDS = 200;
 export type InteractionDebugRecord = {
   sequence: number;
   timestampMs: number;
-  kind: "dom-event" | "node-handler" | "focus-boundary" | "selection-request" | "selection-state" | "dom-settled";
+  kind:
+    | "dom-event"
+    | "node-handler"
+    | "focus-boundary"
+    | "selection-request"
+    | "selection-state"
+    | "dom-settled"
+    | "markdown-key"
+    | "markdown-input"
+    | "markdown-transaction"
+    | "markdown-render";
   detail: Record<string, unknown>;
 };
 
@@ -164,6 +174,7 @@ export function recordInteraction(
   console.groupCollapsed(`[Resume Studio interaction #${record.sequence}] ${kind}`);
   console.log(record);
   console.groupEnd();
+  console.info(`[Resume Studio debug] ${JSON.stringify(record)}`);
   return record;
 }
 
