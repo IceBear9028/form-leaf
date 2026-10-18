@@ -57,6 +57,33 @@ test("줄 시작 Markdown 접두어 뒤 Space를 블록 문법으로 전환한�
   }
 });
 
+test("이미 적용된 제목의 첫 글자 앞에서 heading marker를 다시 입력하면 level을 변경한다", () => {
+  const cases = [
+    { source: "# 제목", caret: 2, typed: "## ", expected: "## 제목", expectedCaret: 3 },
+    { source: "## 제목", caret: 3, typed: "### ", expected: "### 제목", expectedCaret: 4 },
+    { source: "#### 제목", caret: 5, typed: "# ", expected: "# 제목", expectedCaret: 2 },
+    { source: "  ## 제목", caret: 5, typed: "###### ", expected: "  ###### 제목", expectedCaret: 9 },
+  ];
+
+  for (const testCase of cases) {
+    let source = testCase.source;
+    let caret = testCase.caret;
+    for (const character of testCase.typed) {
+      const result = replaceMarkdownTextWithInputRules(
+        source,
+        { start: caret, end: caret },
+        character,
+        { start: character.length, end: character.length },
+        "typing",
+      );
+      source = result.source;
+      caret = result.selection.end;
+    }
+    assert.equal(source, testCase.expected);
+    assert.equal(caret, testCase.expectedCaret);
+  }
+});
+
 test("문장 중간과 지원하지 않는 접두어는 일반 문자로 유지한다", () => {
   const middle = replaceMarkdownTextWithBlockShortcut(
     "내용 \\#",

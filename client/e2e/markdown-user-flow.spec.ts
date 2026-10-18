@@ -30,6 +30,7 @@ test("Preview Markdown 사용자 흐름은 입력을 가로채지 않고 작성�
     const indentScopeSelector = '[data-document-node-id="node-indent-scope"][data-document-edit-target="true"]';
     const emptyNestedIndentSelector = '[data-document-node-id="node-empty-nested-indent"][data-document-edit-target="true"]';
     const strongBreakSelector = '[data-document-node-id="node-strong-break"][data-document-edit-target="true"]';
+    const headingChangeSelector = '[data-document-node-id="node-heading-change"][data-document-edit-target="true"]';
     const compositionSelector = '[data-document-node-id="node-composition"][data-document-edit-target="true"]';
     const compositionSpaceSelector = '[data-document-node-id="node-composition-space"][data-document-edit-target="true"]';
     const compositionCaretSelector = '[data-document-node-id="node-composition-caret"][data-document-edit-target="true"]';
@@ -177,6 +178,25 @@ test("Preview Markdown 사용자 흐름은 입력을 가로채지 않고 작성�
       );
       await expect(target.locator("strong").filter({ hasText: "작업자별 생산성 모니터링 기능으로 확장" })).toHaveCount(1);
       expect((await target.allTextContents()).join("")).not.toContain("**");
+    });
+
+    await test.step("이미 적용된 제목의 첫 글자 앞에서 marker를 다시 입력하면 level이 계속 변경된다", async () => {
+      const target = page.locator(headingChangeSelector);
+      await setMarkdownCaretAtFirstText(target);
+      await page.keyboard.insertText("##");
+      await page.keyboard.press("Space");
+      await expect.poll(async () => (await readFixture(userData)).nodes["node-heading-change"].source).toBe(
+        "## 기존 제목",
+      );
+      await expect(target.locator("h2")).toHaveText("기존 제목");
+
+      await setMarkdownCaretAtFirstText(target);
+      await page.keyboard.insertText("###");
+      await page.keyboard.press("Space");
+      await expect.poll(async () => (await readFixture(userData)).nodes["node-heading-change"].source).toBe(
+        "### 기존 제목",
+      );
+      await expect(target.locator("h3")).toHaveText("기존 제목");
     });
 
     await test.step("굵은 구간 끝의 한글 조합 직후 Space는 닫는 marker 밖에 입력된다", async () => {
@@ -515,6 +535,24 @@ async function activateAtEnd(page: Page, targets: Locator): Promise<void> {
   await expect(targets.filter({ has: page.locator(':scope[data-document-edit-active="true"]') })).toHaveCount(1);
 }
 
+async function setMarkdownCaretAtFirstText(target: Locator): Promise<void> {
+  await target.scrollIntoViewIfNeeded();
+  const mapped = target.locator('[data-markdown-source-map]').first();
+  await mapped.click();
+  await mapped.evaluate((element) => {
+    const editable = element.closest<HTMLElement>('[contenteditable="true"]');
+    const text = element.firstChild;
+    if (!editable || !text) throw new Error("제목의 첫 text 위치를 찾지 못했습니다.");
+    editable.focus();
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  });
+}
+
 async function seedFixture(userData: string): Promise<void> {
   const now = "2026-10-18T00:00:00.000Z";
   let sequence = 0;
@@ -543,6 +581,10 @@ async function seedFixture(userData: string): Promise<void> {
   document = addNode(document, rootNodeId, {
     id: "node-strong-break", type: "markdown", name: "굵은 목록 줄바꿈 Markdown", visible: true,
     source: "- 첫째\n- 구축한 모델을 **작업자별 생산성 모니터링 기능으로 확장**\n\n## 다음 제목",
+  }, undefined, options);
+  document = addNode(document, rootNodeId, {
+    id: "node-heading-change", type: "markdown", name: "제목 변경 Markdown", visible: true,
+    source: "# 기존 제목",
   }, undefined, options);
   document = addNode(document, rootNodeId, {
     id: "node-composition", type: "markdown", name: "한글 조합 Markdown", visible: true,

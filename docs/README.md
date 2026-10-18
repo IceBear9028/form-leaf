@@ -26,6 +26,7 @@
 | 07 | Canonical Document migration | 완료 | [07-canonical-document-migration](07-canonical-document-migration/README.md) |
 | 08 | Preview와 Component 선택 경계 분리 | 완료 | [08-preview-component-selection-boundary](08-preview-component-selection-boundary/README.md) |
 | 09 | Preview Markdown 작성 사용성 | 자동 검증 완료·사용자 실제 앱 확인 대기 | [09-preview-markdown-authoring](09-preview-markdown-authoring/README.md) |
+| 10 | Markdown 편집 DOM 단일 소유권 | 1단계 완료·session/codec 구현 중 | [10-markdown-editor-ownership](10-markdown-editor-ownership/README.md) |
 
 ## References
 
@@ -47,3 +48,5 @@
 `08`은 내용 preview에서 component definition 내부 선택을 제거하고, 데이터 소유 단위의 직접 편집과 component 구조 편집 화면의 책임을 분리한다.
 
 `09`는 Jira 분석 문서를 기준으로 Preview Markdown의 자동 서식, 연속 목록 작성, 단축키와 빠른 삽입 경험을 구현한다.
+
+`10`은 React와 IME가 같은 editable DOM을 수정하는 구조를 제거하고, 활성 Markdown editor가 DOM·selection·composition을 단독 소유하도록 편집 경계를 교체한다.

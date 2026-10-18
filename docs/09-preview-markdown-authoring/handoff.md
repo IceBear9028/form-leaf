@@ -4,8 +4,8 @@
 
 - 상태: 실제 Space·Tab·IME 입력 회귀 수정 및 자동 검증 완료, 사용자 실제 앱 확인 대기
 - 현재 단계: 7. 표준 IME 이벤트 흐름과 hidden Playwright 반복 검증 완료, 실제 앱 확인 대기
-- 작업 트리: Preview 선택·Markdown 편집 회귀 수정과 09 문서가 미커밋 상태
-- 마지막 커밋: `19ec27a feat: improve preview markdown authoring`
+- 작업 트리: Preview 선택·Markdown 편집 회귀 수정은 커밋 완료, 후속 10 설계 문서가 미커밋 상태
+- 마지막 커밋: `a971b7e fix: stabilize preview markdown input`
 
 ## 완료된 작업
 
@@ -92,9 +92,9 @@
 
 ## 남은 작업
 
-- 현재 실제 앱 process는 최신 Space/IME 수정 build보다 먼저 시작됐다. 사용자가 저장 상태를 확인하고 앱을 완전히 재실행한 뒤, 실제 한글 문장을 여러 단어 입력하며 Space로 확정해 중복 여부를 확인한다.
-- 확인 뒤 단계 7과 backlog를 완료 처리한다.
-- 변경은 아직 커밋하지 않았다. 사용자가 요청할 때만 커밋한다.
+- 빠른 한글 입력의 추가 실사용 보고로 이벤트 순서 보정만으로는 editable DOM 소유권 충돌을 제거할 수 없음을 확인했다.
+- 현재 수정은 `a971b7e`로 보존하고, 후속 구조 개선은 [10. Markdown 편집 DOM 단일 소유권](../10-markdown-editor-ownership/README.md)에서 진행한다.
+- 10의 editor 경로가 실제 문서에서 검증된 뒤 단계 7과 backlog의 최종 상태를 확정한다.
 
 ## 미결정 사항과 위험
 
@@ -104,4 +104,4 @@
 
 ## 다음 세션의 첫 작업
 
-실제 앱 확인 결과를 반영한 뒤 단계 7과 backlog 상태를 확정하고, 사용자가 요청할 때만 커밋한다.
+[10. Markdown 편집 DOM 단일 소유권](../10-markdown-editor-ownership/handoff.md)의 단계 1에서 현재 ownership 경계를 고정하고 editor engine spike를 진행한다.

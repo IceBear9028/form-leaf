@@ -9,6 +9,7 @@ import { useDocumentLibrary } from "../pages/document-library/useDocumentLibrary
 import { Spinner } from "@/shared/ui/spinner";
 import { Toaster } from "@/shared/ui/toast";
 import { TooltipProvider } from "@/shared/ui/tooltip";
+import { MarkdownEditorOwnershipSpike } from "../pages/document-editor/markdown/editor/MarkdownEditorOwnershipSpike";
 
 type AppView =
   | { type: "library" }
@@ -16,6 +17,9 @@ type AppView =
   | { type: "editor"; document: DocumentData };
 
 export function App() {
+  if (new URLSearchParams(location.search).get("editorOwnershipSpike") === "1") {
+    return <MarkdownEditorOwnershipSpike />;
+  }
   return (
     <TooltipProvider>
       <Toaster>

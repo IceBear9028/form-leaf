@@ -545,6 +545,13 @@ function markdownBlockShortcutBefore(
   if (heading) {
     return { start: lineStart, marker: heading.replaceAll("\\", "") };
   }
+  const changedHeading = prefix.match(/^( {0,3})#{1,6}[ \t]+((?:\\#){1,6})$/);
+  if (changedHeading) {
+    return {
+      start: lineStart,
+      marker: `${changedHeading[1]}${changedHeading[2].replaceAll("\\", "")}`,
+    };
+  }
   if (prefix === "\\-") return { start: lineStart, marker: "-" };
   if (prefix === "\\*" || prefix === "\\+") {
     return { start: lineStart, marker: prefix.slice(1) };

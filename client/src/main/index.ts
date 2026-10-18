@@ -14,6 +14,7 @@ app.setPath("userData", legacyUserDataDirectory);
 let mainWindow: BrowserWindow | null = null;
 const interactionDebugEnabled = process.env.DOCUMENT_INTERACTION_DEBUG === "1";
 const headlessE2eEnabled = process.env.DOCUMENT_E2E_HEADLESS === "1";
+const editorOwnershipSpikeEnabled = process.env.DOCUMENT_EDITOR_OWNERSHIP_SPIKE === "1";
 
 function workspaceDirectory(): string {
   return join(app.getPath("userData"), "workspaces");
@@ -60,10 +61,15 @@ function createWindow(): void {
   if (process.env.ELECTRON_RENDERER_URL) {
     const rendererUrl = new URL(process.env.ELECTRON_RENDERER_URL);
     if (interactionDebugEnabled) rendererUrl.searchParams.set("interactionDebug", "1");
+    if (editorOwnershipSpikeEnabled) rendererUrl.searchParams.set("editorOwnershipSpike", "1");
     void mainWindow.loadURL(rendererUrl.toString());
   } else {
+    const query = {
+      ...(interactionDebugEnabled ? { interactionDebug: "1" } : {}),
+      ...(editorOwnershipSpikeEnabled ? { editorOwnershipSpike: "1" } : {}),
+    };
     void mainWindow.loadFile(join(__dirname, "../renderer/index.html"), {
-      query: interactionDebugEnabled ? { interactionDebug: "1" } : undefined,
+      query: Object.keys(query).length ? query : undefined,
     });
   }
 }
