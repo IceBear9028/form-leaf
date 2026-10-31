@@ -44,6 +44,7 @@ type NodeRendererProps = {
   node: RenderTreeNode;
   measure?: boolean;
   selectedNodeId?: string;
+  selectedEditTargetKey?: string;
   selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
   selectionMode?: RenderSelectionMode;
@@ -59,6 +60,7 @@ export const NodeRenderer = memo(function NodeRenderer({
   node,
   measure = false,
   selectedNodeId,
+  selectedEditTargetKey,
   selectedRepeaterItem,
   selectableNodeIds,
   selectionMode = "content",
@@ -165,7 +167,7 @@ export const NodeRenderer = memo(function NodeRenderer({
     "data-markdown-fragment-first": node.type === "markdown" && node.fragment ? String(node.fragment.first) : undefined,
     "data-markdown-fragment-last": node.type === "markdown" && node.fragment ? String(node.fragment.last) : undefined,
     "data-measure-id": measure ? node.renderId : undefined,
-    "data-document-selected": selectedNodeId === node.sourceNodeId ? "true" : undefined,
+    "data-document-selected": (selectedEditTargetKey ? selectedEditTargetKey === editTargetKey : selectedNodeId === node.sourceNodeId) ? "true" : undefined,
     "data-document-content-edit-target": selectionMode === "content" && directlyEditable ? "true" : undefined,
     "data-document-edit-target-key": selectionMode === "content" && directlyEditable ? editTargetKey : undefined,
     "data-document-edit-active": editTargetActive ? "true" : undefined,
@@ -190,10 +192,10 @@ export const NodeRenderer = memo(function NodeRenderer({
   };
 
   if (node.type === "container") {
-    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} selectionMode={selectionMode} onSelect={onSelect} activeEditTarget={activeEditTarget} onEditActivate={onEditActivate} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />)}</div>;
+    return <div {...attributes}>{node.children.map((child) => <NodeRenderer key={child.renderId} node={child} measure={measure} selectedNodeId={selectedNodeId} selectedEditTargetKey={selectedEditTargetKey} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} selectionMode={selectionMode} onSelect={onSelect} activeEditTarget={activeEditTarget} onEditActivate={onEditActivate} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />)}</div>;
   }
   if (node.type === "component-instance") {
-    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} selectionMode={selectionMode} onSelect={onSelect} activeEditTarget={activeEditTarget} onEditActivate={onEditActivate} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} /></div>;
+    return <div {...attributes}><NodeRenderer node={node.child} measure={measure} selectedNodeId={selectedNodeId} selectedEditTargetKey={selectedEditTargetKey} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} selectionMode={selectionMode} onSelect={onSelect} activeEditTarget={activeEditTarget} onEditActivate={onEditActivate} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} /></div>;
   }
   if (node.type === "repeater") {
     return (
@@ -261,7 +263,7 @@ export const NodeRenderer = memo(function NodeRenderer({
               className="document-repeater-item"
               data-repeater-node-id={node.sourceNodeId}
               data-repeater-item-id={item.id}
-              data-document-selected={selectedRepeaterItem?.nodeId === node.sourceNodeId && selectedRepeaterItem.itemId === item.id ? "true" : undefined}
+              data-document-selected={!selectedEditTargetKey && selectedRepeaterItem?.nodeId === node.sourceNodeId && selectedRepeaterItem.itemId === item.id ? "true" : undefined}
               key={item.id}
               tabIndex={itemSelectable ? 0 : undefined}
               role={itemSelectable ? "button" : undefined}
@@ -283,7 +285,7 @@ export const NodeRenderer = memo(function NodeRenderer({
                 }
                 : undefined}
             >
-              <NodeRenderer node={item.child} measure={measure} selectedNodeId={selectedNodeId} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} selectionMode={selectionMode} onSelect={onSelect} activeEditTarget={activeEditTarget} onEditActivate={onEditActivate} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />
+              <NodeRenderer node={item.child} measure={measure} selectedNodeId={selectedNodeId} selectedEditTargetKey={selectedEditTargetKey} selectedRepeaterItem={selectedRepeaterItem} selectableNodeIds={selectableNodeIds} selectionMode={selectionMode} onSelect={onSelect} activeEditTarget={activeEditTarget} onEditActivate={onEditActivate} onEditValueChange={onEditValueChange} onRichTextSelection={onRichTextSelection} richTextSelection={richTextSelection} />
             </div>
           );
         })}
@@ -359,6 +361,7 @@ function sameNodeRendererProps(previous: NodeRendererProps, next: NodeRendererPr
   if (
     previous.node !== next.node ||
     previous.measure !== next.measure ||
+    previous.selectedEditTargetKey !== next.selectedEditTargetKey ||
     previous.selectableNodeIds !== next.selectableNodeIds ||
     previous.selectionMode !== next.selectionMode ||
     previous.onSelect !== next.onSelect ||

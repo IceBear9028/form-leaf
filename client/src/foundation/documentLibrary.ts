@@ -27,6 +27,7 @@ export type DocumentLibraryIndex = {
 };
 
 export type DocumentApi = {
+  onBeforeClose: (handler: () => Promise<boolean>) => () => void;
   listDocuments: () => Promise<DocumentSummary[]>;
   listDeletedDocuments: () => Promise<DeletedDocumentSummary[]>;
   createDocument: () => Promise<{ summary: DocumentSummary; document: DocumentData }>;

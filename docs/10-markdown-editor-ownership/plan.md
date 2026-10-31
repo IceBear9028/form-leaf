@@ -5,11 +5,11 @@
 | 단계 | 작업 | 상태 | 검증 |
 |---|---|---|---|
 | 1 | 현재 ownership 경계 고정과 editor engine 검증 | 완료 | Tiptap session·Markdown snapshot·실제 DOM/IME parent rerender spike 통과 |
-| 2 | Markdown editor session과 codec 계약 | 진행 중 | session revision·compatibility gate·block replacement/conflict 검증 완료, lifecycle 통합 필요 |
-| 3 | read-only preview와 active editor island 분리 | 대기 | React 재렌더 중 editor instance·DOM·caret 유지 회귀 |
-| 4 | Jira형 명령을 editor transaction으로 이전 | 대기 | 목록·inline·shortcut·toolbar·quick insert 명령 테스트 |
-| 5 | selection·pagination·저장 lifecycle 통합 | 대기 | 대상 전환·페이지 재계산·저장·재열기 hidden Electron E2E |
-| 6 | 기존 DOM 보정 제거와 전체 검증 | 대기 | dead path 제거, 전체 테스트·build·실제 문서·PDF 확인 |
+| 2 | Markdown editor session과 codec 계약 | 완료 | acknowledgement·외부 변경 보류·원문 유지·range 교체·CRLF·command 14개 단위 테스트 |
+| 3 | read-only preview와 active editor island 분리 | 완료 | 제품 host root identity·composition·caret·measure/print read-only 검증 |
+| 4 | Jira형 명령을 editor transaction으로 이전 | 완료 | 목록·inline·heading level·toolbar·shortcut·quick insert·undo/redo·literal paste 검증 |
+| 5 | selection·pagination·저장 lifecycle 통합 | 완료 | node·component prop·repeater prop·같은 target block 전환·앱 종료 저장 검증 |
+| 6 | 기존 DOM 보정 제거와 전체 검증 | 완료 | 09 DOM 보정 제거, 107개 단위 테스트·hidden Electron·기존 문서 복사본·PDF 검증 |
 
 상태는 `대기`, `진행 중`, `완료`, `차단` 중 하나만 사용한다. 동시에 하나의 단계만 `진행 중`으로 둔다.
 
@@ -55,6 +55,8 @@ pagination은 같은 Markdown source를 여러 분리된 page DOM으로 렌더�
 ### 5. selection·pagination·저장 lifecycle 통합
 
 - 문서 selection은 `DocumentEditTarget` 하나, editor selection은 session 내부 range 하나로 분리한다.
+- `anchorRenderId`는 editor host의 mount 위치에만 사용하고 문서 selection identity나 selection outline의 범위로 사용하지 않는다.
+- Markdown의 문단·제목·인용문·목록을 각각 클릭해도 같은 document target이 선택되고, active block과 caret만 전환되는지 검증한다.
 - 외부 요소 클릭은 active session flush → editor 종료 → 새 문서 target 선택 순서로 처리한다.
 - composition 중 repagination과 active unit 이동을 보류하고 editor 종료 또는 안전한 transaction 경계에서 재계산한다.
 - 자동 저장은 마지막 published DocumentData snapshot을 저장하며 성공 응답을 active editor DOM에 반영하지 않는다.
@@ -70,15 +72,30 @@ pagination은 같은 Markdown source를 여러 분리된 page DOM으로 렌더�
 
 ## 회귀 검증
 
-- [ ] editor engine IME spike
-- [ ] Markdown parse/serialize round-trip
-- [ ] React rerender 중 editor DOM·selection 불변
-- [ ] 빠른 한글·Space·Enter·Tab/Shift+Tab 입력
-- [ ] node·component prop·repeater item prop session
-- [ ] 대상 전환·저장·재열기·PDF
-- [ ] hidden Playwright Electron 사용자 흐름
-- [ ] `npm test`
-- [ ] `npm run typecheck`
-- [ ] `npm run build`
-- [ ] `git diff --check`
-- [ ] 개인정보와 로컬 사용자 데이터가 Git diff에 없는지 확인
+- [x] editor engine IME spike
+- [x] Markdown parse/serialize round-trip
+- [x] React rerender 중 editor DOM·selection 불변
+- [x] 빠른 한글·Space·Enter·Tab/Shift+Tab 입력
+- [x] node·component prop·repeater item prop session
+- [x] Markdown 내부 block 클릭 시 document target 유지·caret만 이동·block별 중복 outline 없음
+- [x] 대상 전환·저장·재열기·PDF
+- [x] hidden Playwright Electron 사용자 흐름
+- [x] `npm test`
+- [x] `npm run typecheck`
+- [x] `npm run build`
+- [x] `git diff --check`
+- [x] 개인정보와 로컬 사용자 데이터가 Git diff에 없는지 확인
+
+
+## 2026-10-24 통합 결과
+
+- `main@7c65d15`에서 `feat/10-markdown-editor-ownership`으로 분기했다. 기존 선택 경계 문서 3개의 변경을 보존했으며 커밋하지 않았다.
+- 단일 `MarkdownEditorHost`가 빈 React mount 안에 Tiptap view를 만들며, 활성 session에 `setContent`나 source/DOM selection 역주입 경로는 없다.
+- 문서 선택에 full `DocumentEditTarget`을 보관한다. outline은 같은 target의 페이지 내 fragment들을 합친 범위 하나이며, component prop과 repeater item prop도 구분한다.
+- 편집 중에는 target의 최초 preview range와 페이지 배치를 고정한다. 완료된 block preview는 최신 snapshot을 표시하고 새 session은 누적 range delta를 적용한다. 화면 페이지는 입력 길이에 맞춰 임시 확장되며 종료 후 최종 pagination을 수행한다.
+- 실제 외부 source 교체는 editor에 주입하지 않고 보류한다. 보류한 변경 적용 또는 현재 내용 유지를 사용자가 선택할 수 있다.
+- 앱 종료는 renderer flush와 기존 저장 경로의 성공 응답을 기다린다. 저장 실패 시 창을 닫지 않는다.
+- unsupported 문법 검사는 full source AST의 해당 block에서 실행해 외부 reference definition 문맥까지 유지한다. 읽기 전용 fallback의 원문과 편집 범위 밖 CRLF도 보존한다.
+- 09의 `sourceSelection.ts`, source 기반 `edits.ts`, JSX contentEditable/IME echo/selection 복원을 제거했다. 동작 검증은 editor command 단위 테스트와 실제 Chromium input E2E로 옮겼다.
+- 기존 사용자 문서는 임시 userData 복사본에서만 작성·저장·재열기·PDF를 검증했다. 원본 SHA-256 불변을 확인했고 실제 데이터와 backup은 수정하지 않았다.
+- CDP IME와 hidden Electron을 사용했다. 사용자 실기기의 macOS 입력기 수동 수용 확인은 자동 검증과 별개다.

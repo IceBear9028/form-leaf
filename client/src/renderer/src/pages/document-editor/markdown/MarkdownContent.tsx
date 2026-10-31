@@ -5,34 +5,8 @@ import type {
   RootContent,
   Table,
 } from "mdast";
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-} from "react";
-import {
-  collectMarkdownDefinitions,
-  markdownEditableBlankLineOffsets,
-  markdownTextSegments,
-  parseMarkdownBlocks,
-  type MarkdownBlock,
-  type MarkdownDefinition,
-} from "./parser";
-import {
-  markdownEmptyListItemCaretOffset,
-  type MarkdownSourceRange,
-} from "./edits";
-import {
-  readMarkdownSourceRange,
-  readMarkdownSourceSelection,
-  type MarkdownDomSelection,
-} from "./sourceSelection";
-import {
-  interactionDebugEnabled,
-  recordInteraction,
-} from "../interactionDebug.ts";
+import { useId, type ReactNode } from "react";
+import { collectMarkdownDefinitions, parseMarkdownBlocks, type MarkdownBlock, type MarkdownDefinition } from "./parser";
 
 export type MarkdownContext = "document";
 
@@ -40,29 +14,6 @@ type MarkdownRenderContext = {
   definitions: Map<string, MarkdownDefinition>;
   footnoteNumbers: Map<string, number>;
   idPrefix: string;
-  editing?: MarkdownEditingContext;
-};
-
-export type MarkdownEditingContext = {
-  source: string;
-  sourceId: string;
-  onEditIntent: (
-    root: HTMLElement,
-    inputType: string,
-    data?: string,
-    targetSelection?: MarkdownDomSelection,
-  ) => void;
-  onCompositionCommit: (
-    range: MarkdownSourceRange,
-    text: string,
-  ) => void;
-  consumeCompositionEcho: (
-    inputType: string,
-    data: string | null,
-    isComposing: boolean,
-  ) => boolean;
-  clearCompositionEcho: () => void;
-  onTaskToggle: (itemStart: number, checked: boolean) => void;
 };
 
 export function MarkdownContent({
@@ -100,334 +51,16 @@ export function MarkdownContent({
   );
 }
 
-export function MarkdownBlockContent({
-  block,
-  documentBlocks,
-  context,
-  idPrefix,
-  lead = false,
-  editing,
-}: {
+export function MarkdownBlockContent({ block, documentBlocks, context, idPrefix, lead = false }: {
   block: MarkdownBlock;
   documentBlocks: MarkdownBlock[];
   context: MarkdownContext;
   idPrefix: string;
   lead?: boolean;
-  editing?: MarkdownEditingContext;
 }) {
-  const activeEditing = editing && isEditableMarkdownBlock(block.node) ? editing : undefined;
-  const rootRef = useMarkdownEditingHost(activeEditing);
-  const leadingOffsets = activeEditing
-    ? leadingLineOffsets(block, documentBlocks, activeEditing.source)
-    : [];
-  const previousBlockCapturesGap = editing
-    ? previousEditableBlockCapturesGap(block, documentBlocks, editing.source)
-    : false;
-  const trailingOffsets = activeEditing
-    ? trailingLineOffsets(block, documentBlocks, activeEditing.source)
-    : [];
-  const emptyBlockOffsets = trailingOffsets.filter((_, index) => index % 2 === 1);
-  const unpairedTrailingOffsets = trailingOffsets.length % 2 === 1
-    ? trailingOffsets.slice(-1)
-    : [];
-
-  return (
-    <>
-      <div
-      ref={rootRef}
-      className={`markdown-body markdown-body--${context}${activeEditing ? " markdown-editable-block" : ""}`}
-      contentEditable={activeEditing ? true : undefined}
-      suppressContentEditableWarning={Boolean(activeEditing)}
-      spellCheck={activeEditing ? false : undefined}
-      role={activeEditing ? "textbox" : undefined}
-      aria-multiline={activeEditing ? true : undefined}
-      data-markdown-editable-block={activeEditing ? activeEditing.sourceId : undefined}
-      onKeyDown={activeEditing
-        ? (event) => onMarkdownEditingKeyDown(event, activeEditing)
-        : undefined}
-    >
-      {!previousBlockCapturesGap && leadingOffsets.length > 0 && (
-        <div
-          className="markdown-extra-blank-lines markdown-edit-leading-lines"
-          data-markdown-edit-group={`${activeEditing?.sourceId}:gap:${block.node.position?.start.offset ?? 0}`}
-          aria-hidden="true"
-        >
-          {leadingOffsets.map((offset) => (
-            <span key={offset}>
-              <span
-                className="markdown-caret-anchor"
-                data-markdown-source-id={activeEditing?.sourceId}
-                data-markdown-source-map={`${offset},${offset}`}
-              >{"\u200b"}</span>
-            </span>
-          ))}
-        </div>
-      )}
-      <MarkdownBlockView
-        block={block}
-        lead={lead}
-        renderContext={createRenderContext(documentBlocks, idPrefix, activeEditing)}
-        showExtraBlankLines={!previousBlockCapturesGap && leadingOffsets.length === 0}
-      />
-      {unpairedTrailingOffsets.length > 0 && (
-        <div
-          className="markdown-edit-trailing-lines"
-          data-markdown-edit-group={`${activeEditing?.sourceId}:${block.node.position?.start.offset ?? 0}`}
-          aria-hidden="true"
-        >
-          {unpairedTrailingOffsets.map((offset) => (
-            <span className="markdown-edit-trailing-line" key={offset}>
-              <span
-                className="markdown-caret-anchor"
-                data-markdown-source-id={activeEditing?.sourceId}
-                data-markdown-source-map={`${offset},${offset}`}
-              >{"\u200b"}</span>
-            </span>
-          ))}
-        </div>
-      )}
-      </div>
-      {activeEditing && emptyBlockOffsets.map((offset) => (
-        <MarkdownEmptyBlockContent
-          context={context}
-          editing={activeEditing}
-          offset={offset}
-          key={`empty-${offset}`}
-        />
-      ))}
-    </>
-  );
-}
-
-export function MarkdownEmptyContent({
-  editing,
-}: {
-  editing: MarkdownEditingContext;
-}) {
-  const rootRef = useMarkdownEditingHost(editing);
-  return (
-    <div
-      ref={rootRef}
-      className="document-empty-editable"
-      contentEditable
-      suppressContentEditableWarning
-      role="textbox"
-      aria-label="Markdown 입력"
-      data-placeholder="텍스트 입력"
-      data-markdown-editable-block={editing.sourceId}
-      onKeyDown={(event) => onMarkdownEditingKeyDown(event, editing)}
-    />
-  );
-}
-
-function MarkdownEmptyBlockContent({
-  context,
-  editing,
-  offset,
-}: {
-  context: MarkdownContext;
-  editing: MarkdownEditingContext;
-  offset: number;
-}) {
-  const rootRef = useMarkdownEditingHost(editing);
-  return (
-    <div
-      ref={rootRef}
-      className={`markdown-body markdown-body--${context} markdown-editable-block markdown-empty-block-host`}
-      contentEditable
-      suppressContentEditableWarning
-      spellCheck={false}
-      role="textbox"
-      aria-multiline
-      data-markdown-editable-block={editing.sourceId}
-      onKeyDown={(event) => onMarkdownEditingKeyDown(event, editing)}
-    >
-      <p
-        className="markdown-block markdown-paragraph markdown-empty-block"
-        data-markdown-block="paragraph"
-        data-markdown-edit-group={`${editing.sourceId}:empty:${offset}`}
-      >
-        <MarkdownCaretAnchor offset={offset} editing={editing} />
-      </p>
-    </div>
-  );
-}
-
-function useMarkdownEditingHost(editing?: MarkdownEditingContext) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const editingRef = useRef(editing);
-  const editingEnabled = Boolean(editing);
-  const compositionRef = useRef<{
-    range: MarkdownSourceRange;
-    targetRangeCaptured: boolean;
-  } | undefined>(undefined);
-
-  useLayoutEffect(() => {
-    editingRef.current = editing;
-  }, [editing]);
-
-  useLayoutEffect(() => {
-    const root = rootRef.current;
-    if (!root || !editingRef.current) return;
-
-    const onBeforeInput = (event: InputEvent) => {
-      const editing = editingRef.current;
-      if (!editing) return;
-      if (editing.consumeCompositionEcho(event.inputType, event.data, event.isComposing)) {
-        event.preventDefault();
-        return;
-      }
-      const targetRange = event.getTargetRanges()[0];
-      const targetSelection = targetRange
-        ? readMarkdownSourceRange(root, targetRange, true)
-        : undefined;
-      const composition = compositionRef.current;
-      if (event.isComposing || composition) {
-        if (
-          composition &&
-          !composition.targetRangeCaptured &&
-          event.inputType === "insertCompositionText" &&
-          targetSelection?.sourceId === editing.sourceId
-        ) {
-          composition.range = targetSelection.range;
-          composition.targetRangeCaptured = true;
-        }
-        if (interactionDebugEnabled()) {
-          recordInteraction("markdown-composition", {
-            sourceId: editing.sourceId,
-            phase: "beforeinput",
-            inputType: event.inputType,
-            data: event.data,
-            isComposing: event.isComposing,
-            selectionRange: readMarkdownSourceSelection(root, true)?.range,
-            targetRange: targetSelection?.range,
-            committedRange: composition?.range,
-            targetRangeCaptured: composition?.targetRangeCaptured,
-          });
-        }
-        return;
-      }
-      event.preventDefault();
-      editing.onEditIntent(
-        root,
-        event.inputType,
-        event.data ?? undefined,
-        targetSelection,
-      );
-    };
-    const onPaste = (event: ClipboardEvent) => {
-      const editing = editingRef.current;
-      if (!editing) return;
-      event.preventDefault();
-      editing.onEditIntent(
-        root,
-        "insertFromPaste",
-        event.clipboardData?.getData("text/plain") ?? "",
-      );
-    };
-    const onCompositionStart = (event: CompositionEvent) => {
-      const editing = editingRef.current;
-      if (!editing) return;
-      editing.clearCompositionEcho();
-      root.dataset.markdownComposing = "true";
-      const range = readMarkdownSourceSelection(root, true)?.range ??
-        (editing.source.length === 0 ? { start: 0, end: 0 } : undefined);
-      compositionRef.current = range
-        ? { range, targetRangeCaptured: false }
-        : undefined;
-      if (interactionDebugEnabled()) {
-        recordInteraction("markdown-composition", {
-          sourceId: editing.sourceId,
-          phase: "start",
-          data: event.data,
-          selectionRange: range,
-        });
-      }
-    };
-    const onCompositionUpdate = (event: CompositionEvent) => {
-      const editing = editingRef.current;
-      if (!editing) return;
-      if (!interactionDebugEnabled()) return;
-      recordInteraction("markdown-composition", {
-        sourceId: editing.sourceId,
-        phase: "update",
-        data: event.data,
-        committedRange: compositionRef.current?.range,
-        targetRangeCaptured: compositionRef.current?.targetRangeCaptured,
-      });
-    };
-    const onCompositionEnd = (event: CompositionEvent) => {
-      const editing = editingRef.current;
-      if (!editing) return;
-      const composition = compositionRef.current;
-      compositionRef.current = undefined;
-      delete root.dataset.markdownComposing;
-      if (!composition) return;
-      const text = event.data ?? "";
-      if (interactionDebugEnabled()) {
-        recordInteraction("markdown-composition", {
-          sourceId: editing.sourceId,
-          phase: "end",
-          data: text,
-          committedRange: composition.range,
-          targetRangeCaptured: composition.targetRangeCaptured,
-        });
-      }
-      editing.onCompositionCommit(composition.range, text);
-    };
-    root.addEventListener("beforeinput", onBeforeInput);
-    root.addEventListener("paste", onPaste);
-    root.addEventListener("compositionstart", onCompositionStart);
-    root.addEventListener("compositionupdate", onCompositionUpdate);
-    root.addEventListener("compositionend", onCompositionEnd);
-    return () => {
-      root.removeEventListener("beforeinput", onBeforeInput);
-      root.removeEventListener("paste", onPaste);
-      root.removeEventListener("compositionstart", onCompositionStart);
-      root.removeEventListener("compositionupdate", onCompositionUpdate);
-      root.removeEventListener("compositionend", onCompositionEnd);
-      delete root.dataset.markdownComposing;
-    };
-  }, [editingEnabled]);
-
-  return rootRef;
-}
-
-function onMarkdownEditingKeyDown(
-  event: ReactKeyboardEvent<HTMLDivElement>,
-  editing: MarkdownEditingContext,
-) {
-  if (interactionDebugEnabled() && [" ", "Tab", "Enter", "Escape"].includes(event.key)) {
-    recordInteraction("markdown-key", {
-      sourceId: editing.sourceId,
-      key: event.key === " " ? "Space" : event.key,
-      shiftKey: event.shiftKey,
-      metaKey: event.metaKey,
-      ctrlKey: event.ctrlKey,
-      altKey: event.altKey,
-      composing: event.nativeEvent.isComposing,
-      compositionActive: event.currentTarget.dataset.markdownComposing === "true",
-    });
-  }
-  const composing = event.nativeEvent.isComposing ||
-    event.currentTarget.dataset.markdownComposing === "true";
-  if (event.key === "Enter" && !composing) {
-    event.preventDefault();
-    editing.onEditIntent(
-      event.currentTarget,
-      event.shiftKey ? "insertLineBreak" : "insertParagraph",
-    );
-    return;
-  }
-  if (event.key === "Tab" && !composing) {
-    event.preventDefault();
-    editing.onEditIntent(
-      event.currentTarget,
-      event.shiftKey ? "formatOutdent" : "formatIndent",
-    );
-    return;
-  }
-  if (event.key === "Escape") window.getSelection()?.removeAllRanges();
+  return <div className={`markdown-body markdown-body--${context}`}>
+    <MarkdownBlockView block={block} lead={lead} renderContext={createRenderContext(documentBlocks, idPrefix)} />
+  </div>;
 }
 
 export function MarkdownFootnotesContent({
@@ -488,28 +121,17 @@ function MarkdownNodeView({
 }): ReactNode {
   if (node.type === "heading") {
     const HeadingTag = `h${node.depth}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
-    const emptyOffset = renderContext.editing && node.children.length === 0
-      ? emptyHeadingContentOffset(node, renderContext.editing.source)
-      : undefined;
-    const trailingWhitespace = markdownTrailingWhitespace(node, renderContext, emptyOffset);
     return (
       <HeadingTag
         className={`markdown-block markdown-heading markdown-heading--h${node.depth}`}
         data-markdown-block="heading"
-        data-markdown-edit-group={markdownEditGroup(node, renderContext)}
-        {...markdownSourceOuter(node, renderContext)}
       >
         <MarkdownInline nodes={node.children} renderContext={renderContext} />
-        {emptyOffset !== undefined && (
-          <MarkdownCaretAnchor offset={emptyOffset} editing={renderContext.editing!} />
-        )}
-        {trailingWhitespace}
       </HeadingTag>
     );
   }
 
   if (node.type === "paragraph") {
-    const trailingWhitespace = markdownTrailingWhitespace(node, renderContext);
     return (
       <p
         className={[
@@ -519,11 +141,8 @@ function MarkdownNodeView({
           compact ? "markdown-paragraph--compact" : "",
         ].filter(Boolean).join(" ")}
         data-markdown-block="paragraph"
-        data-markdown-edit-group={markdownEditGroup(node, renderContext)}
-        {...markdownSourceOuter(node, renderContext)}
       >
         <MarkdownInline nodes={node.children} renderContext={renderContext} />
-        {trailingWhitespace}
       </p>
     );
   }
@@ -548,54 +167,11 @@ function MarkdownNodeView({
   }
 
   if (node.type === "code") {
-    const editing = renderContext.editing;
-    const bounds = editing ? markdownCodeContentBounds(node, editing.source) : undefined;
-    return (
-      <pre
-        className="markdown-block markdown-code-block"
-        data-markdown-block="code"
-        data-markdown-edit-group={markdownEditGroup(node, renderContext)}
-        {...markdownSourceOuter(node, renderContext)}
-      >
-        <code className={node.lang ? `language-${node.lang}` : undefined}>
-          {editing && bounds
-            ? node.value
-              ? (
-                  <span
-                    className="markdown-editable-segment"
-                    data-markdown-source-id={editing.sourceId}
-                    data-markdown-source-map={Array.from(
-                      { length: node.value.length + 1 },
-                      (_, index) => Math.min(bounds.end, bounds.start + index),
-                    ).join(",")}
-                    data-markdown-source-outer-start={bounds.start}
-                    data-markdown-source-outer-end={bounds.end}
-                  >{node.value}</span>
-                )
-              : <MarkdownCaretAnchor offset={bounds.start} editing={editing} />
-            : node.value}
-        </code>
-      </pre>
-    );
+    return <pre className="markdown-block markdown-code-block" data-markdown-block="code">
+      <code className={node.lang ? `language-${node.lang}` : undefined}>{node.value}</code>
+    </pre>;
   }
-
   if (node.type === "thematicBreak") {
-    const emptyFormat = renderContext.editing
-      ? emptyBlockFormat(node, renderContext.editing.source)
-      : undefined;
-    if (emptyFormat) {
-      const content = <MarkdownCaretAnchor offset={emptyFormat.offset} editing={renderContext.editing!} />;
-      return (
-        <p
-          className="markdown-block markdown-paragraph"
-          data-markdown-block="paragraph"
-          data-markdown-edit-group={markdownEditGroup(node, renderContext)}
-          {...markdownSourceOuter(node, renderContext)}
-        >
-          {wrapEmptyFormat(emptyFormat.format, content)}
-        </p>
-      );
-    }
     return <hr className="markdown-block markdown-thematic-break" data-markdown-block="separator" />;
   }
 
@@ -649,38 +225,14 @@ function MarkdownList({
           className="markdown-task-checkbox"
           type="checkbox"
           checked={item.checked}
-          disabled={!renderContext.editing}
-          readOnly={!renderContext.editing}
-          contentEditable={false}
-          tabIndex={renderContext.editing ? 0 : -1}
+          disabled
+          readOnly
+          tabIndex={-1}
           aria-label={item.checked ? "작업 완료 해제" : "작업 완료"}
-          onChange={renderContext.editing && item.position?.start.offset !== undefined
-            ? (event) => renderContext.editing?.onTaskToggle(
-                item.position!.start.offset!,
-                event.currentTarget.checked,
-              )
-            : undefined}
         />
       )}
       <div className="markdown-list-item-content">
-        {item.children.length === 0 && renderContext.editing &&
-          item.position?.start.offset !== undefined &&
-          item.position.end.offset !== undefined && (
-          <p
-            className="markdown-block markdown-paragraph markdown-paragraph--compact markdown-empty-list-item"
-            data-markdown-block="paragraph"
-            data-markdown-edit-group={`${renderContext.editing.sourceId}:${item.position.start.offset}`}
-          >
-            <MarkdownCaretAnchor
-              offset={markdownEmptyListItemCaretOffset(
-                renderContext.editing.source,
-                item.position.start.offset,
-                item.position.end.offset,
-              )}
-              editing={renderContext.editing}
-            />
-          </p>
-        )}
+        {item.children.length === 0 && <p className="markdown-paragraph markdown-empty-list-item"><br /></p>}
         {item.children.map((child, childIndex) => (
           <MarkdownNodeView
             key={childIndex}
@@ -710,7 +262,6 @@ function MarkdownTable({
   node: Table;
   renderContext: MarkdownRenderContext;
 }) {
-  const readOnlyContext = { ...renderContext, editing: undefined };
   const [head, ...body] = node.children;
   return (
     <div className="markdown-block markdown-table-wrap" data-markdown-block="table">
@@ -720,7 +271,7 @@ function MarkdownTable({
             <tr>
               {head.children.map((cell, index) => (
                 <th key={index} style={{ textAlign: node.align?.[index] ?? undefined }}>
-                  <MarkdownInline nodes={cell.children} renderContext={readOnlyContext} />
+                  <MarkdownInline nodes={cell.children} renderContext={renderContext} />
                 </th>
               ))}
             </tr>
@@ -732,7 +283,7 @@ function MarkdownTable({
               <tr key={rowIndex}>
                 {row.children.map((cell, cellIndex) => (
                   <td key={cellIndex} style={{ textAlign: node.align?.[cellIndex] ?? undefined }}>
-                    <MarkdownInline nodes={cell.children} renderContext={readOnlyContext} />
+                    <MarkdownInline nodes={cell.children} renderContext={renderContext} />
                   </td>
                 ))}
               </tr>
@@ -757,9 +308,6 @@ function MarkdownInline({
       node={node}
       keyPrefix={index}
       renderContext={renderContext}
-      breakOffset={node.type === "break"
-        ? nodes[index + 1]?.position?.start.offset ?? nodes[index - 1]?.position?.end.offset
-        : undefined}
     />
   ))}</>;
 }
@@ -768,125 +316,34 @@ function MarkdownInlineNode({
   node,
   keyPrefix,
   renderContext,
-  breakOffset,
 }: {
   node: PhrasingContent;
   keyPrefix: number;
   renderContext: MarkdownRenderContext;
-  breakOffset?: number;
 }): ReactNode {
-  if (node.type === "text") {
-    const editing = renderContext.editing;
-    const start = node.position?.start.offset;
-    const end = node.position?.end.offset;
-    if (editing && start !== undefined && end !== undefined) {
-      const emptyMarkers = renderTextWithEmptyMarkers(editing, node.value, start, end, keyPrefix);
-      if (emptyMarkers) return emptyMarkers;
-      return markdownTextSegments(editing.source, start, end, node.value).map((segment, index) => {
-        const mappedText = (
-          <span
-            key={`${keyPrefix}-${index}`}
-            className="markdown-editable-segment"
-            data-markdown-source-id={editing.sourceId}
-            data-markdown-source-map={segment.sourceBoundaries.join(",")}
-            data-markdown-source-outer-start={segment.sourceStart}
-            data-markdown-source-outer-end={segment.sourceEnd}
-          >
-            {segment.text}
-          </span>
-        );
-        return segment.underline
-          ? <u key={`${keyPrefix}-${index}`}>{mappedText}</u>
-          : mappedText;
-      });
-    }
-    return textWithUnderline(node.value, keyPrefix);
-  }
-  if (node.type === "break") {
-    return renderContext.editing && breakOffset !== undefined
-      ? (
-          <>
-            <br />
-            <span
-              className="markdown-caret-anchor"
-              data-markdown-source-id={renderContext.editing.sourceId}
-              data-markdown-source-map={`${breakOffset},${breakOffset}`}
-            >{"\u200b"}</span>
-          </>
-        )
-      : <br />;
-  }
+  if (node.type === "text") return textWithUnderline(node.value, keyPrefix);
+  if (node.type === "break") return <br />;
   if (node.type === "strong") {
-    return <strong {...markdownSourceOuter(node, renderContext)}><MarkdownInline nodes={node.children} renderContext={renderContext} /></strong>;
+    return <strong><MarkdownInline nodes={node.children} renderContext={renderContext} /></strong>;
   }
   if (node.type === "emphasis") {
-    return <em {...markdownSourceOuter(node, renderContext)}><MarkdownInline nodes={node.children} renderContext={renderContext} /></em>;
+    return <em><MarkdownInline nodes={node.children} renderContext={renderContext} /></em>;
   }
   if (node.type === "delete") {
-    return <del {...markdownSourceOuter(node, renderContext)}><MarkdownInline nodes={node.children} renderContext={renderContext} /></del>;
+    return <del><MarkdownInline nodes={node.children} renderContext={renderContext} /></del>;
   }
-  if (node.type === "inlineCode") {
-    const editing = renderContext.editing;
-    const start = node.position?.start.offset;
-    const end = node.position?.end.offset;
-    if (editing && start !== undefined && end !== undefined) {
-      const raw = editing.source.slice(start, end);
-      const openingLength = raw.match(/^`+/)?.[0].length ?? 1;
-      const contentStart = start + openingLength;
-      const contentEnd = Math.max(contentStart, end - openingLength);
-      const boundaries = Array.from(
-        { length: node.value.length + 1 },
-        (_, index) => Math.min(contentEnd, contentStart + index),
-      );
-      return (
-        <>
-          <code className="markdown-inline-code" {...markdownSourceOuter(node, renderContext)}>
-            <span
-              className="markdown-editable-segment"
-              data-markdown-source-id={editing.sourceId}
-              data-markdown-source-map={boundaries.join(",")}
-              data-markdown-source-outer-start={start}
-              data-markdown-source-outer-end={end}
-            >{node.value}</span>
-          </code>
-          <MarkdownCaretAnchor offset={end} editing={editing} />
-        </>
-      );
-    }
-    return <code className="markdown-inline-code">{node.value}</code>;
-  }
+  if (node.type === "inlineCode") return <code className="markdown-inline-code">{node.value}</code>;
   if (node.type === "html") {
-    if (/^<br\s*\/?>$/i.test(node.value)) {
-      const start = node.position?.start.offset;
-      const end = node.position?.end.offset;
-      return renderContext.editing && start !== undefined && end !== undefined
-        ? (
-            <>
-              <span
-                className="markdown-editable-segment markdown-hard-break"
-                data-markdown-source-id={renderContext.editing.sourceId}
-                data-markdown-source-map={`${start},${end}`}
-                data-markdown-source-outer-start={start}
-                data-markdown-source-outer-end={end}
-              >{"\n"}</span>
-              <span
-                className="markdown-hard-break-caret"
-                data-markdown-source-id={renderContext.editing.sourceId}
-                data-markdown-source-map={`${end},${end}`}
-              >{"\u200b"}</span>
-            </>
-          )
-        : <br />;
-    }
-    return <span className="markdown-inline-html" contentEditable={renderContext.editing ? false : undefined} {...markdownSourceOuter(node, renderContext)}>{node.value}</span>;
+    return /^<br\s*\/?>$/i.test(node.value)
+      ? <br /> : <span className="markdown-inline-html">{node.value}</span>;
   }
   if (node.type === "link") {
-    return renderLink(node.url, node.title, node.children, renderContext, node.position?.start.offset, node.position?.end.offset);
+    return renderLink(node.url, node.title, node.children, renderContext);
   }
   if (node.type === "linkReference") {
     const definition = renderContext.definitions.get(normalizeIdentifier(node.identifier));
     return definition
-      ? renderLink(definition.url, definition.title, node.children, renderContext, node.position?.start.offset, node.position?.end.offset)
+      ? renderLink(definition.url, definition.title, node.children, renderContext)
       : <MarkdownInline nodes={node.children} renderContext={renderContext} />;
   }
   if (node.type === "image") return renderImage(node.url, node.alt, node.title);
@@ -904,142 +361,6 @@ function MarkdownInlineNode({
     return <sup className="markdown-footnote-reference"><a href={`#${anchorId}`}>{number}</a></sup>;
   }
   return null;
-}
-
-function MarkdownCaretAnchor({
-  offset,
-  editing,
-}: {
-  offset: number;
-  editing: MarkdownEditingContext;
-}) {
-  return (
-    <span
-      className="markdown-caret-anchor"
-      data-markdown-source-id={editing.sourceId}
-      data-markdown-source-map={`${offset},${offset}`}
-    >{"\u200b"}</span>
-  );
-}
-
-function markdownTrailingWhitespace(
-  node: Extract<RootContent, { type: "heading" | "paragraph" }>,
-  renderContext: MarkdownRenderContext,
-  emptyContentOffset?: number,
-): ReactNode {
-  const editing = renderContext.editing;
-  if (!editing) return null;
-  const lastChildEnd = node.children.at(-1)?.position?.end.offset;
-  const start = lastChildEnd ?? emptyContentOffset;
-  if (start === undefined) return null;
-  const newline = editing.source.indexOf("\n", start);
-  const end = newline < 0 ? editing.source.length : newline;
-  const whitespace = editing.source.slice(start, end);
-  if (!/^[ \t]+$/.test(whitespace)) return null;
-  return (
-    <span
-      className="markdown-editable-segment markdown-trailing-whitespace"
-      data-markdown-source-id={editing.sourceId}
-      data-markdown-source-map={Array.from(
-        { length: whitespace.length + 1 },
-        (_, index) => start + index,
-      ).join(",")}
-      data-markdown-source-outer-start={start}
-      data-markdown-source-outer-end={end}
-    >{whitespace}</span>
-  );
-}
-
-type EmptyInlineFormat = "strong" | "underline" | "delete";
-
-function renderTextWithEmptyMarkers(
-  editing: MarkdownEditingContext,
-  value: string,
-  start: number,
-  end: number,
-  keyPrefix: number,
-): ReactNode[] | undefined {
-  const raw = editing.source.slice(start, end);
-  if (raw !== value || !/(\*\*\*\*|\+\+\+\+|~~~~)/.test(raw)) return undefined;
-  const parts: ReactNode[] = [];
-  const pattern = /(\*\*\*\*|\+\+\+\+|~~~~)/g;
-  let cursor = 0;
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(raw))) {
-    if (match.index > cursor) {
-      const text = raw.slice(cursor, match.index);
-      parts.push(
-        <span
-          key={`${keyPrefix}-empty-prefix-${cursor}`}
-          className="markdown-editable-segment"
-          data-markdown-source-id={editing.sourceId}
-          data-markdown-source-map={Array.from({ length: text.length + 1 }, (_, index) => start + cursor + index).join(",")}
-          data-markdown-source-outer-start={start + cursor}
-          data-markdown-source-outer-end={start + match.index}
-        >{text}</span>,
-      );
-    }
-    const format: EmptyInlineFormat = match[0] === "****"
-      ? "strong"
-      : match[0] === "++++"
-        ? "underline"
-        : "delete";
-    const offset = start + match.index + 2;
-    parts.push(
-      <span key={`${keyPrefix}-empty-format-${match.index}`}>
-        {wrapEmptyFormat(format, <MarkdownCaretAnchor offset={offset} editing={editing} />)}
-      </span>,
-    );
-    cursor = match.index + match[0].length;
-  }
-  if (cursor < raw.length) {
-    const text = raw.slice(cursor);
-    parts.push(
-      <span
-        key={`${keyPrefix}-empty-suffix-${cursor}`}
-        className="markdown-editable-segment"
-        data-markdown-source-id={editing.sourceId}
-        data-markdown-source-map={Array.from({ length: text.length + 1 }, (_, index) => start + cursor + index).join(",")}
-        data-markdown-source-outer-start={start + cursor}
-        data-markdown-source-outer-end={end}
-      >{text}</span>,
-    );
-  }
-  return parts;
-}
-
-function wrapEmptyFormat(format: EmptyInlineFormat, content: ReactNode): ReactNode {
-  if (format === "strong") return <strong>{content}</strong>;
-  if (format === "underline") return <u>{content}</u>;
-  return <del>{content}</del>;
-}
-
-function emptyBlockFormat(
-  node: RootContent,
-  source: string,
-): { format: EmptyInlineFormat; offset: number } | undefined {
-  const start = node.position?.start.offset;
-  const end = node.position?.end.offset;
-  if (start === undefined || end === undefined) return undefined;
-  const raw = source.slice(start, end).trim();
-  const format: EmptyInlineFormat | undefined = raw === "****"
-    ? "strong"
-    : raw === "++++"
-      ? "underline"
-      : raw === "~~~~"
-        ? "delete"
-        : undefined;
-  return format ? { format, offset: start + source.slice(start, end).indexOf(raw) + 2 } : undefined;
-}
-
-function emptyHeadingContentOffset(node: RootContent, source: string): number | undefined {
-  const start = node.position?.start.offset;
-  const end = node.position?.end.offset;
-  if (start === undefined || end === undefined) return undefined;
-  const raw = source.slice(start, end);
-  const marker = raw.match(/^ {0,3}#{1,6}/)?.[0];
-  if (!marker) return undefined;
-  return start + marker.length + (/^[ \t]/.test(raw.slice(marker.length)) ? 1 : 0);
 }
 
 function MarkdownFootnotes({
@@ -1078,8 +399,6 @@ function renderLink(
   title: string | null | undefined,
   children: PhrasingContent[],
   renderContext: MarkdownRenderContext,
-  sourceStart?: number,
-  sourceEnd?: number,
 ): ReactNode {
   const href = safeHref(value);
   const content = <MarkdownInline nodes={children} renderContext={renderContext} />;
@@ -1088,9 +407,6 @@ function renderLink(
         <a
           href={href}
           title={title ?? undefined}
-          onClick={renderContext.editing ? (event) => event.preventDefault() : undefined}
-          data-markdown-source-outer-start={renderContext.editing ? sourceStart : undefined}
-          data-markdown-source-outer-end={renderContext.editing ? sourceEnd : undefined}
         >
           {content}
         </a>
@@ -1173,7 +489,6 @@ function getFootnotes(blocks: MarkdownBlock[]): FootnoteDefinition[] {
 function createRenderContext(
   blocks: MarkdownBlock[],
   idPrefix: string,
-  editing?: MarkdownEditingContext,
 ): MarkdownRenderContext {
   const footnotes = getFootnotes(blocks);
   return {
@@ -1182,138 +497,7 @@ function createRenderContext(
       footnotes.map((footnote, index) => [normalizeIdentifier(footnote.identifier), index + 1]),
     ),
     idPrefix,
-    editing,
   };
-}
-
-function markdownEditGroup(
-  node: RootContent,
-  renderContext: MarkdownRenderContext,
-): string | undefined {
-  const start = node.position?.start.offset;
-  return renderContext.editing && start !== undefined
-    ? `${renderContext.editing.sourceId}:${start}`
-    : undefined;
-}
-
-function markdownSourceOuter(
-  node: RootContent | PhrasingContent,
-  renderContext: MarkdownRenderContext,
-): Record<string, number | undefined> {
-  return renderContext.editing
-    ? {
-        "data-markdown-source-outer-start": node.position?.start.offset,
-        "data-markdown-source-outer-end": node.position?.end.offset,
-      }
-    : {};
-}
-
-function hasEditableMarkdownText(node: RootContent | PhrasingContent): boolean {
-  if (node.type === "text") return node.value.length > 0;
-  if ([
-    "code",
-    "definition",
-    "footnoteDefinition",
-    "html",
-    "image",
-    "imageReference",
-    "table",
-    "thematicBreak",
-  ].includes(node.type)) return false;
-  if (node.type === "inlineCode") return node.value.length > 0;
-  if (!("children" in node) || !Array.isArray(node.children)) return false;
-  return node.children.some((child) =>
-    hasEditableMarkdownText(child as RootContent | PhrasingContent),
-  );
-}
-
-function isEditableMarkdownBlock(node: RootContent): boolean {
-  if (hasEditableMarkdownText(node)) return true;
-  if (node.type === "heading") return true;
-  if (node.type === "code" || node.type === "thematicBreak") return true;
-  if (node.type === "list" && node.children.some((item) => item.children.length === 0)) {
-    return true;
-  }
-  return false;
-}
-
-function markdownCodeContentBounds(
-  node: Extract<RootContent, { type: "code" }>,
-  source: string,
-): { start: number; end: number } | undefined {
-  const start = node.position?.start.offset;
-  const end = node.position?.end.offset;
-  if (start === undefined || end === undefined) return undefined;
-  const raw = source.slice(start, end);
-  const opening = raw.match(/^(?:```+|~~~+)[^\n]*\n/);
-  if (!opening) return { start, end };
-  const closing = raw.match(/\n(?:```+|~~~+)[ \t]*$/);
-  return {
-    start: start + opening[0].length,
-    end: closing ? end - closing[0].length : end,
-  };
-}
-
-function leadingLineOffsets(
-  block: MarkdownBlock,
-  blocks: MarkdownBlock[],
-  source: string,
-): number[] {
-  const visible = blocks.filter(({ node }) =>
-    node.type !== "definition" && node.type !== "footnoteDefinition",
-  );
-  const blockIndex = visible.indexOf(block);
-  if (blockIndex <= 0) return [];
-  const previousEnd = visible[blockIndex - 1].node.position?.end.offset;
-  const start = block.node.position?.start.offset;
-  if (previousEnd === undefined || start === undefined) return [];
-  return markdownEditableBlankLineOffsets(source, previousEnd, start, 2);
-}
-
-function trailingLineOffsets(
-  block: MarkdownBlock,
-  blocks: MarkdownBlock[],
-  source: string,
-): number[] {
-  const visible = blocks.filter(({ node }) =>
-    node.type !== "definition" && node.type !== "footnoteDefinition",
-  );
-  const blockIndex = visible.indexOf(block);
-  if (blockIndex < 0) return [];
-  const end = block.node.position?.end.offset;
-  if (end === undefined) return [];
-  const nextStart = visible[blockIndex + 1]?.node.position?.start.offset;
-  return markdownEditableBlankLineOffsets(
-    source,
-    end,
-    nextStart ?? source.length,
-    nextStart === undefined ? 0 : 2,
-  );
-}
-
-function previousEditableBlockCapturesGap(
-  block: MarkdownBlock,
-  blocks: MarkdownBlock[],
-  source: string,
-): boolean {
-  const visible = blocks.filter(({ node }) =>
-    node.type !== "definition" && node.type !== "footnoteDefinition",
-  );
-  const blockIndex = visible.indexOf(block);
-  const previous = visible[blockIndex - 1];
-  if (!previous || !isEditableMarkdownBlock(previous.node)) return false;
-  const previousEnd = previous.node.position?.end.offset;
-  const start = block.node.position?.start.offset;
-  if (previousEnd === undefined || start === undefined) return false;
-  return markdownEditableBlankLineOffsets(source, previousEnd, start, 2).length > 0;
-}
-
-function textOffset(root: HTMLElement, node: Node, offset: number): number {
-  if (!root.contains(node) && root !== node) return root.textContent?.length ?? 0;
-  const range = document.createRange();
-  range.selectNodeContents(root);
-  range.setEnd(node, offset);
-  return range.toString().length;
 }
 
 const emptyRenderContext: MarkdownRenderContext = {

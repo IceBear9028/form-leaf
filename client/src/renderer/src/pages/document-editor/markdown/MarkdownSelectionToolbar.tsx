@@ -15,7 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/ui/tooltip";
-import type { MarkdownInlineFormat } from "./edits";
+import type { MarkdownInlineFormat } from "./commandTypes";
 
 export function MarkdownSelectionToolbar({
   rect,

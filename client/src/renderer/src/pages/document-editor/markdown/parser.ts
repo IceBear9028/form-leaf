@@ -27,14 +27,6 @@ export type MarkdownBlock = {
 
 export type MarkdownDefinition = Pick<Definition, "url" | "title">;
 
-export type MarkdownTextSegment = {
-  text: string;
-  sourceStart: number;
-  sourceEnd: number;
-  sourceBoundaries: number[];
-  underline: boolean;
-};
-
 const markOrder: MarkdownInlineMark[] = ["strong", "underline", "link"];
 
 const markdownProcessor = unified()
@@ -159,20 +151,6 @@ export function clearMarkdownBlockCache(): void {
   markdownBlockCache.clear();
 }
 
-export function markdownEditableBlankLineOffsets(
-  source: string,
-  start: number,
-  end: number,
-  structuralNewlines: number,
-): number[] {
-  const gap = source.slice(start, end);
-  if (!/^(?:[ \t]*\n)+[ \t]*$/.test(gap)) return [];
-  const newlineOffsets = Array.from(gap.matchAll(/\n/g), (match) =>
-    start + (match.index ?? 0) + 1,
-  );
-  return newlineOffsets.slice(0, Math.max(0, newlineOffsets.length - structuralNewlines));
-}
-
 export function collectMarkdownDefinitions(
   blocks: MarkdownBlock[],
 ): Map<string, MarkdownDefinition> {
@@ -213,32 +191,6 @@ export function parseMarkdownInline(source: string): MarkdownInlineValue {
   });
 
   return { runs: runs.length ? runs : [{ text: "" }] };
-}
-
-export function markdownTextSegments(
-  source: string,
-  start: number,
-  end: number,
-  value: string,
-): MarkdownTextSegment[] {
-  const raw = source.slice(start, end);
-  const boundaries = textSourceBoundaries(raw, value).map((offset) => start + offset);
-  const segments: MarkdownTextSegment[] = [];
-  let cursor = 0;
-
-  while (cursor < value.length) {
-    const opening = value.indexOf("++", cursor);
-    const closing = opening < 0 ? -1 : value.indexOf("++", opening + 2);
-    if (opening < 0 || closing < 0) {
-      pushTextSegment(segments, value, boundaries, cursor, value.length, false);
-      break;
-    }
-    pushTextSegment(segments, value, boundaries, cursor, opening, false);
-    pushTextSegment(segments, value, boundaries, opening + 2, closing, true);
-    cursor = closing + 2;
-  }
-
-  return segments;
 }
 
 function appendInlineNodes(
@@ -363,25 +315,6 @@ function normalizeIdentifier(value: string): string {
 
 function normalizeLineEndings(value: string): string {
   return value.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
-}
-
-function pushTextSegment(
-  segments: MarkdownTextSegment[],
-  value: string,
-  boundaries: number[],
-  start: number,
-  end: number,
-  underline: boolean,
-): void {
-  if (end <= start) return;
-  const sourceBoundaries = boundaries.slice(start, end + 1);
-  segments.push({
-    text: value.slice(start, end),
-    sourceStart: sourceBoundaries[0] ?? 0,
-    sourceEnd: sourceBoundaries.at(-1) ?? sourceBoundaries[0] ?? 0,
-    sourceBoundaries,
-    underline,
-  });
 }
 
 function textSourceBoundaries(raw: string, value: string): number[] {

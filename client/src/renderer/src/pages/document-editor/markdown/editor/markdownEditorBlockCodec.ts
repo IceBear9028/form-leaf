@@ -23,8 +23,8 @@ export function createMarkdownEditorBlockSlice(
   blockIndex: number,
 ): MarkdownEditorBlockSlice | undefined {
   const block = parseMarkdownBlocks(source)[blockIndex];
-  const start = block?.node.position?.start.offset;
-  const end = block?.node.position?.end.offset;
+  const start = originalSourceOffset(source, block?.node.position?.start.offset);
+  const end = originalSourceOffset(source, block?.node.position?.end.offset);
   if (start === undefined || end === undefined) {
     if (source.length === 0 && blockIndex === 0) {
       return {
@@ -66,4 +66,15 @@ export function replaceMarkdownEditorBlock(
       markdown: editorMarkdown,
     },
   };
+}
+
+// remark positions use normalized LF input; replacement ranges address the exact
+// canonical source, including untouched CRLF bytes outside the active block.
+function originalSourceOffset(source: string, normalizedOffset: number | undefined): number | undefined {
+  if (normalizedOffset === undefined) return undefined;
+  let offset = 0;
+  for (let normalized = 0; normalized < normalizedOffset && offset < source.length; normalized += 1) {
+    offset += source[offset] === "\r" && source[offset + 1] === "\n" ? 2 : 1;
+  }
+  return offset;
 }
