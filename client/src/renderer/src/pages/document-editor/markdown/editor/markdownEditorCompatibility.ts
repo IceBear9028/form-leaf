@@ -1,4 +1,4 @@
-import { parseMarkdownTree } from "../parser.ts";
+import { parseMarkdownBlocks, parseMarkdownTree } from "../parser.ts";
 
 const supportedMarkdownNodeTypes = new Set([
   "root",
@@ -33,9 +33,11 @@ export type MarkdownEditorCompatibility = {
   unsupportedTypes: string[];
 };
 
-export function inspectMarkdownEditorCompatibility(source: string): MarkdownEditorCompatibility {
+export function inspectMarkdownEditorCompatibility(source: string, blockIndex?: number): MarkdownEditorCompatibility {
   const unsupportedTypes = new Set<string>();
-  visitMarkdownTree(parseMarkdownTree(source) as unknown as MarkdownTreeNode, (node) => {
+  const tree = blockIndex === undefined ? parseMarkdownTree(source) : parseMarkdownBlocks(source)[blockIndex]?.node;
+  if (!tree) return { editable: source.length === 0, unsupportedTypes: [] };
+  visitMarkdownTree(tree as unknown as MarkdownTreeNode, (node) => {
     if (supportedMarkdownNodeTypes.has(node.type)) return;
     if (node.type === "html" && isMarkdownBreakHtml(node.value)) return;
     unsupportedTypes.add(node.type);

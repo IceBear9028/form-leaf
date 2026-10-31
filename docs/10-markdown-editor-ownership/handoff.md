@@ -2,10 +2,12 @@
 
 ## 현재 상태
 
-- 상태: 1단계 완료·editor session/codec 구현 중
-- 현재 단계: 2. Markdown editor session과 codec 계약
-- 작업 트리: 10 작업 문서, Tiptap dependency, session·compatibility gate와 spike 테스트를 이번 커밋에 포함
-- 기준 커밋: `a971b7e fix: stabilize preview markdown input`
+- 상태: 제품 Preview 통합·기존 DOM 보정 제거·자동 검증 완료
+- 현재 단계: 6. 기존 DOM 보정 제거와 전체 검증 완료
+- 브랜치: `feat/10-markdown-editor-ownership` (`main@7c65d15`에서 분기)
+- 작업 시작 HEAD: `7c65d15 docs: add Formleaf project README`
+- 관련 구현 커밋: `8bc3644 feat: establish markdown editor ownership foundation`
+- 변경 범위: 시작 시 있던 Preview 선택 경계 문서 3개의 변경을 보존하고 제품 통합 변경을 추가했다. 2026-10-31 사용자 요청으로 전체 변경을 커밋하고 `main` 대상 PR을 제출한다.
 
 ## 완료된 작업
 
@@ -30,7 +32,14 @@
 - 현재 Preview source editor에 기존 heading level 재입력 규칙을 추가했다. H1 첫 글자 앞 `## `는 H2, 이어서 `### `는 H3로 바뀌며 제목 내용은 유지된다.
 - H1~H6와 최대 3칸 indent heading의 level 교체를 pure source transaction으로 검증하고 hidden Electron 실제 Preview에서 연속 변경을 확인했다.
 
-## 변경 파일
+## 추가로 확인된 Preview 선택 경계 (통합 전 조사 기록)
+
+- 2026-10-18 실제 화면 기록에서 Markdown 전체가 아니라 입력 중인 한 문단에만 파란 outline이 표시되고, 줄바꿈에 따라 그 문단의 outline 높이만 증가하는 동작을 확인했다.
+- 현재 `activateDirectEdit()`는 활성 상태를 `targetKey + anchorRenderId`로 정한 뒤 document selection을 비우고, `NodeRenderer`와 CSS는 해당 anchor fragment에만 편집 outline을 그린다.
+- 이 동작은 내부 문단·제목·목록이 별도 문서 요소로 선택된 것처럼 보이게 한다. 새 구조에서는 document selection을 전체 `DocumentEditTarget`으로 유지하고, `anchorRenderId`는 editor host 위치에만 사용해야 한다.
+- 클릭한 top-level block과 caret은 바뀔 수 있지만 문서 selection identity는 바뀌지 않아야 하며, active block에 별도의 문서 selection outline을 추가하지 않는다.
+
+## 기반 구현의 변경 파일
 
 - `docs/README.md`
 - `docs/09-preview-markdown-authoring/handoff.md`
@@ -52,7 +61,7 @@
 - `client/src/renderer/src/app/App.tsx`
 - `client/src/main/index.ts`
 
-## 검증 결과
+## 기반 구현 당시 검증 결과
 
 | 명령 또는 확인 | 결과 |
 |---|---|
@@ -69,18 +78,57 @@
 | `npx playwright test e2e/markdown-editor-ownership.spec.ts --workers=1` | hidden Electron 실제 DOM·IME·parent rerender spike 통과 |
 | `npm run build && npx playwright test e2e/markdown-user-flow.spec.ts --workers=1` | 기존 heading에서 H1 → H2 → H3 연속 marker 입력 포함 전체 사용자 흐름 통과 |
 
-## 남은 작업
+## 2026-10-24 제품 통합 결과
 
-- session acknowledgement와 실제 외부 snapshot을 구분하는 lifecycle 단위 테스트를 추가한다.
-- test spike host를 제품 `EditableMarkdownValue`의 active block 경계로 옮긴다.
+- `MarkdownEditorSession`은 지연 acknowledgement와 실제 외부 snapshot을 구분한다. 조합 중에는 마지막 확정 snapshot만 저장하며, target 전환·종료는 editor state를 flush한다. 클릭만 하고 종료하면 원문을 정규화해 publish하지 않는다.
+- `EditableMarkdownValue`는 클릭한 top-level block 하나에만 stable `MarkdownEditorHost`를 mount한다. React는 editor 하위 DOM을 렌더하지 않는다.
+- block codec과 lifecycle은 full canonical source의 해당 range만 교체한다. 앞 block이 여러 block으로 늘어난 뒤 다른 block을 클릭해도 누적 delta로 올바른 range를 찾는다. CRLF offset도 보존한다.
+- compatibility gate는 full source의 block AST를 검사한다. table·image·footnote·reference·raw HTML은 읽기 전용이며 다른 block 편집 때문에 원문이 손실되지 않는다.
+- `DocumentSelection.editTarget`에 full target을 유지하고, `NodeRenderer`/page outline은 target key로 범위를 표시한다. `anchorRenderId`는 mount 위치에만 사용한다. 문단·제목·인용·불릿을 클릭해도 같은 target이다.
+- 입력 중 preview range와 페이지 위치를 고정한다. 화면 페이지 높이는 임시로 늘어나 footer가 본문 클릭을 가로채지 않으며 편집 종료 후 재측정한다.
+- toolbar·shortcut·quick insert는 `executeMarkdownEditorCommand()`를 공유한다. input rule은 editor transaction이며 heading level 재입력·`2)`·밑줄·즉시 code fence도 지원한다. literal paste는 input/paste rule로 재생하지 않는다.
+- 외부 변경은 editor state를 교체하지 않고 UI에 보류한다. 현재 값을 유지하거나 보류한 변경을 적용할 수 있다.
+- 외부 pointer 선택은 session 종료와 flush 뒤 확정한다. repagination이 pointerdown과 click 사이에 DOM을 이동해도 배경 click이 그 선택을 지우지 않는다.
+- main/preload 종료 handshake를 추가해 앱 종료 전에 renderer가 flush·save를 마치도록 했다. PDF와 문서 목록 이동도 먼저 종료·저장한다.
+- `MarkdownContent`에서 editable/IME listener를 제거하고 `sourceSelection.ts`와 source transaction `edits.ts`를 삭제했다. parser의 preview·저장 의미 처리와 공용 command type만 남겼다.
 
-## 미결정 사항과 위험
+## 이번 변경의 주요 파일
 
-- Tiptap Markdown extension은 Beta이며 table·image·footnote는 기본 extension 조합에서 손실된다. compatibility gate와 기능별 extension 검증 없이 기존 문서에 적용하면 안 된다.
-- 동일 Markdown source가 여러 page fragment에 걸릴 때 하나의 editor view가 소유할 최소 논리 범위를 확정해야 한다.
-- 지원 범위 밖 raw HTML·footnote 등 Markdown 문법을 parse/serialize할 때 원문 손실이 없어야 한다.
-- 09의 보정 코드는 새 editor 경로가 모든 target에서 검증되기 전까지 fallback으로 유지해야 한다.
+- `markdown/editor/MarkdownEditorHost.tsx`, `MarkdownEditorSession.ts`, `markdownEditorLifecycle.ts`
+- `markdown/editor/markdownEditorCommands.ts`, `markdownEditorBlockCodec.ts`, `markdownEditorCompatibility.ts`
+- `markdown/MarkdownContent.tsx`, `commandTypes.ts`, `parser.ts`
+- `rendering/EditableMarkdownValue.tsx`, `NodeRenderer.tsx`, `PaginatedDocumentRenderer.tsx`, `document.css`
+- `GenericDocumentEditorPage.tsx`, `documentSelection.ts`, `useGenericDocumentSession.ts`
+- main/preload/IPC의 close guard와 save acknowledgement
+- `client/test/markdown-editor-session.test.mjs`, `client/test/markdown.test.mjs`
+- `client/e2e/markdown-user-flow.spec.ts`, `client/e2e/markdown-existing-document.spec.ts`
 
-## 다음 세션의 첫 작업
+## 이번 검증 결과
 
-`EditableMarkdownValue`에서 클릭한 top-level block 하나만 `MarkdownEditorHost`로 전환하고, 구현된 block codec으로 editor snapshot을 full Markdown source에 반영한다. 나머지 block과 measure/print renderer는 read-only로 유지한다.
+| 검증 | 결과 |
+|---|---|
+| session/codec/command 단위 테스트 | 14개 통과 |
+| read-only Markdown parser·legacy serialization | 12개 통과 |
+| `npm test` | 전체 107개 통과. 삭제한 source-DOM 전용 테스트는 editor command/E2E 검증으로 대체 |
+| `npm run typecheck` | 통과 |
+| `npm run build` | production build 통과 |
+| hidden Electron ownership spike | composition 중 parent rerender·동일 root·caret 검증 통과 |
+| hidden Electron 제품 흐름 | 실제 Space·Enter·Tab/Shift+Tab·Backspace·IME·undo/redo·toolbar·quick insert·literal paste·fallback·저장·재열기·PDF·조합 중 앱 종료 저장 통과 |
+| node/component/repeater selection | 클릭한 글자 위치·full target 유지·단일 editor·독립 prop·page outline 검증 통과 |
+| 기존 사용자 문서 임시 복사본 | 실제 렌더된 prop 본문에서 한글 작성·저장·재열기·PDF 통과, 원본 SHA-256 불변 |
+| `git diff --check` | 통과 |
+
+2026-10-25 최종 확인: ownership spike와 제품 흐름을 각각 2회 반복해 총 4회 통과했다. 이후 제품 흐름에 조합 중 속성 변경으로 실제 DocumentData publish를 발생시키는 검증을 추가했고 재실행도 통과했다. editor root·focus·조합 텍스트를 유지하며 저장에는 완료된 텍스트만 반영하고, 조합 완료 후 caret 위치를 확인한다.
+
+기존 문서 검증은 `FORMLEAF_EXISTING_DOCUMENT_FIXTURE`에 원본 경로를 명시해 실행한다. 테스트는 원본을 읽고 checksum만 확인하며, 독립 임시 userData에 복사한 문서만 편집한다. 원본 경로·개인정보·문서 본문·PDF는 repository에 넣지 않는다.
+
+## 남은 확인과 경계
+
+- 구현과 자동 회귀 검증은 완료했다. 사용자 실기기 입력기 자체의 수동 수용 확인은 별도이며 CDP composition 검증과 혼동하지 않는다.
+- Tiptap Markdown은 Beta다. 지원하지 않는 문법은 계속 원문 read-only fallback으로 유지하며 extension 추가 전 의미 보존 fixture가 필요하다.
+- session은 클릭한 top-level block group만 소유한다. 서로 다른 block session 사이의 text selection/history 통합은 이번 범위가 아니다.
+- 2026-10-31 사용자가 전체 변경 커밋과 PR 제출을 요청했다.
+
+## 다음 세션
+
+현재 브랜치의 PR diff를 검토한다. 사용자 실기기 입력 보고가 있으면 이 10번 작업의 회귀로 추가한다. 문서나 editor 구조를 처음부터 다시 설계하지 않는다.

@@ -11,7 +11,7 @@ import {
   MinusIcon,
   QuoteIcon,
 } from "lucide-react";
-import type { MarkdownCommand } from "./edits.ts";
+import type { MarkdownCommand } from "./commandTypes.ts";
 
 type QuickInsertItem = {
   id: string;

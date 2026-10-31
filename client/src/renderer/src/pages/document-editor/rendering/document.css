@@ -134,7 +134,7 @@
 
 .document-renderer--screen .document-node:focus:not([data-document-content-edit-target="true"]),
 .document-renderer--screen .document-repeater-item:focus,
-.document-renderer--screen [data-document-edit-active="true"] {
+.document-renderer--screen [data-document-edit-active="true"]:not(.document-node--markdown) {
   outline: 1.5px solid #1768e5;
   outline-offset: 2px;
 }
@@ -380,30 +380,7 @@
 .markdown-body a:hover { text-decoration: underline; text-underline-offset: 1.3px; }
 .markdown-body em { font-style: italic; }
 .markdown-body del { color: var(--markdown-muted); text-decoration-thickness: 0.6pt; }
-.markdown-editable-segment { cursor: text; }
-.markdown-trailing-whitespace,
-.markdown-hard-break { white-space: pre; }
-.markdown-hard-break-caret,
-.markdown-caret-anchor { display: inline; width: 0; }
 
-.markdown-editable-block {
-  border-radius: 2pt;
-  cursor: text;
-  outline: 0;
-}
-
-.markdown-editable-block:hover { background: rgb(23 104 229 / 2.5%); }
-
-.markdown-editable-block:focus {
-  background: rgb(23 104 229 / 2.5%);
-  outline: 0;
-}
-
-.markdown-edit-leading-lines,
-.markdown-edit-trailing-lines { display: block; }
-.markdown-edit-trailing-line,
-.markdown-empty-block { display: block; min-height: 1lh; }
-.markdown-empty-block-host { margin-top: var(--markdown-block-gap); }
 
 .document-print-surface {
   position: fixed;
@@ -469,5 +446,34 @@
   }
 
   .document-image-placeholder { visibility: hidden; }
-  .markdown-editable-block { background: transparent !important; outline: 0 !important; }
 }
+
+
+/* Editor descendants are created exclusively by ProseMirror. */
+.markdown-editor { outline: none; white-space: pre-wrap; min-height: 1lh; }
+.markdown-editor p { margin: 0; font-size: var(--markdown-body-size); line-height: var(--markdown-body-line-height); }
+.markdown-editor > * + * { margin-top: var(--markdown-block-gap); }
+.markdown-editor :is(h1,h2,h3,h4,h5,h6) { line-height: 1.25; font-weight: 600; }
+.markdown-editor h1 { font-size: var(--markdown-h1-size); }
+.markdown-editor h2 { font-size: var(--markdown-h2-size); }
+.markdown-editor h3 { font-size: var(--markdown-h3-size); }
+.markdown-editor h4 { font-size: var(--markdown-h4-size); }
+.markdown-editor h5 { font-size: var(--markdown-h5-size); }
+.markdown-editor h6 { font-size: var(--markdown-h6-size); }
+.markdown-editor ul { padding-left: 1.5em; list-style: disc; }
+.markdown-editor ol { padding-left: 1.7em; list-style: decimal; }
+.markdown-editor li + li { margin-top: var(--markdown-list-gap); }
+.markdown-editor li p { font-size: inherit; line-height: inherit; }
+.markdown-editor :is(ul,ol) { font-size: var(--markdown-list-size); line-height: var(--markdown-list-line-height); }
+.markdown-editor ul ul { list-style: circle; }
+.markdown-editor ul ul ul { list-style: square; }
+.markdown-editor ul[data-type="taskList"] { padding-left: 0; list-style: none; }
+.markdown-editor li[data-type="taskItem"] { display: flex; gap: 5pt; align-items: baseline; }
+.markdown-editor li[data-type="taskItem"] > div { min-width: 0; flex: 1; }
+.markdown-editor blockquote { padding: 5pt 8pt; border-left: 1.5pt solid var(--markdown-quote-border); border-radius: 0 3pt 3pt 0; background: var(--markdown-quote-background); color: var(--markdown-secondary); }
+.markdown-editor code { font-family: var(--markdown-code-font-family); background: var(--markdown-code-background); }
+.markdown-editor pre { padding: 12pt; border: .35pt solid var(--markdown-code-border); border-radius: 3pt; background: var(--markdown-code-background); font-size: var(--markdown-code-size); }
+.markdown-editor hr { border-top: .35pt solid var(--document-rule); }
+.markdown-editor-host, [data-markdown-preview-block] { cursor: text; }
+[data-markdown-editor-pinned="true"] .document-page { height: auto; min-height: 297mm; overflow: visible; }
+[data-markdown-editor-pinned="true"] .document-page-content { height: auto; min-height: 731pt; }

@@ -1,4 +1,7 @@
 export const IPC = {
+  closeGuard: "document:close-guard",
+  requestClose: "document:request-close",
+  completeClose: "document:complete-close",
   listDocuments: "document:list",
   listDeletedDocuments: "document:list-deleted",
   createDocument: "document:create",

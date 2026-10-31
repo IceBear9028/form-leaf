@@ -2,7 +2,7 @@
 
 ## 상태
 
-1단계 완료·editor session/codec 구현 중
+제품 Preview 통합·기존 DOM 보정 제거·자동 검증 완료 (2026-10-24)
 
 ## 문제
 
@@ -48,19 +48,19 @@
 
 ## 완료 조건
 
-- [ ] 활성 editable root의 하위 DOM은 editor만 변경하고 React는 session 동안 자식 구조를 reconcile하지 않는다.
-- [ ] 애플리케이션 코드가 `compositionend.data`를 Markdown 문자열에 직접 합치거나 composition selection을 수동 복원하지 않는다.
-- [ ] 빠른 한글 입력과 반복 Space에서도 글자 중복, 분리와 caret 후퇴가 발생하지 않는다.
-- [ ] 이전 입력의 DocumentData publish와 pagination이 다음 composition을 중단하거나 editor instance를 재생성하지 않는다.
-- [ ] `- ` 자동 목록, 연속 목록 Enter, Tab/Shift+Tab과 Backspace가 editor transaction으로 동작한다.
-- [ ] 이미 적용된 제목의 첫 글자 앞에서 `# `부터 `###### `를 다시 입력하면 내용은 유지한 채 heading level만 변경된다.
-- [ ] toolbar, shortcut, `/` 메뉴와 keyboard input rule이 같은 editor command를 사용한다.
-- [ ] 다른 요소 클릭 시 현재 editor를 동기적으로 flush한 뒤 편집을 종료하고 클릭한 요소 하나만 선택한다.
-- [ ] node, component prop과 repeater item prop에서 동일한 session lifecycle을 사용한다.
-- [ ] 저장·재열기와 PDF에서 기존 Markdown 의미·순서·visibility·출력이 보존된다.
-- [ ] 기존 source-range IME 보정과 pending DOM selection 복원 코드가 제거된다.
-- [ ] 관련 단위 테스트, hidden Electron E2E, 전체 테스트, typecheck와 production build가 통과한다.
-- [ ] 실제 기존 문서에서 한글 작성·저장·재열기·PDF를 확인한다.
+- [x] 활성 editable root의 하위 DOM은 editor만 변경하고 React는 session 동안 자식 구조를 reconcile하지 않는다.
+- [x] 애플리케이션 코드가 `compositionend.data`를 Markdown 문자열에 직접 합치거나 composition selection을 수동 복원하지 않는다.
+- [x] 빠른 한글 입력과 반복 Space에서도 글자 중복, 분리와 caret 후퇴가 발생하지 않는다.
+- [x] 이전 입력의 DocumentData publish와 pagination이 다음 composition을 중단하거나 editor instance를 재생성하지 않는다.
+- [x] `- ` 자동 목록, 연속 목록 Enter, Tab/Shift+Tab과 Backspace가 editor transaction으로 동작한다.
+- [x] 이미 적용된 제목의 첫 글자 앞에서 `# `부터 `###### `를 다시 입력하면 내용은 유지한 채 heading level만 변경된다.
+- [x] toolbar, shortcut, `/` 메뉴와 keyboard input rule이 같은 editor command를 사용한다.
+- [x] 다른 요소 클릭 시 현재 editor를 동기적으로 flush한 뒤 편집을 종료하고 클릭한 요소 하나만 선택한다.
+- [x] node, component prop과 repeater item prop에서 동일한 session lifecycle을 사용한다.
+- [x] 저장·재열기와 PDF에서 기존 Markdown 의미·순서·visibility·출력이 보존된다.
+- [x] 기존 source-range IME 보정과 pending DOM selection 복원 코드가 제거된다.
+- [x] 관련 단위 테스트, hidden Electron E2E, 전체 테스트, typecheck와 production build가 통과한다.
+- [x] 실제 기존 문서의 안전한 복사본에서 한글 작성·저장·재열기·PDF를 확인하고 원본 불변을 검증한다.
 
 ## 관련 문서
 

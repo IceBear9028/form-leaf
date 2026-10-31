@@ -105,3 +105,8 @@
 ## 다음 세션의 첫 작업
 
 [10. Markdown 편집 DOM 단일 소유권](../10-markdown-editor-ownership/handoff.md)의 단계 1에서 현재 ownership 경계를 고정하고 editor engine spike를 진행한다.
+
+
+## 2026-10-24 후속 10 작업 결과
+
+[10번 handoff](../10-markdown-editor-ownership/handoff.md)에서 전용 editor의 제품 통합과 자동 검증을 완료했다. 09의 입력 기능은 editor transaction으로 옮겼고, source-range IME/echo 보정과 React selection 복원은 제거했다. node·component prop·repeater prop, 저장·재열기·PDF와 실제 기존 문서의 임시 복사본 검증을 통과했다. 위 기록은 당시 source editor의 구현/회귀 이력으로 보존하며 사용자 실기기 수동 수용 확인은 별도다.

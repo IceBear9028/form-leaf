@@ -5,6 +5,18 @@ import type { ComponentLibraryPackageInput } from "../foundation/componentLibrar
 import type { DocumentApi } from "../foundation/documentLibrary";
 
 const api: DocumentApi = {
+  onBeforeClose: (handler) => {
+    const listener = () => { void handler().then(
+      (saved) => ipcRenderer.send(IPC.completeClose, saved),
+      () => ipcRenderer.send(IPC.completeClose, false),
+    ); };
+    ipcRenderer.on(IPC.requestClose, listener);
+    ipcRenderer.send(IPC.closeGuard, true);
+    return () => {
+      ipcRenderer.removeListener(IPC.requestClose, listener);
+      ipcRenderer.send(IPC.closeGuard, false);
+    };
+  },
   listDocuments: () => ipcRenderer.invoke(IPC.listDocuments),
   listDeletedDocuments: () => ipcRenderer.invoke(IPC.listDeletedDocuments),
   createDocument: () => ipcRenderer.invoke(IPC.createDocument),

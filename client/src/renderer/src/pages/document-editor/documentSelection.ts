@@ -1,13 +1,15 @@
+import type { DocumentEditTarget } from "../../../../foundation/documentEditing.ts";
 import type { DocumentData, DocumentNode } from "../../../../foundation/documentModel.ts";
 import {
   collectDocumentTreeNodeIds,
   findNodeParentId,
 } from "../../../../foundation/documentTransactions.ts";
 
-export type DocumentSelection =
+export type DocumentSelection = (
   | { kind: "node"; nodeId: string }
   | { kind: "repeater-item"; nodeId: string; itemId: string }
-  | { kind: "component-node"; nodeId: string; componentNodeId: string; itemId?: string };
+  | { kind: "component-node"; nodeId: string; componentNodeId: string; itemId?: string }
+) & { editTarget?: DocumentEditTarget };
 
 export type DocumentLayerFocusRequest = {
   nodeId: string;
@@ -29,6 +31,13 @@ export function selectNode(nodeId: string): DocumentSelection {
 
 export function selectRepeaterItem(nodeId: string, itemId: string): DocumentSelection {
   return { kind: "repeater-item", nodeId, itemId };
+}
+
+export function selectDocumentEditTarget(target: DocumentEditTarget): DocumentSelection {
+  const owner = target.kind === "node" ? selectNode(target.nodeId)
+    : target.kind === "component-prop" ? selectNode(target.instanceNodeId)
+    : selectRepeaterItem(target.repeaterNodeId, target.itemId);
+  return { ...owner, editTarget: target };
 }
 
 export function selectComponentNode(

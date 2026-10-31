@@ -35,6 +35,7 @@ import {
   documentSelectableNodeIds,
   reconcileDocumentSelection,
   selectNode,
+  selectDocumentEditTarget,
   selectRepeaterItem,
   structureSelectionFromRenderTarget,
   type DocumentLayerFocusRequest,
@@ -62,6 +63,8 @@ import {
   stepPreviewZoom,
 } from "./previewZoom.ts";
 
+import { endMarkdownEditing, getMarkdownEditorPin, getDeferredMarkdownChange, dismissDeferredMarkdownChange, subscribeMarkdownEditor } from "./markdown/editor/markdownEditorLifecycle.ts";
+
 const MemoDocumentStructurePanel = memo(DocumentStructurePanel);
 const MemoDocumentComponentNavigator = memo(DocumentComponentNavigator);
 const MemoDocumentElementToolbar = memo(DocumentElementToolbar);
@@ -77,6 +80,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   onBack: () => Promise<void>;
 }) {
   const session = useGenericDocumentSession(initialDocument, onSummaryChange);
+  const deferredMarkdownChange = useSyncExternalStore(subscribeMarkdownEditor, getDeferredMarkdownChange);
   const previewRef = useRef<HTMLDivElement>(null);
   const undoRef = useRef<DocumentData[]>([]);
   const redoRef = useRef<DocumentData[]>([]);
@@ -145,6 +149,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   }, [session.updateDocument]);
 
   const selectAndReveal = useCallback((selection?: DocumentSelection, moveFocus?: boolean) => {
+    endMarkdownEditing();
     activeEditTargetRef.current = undefined;
     setActiveEditTarget(undefined);
     session.setSelection(selection);
@@ -163,6 +168,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   }, [session.setSelection]);
 
   const selectFromLayer = useCallback((selection?: DocumentSelection) => {
+    endMarkdownEditing();
     activeEditTargetRef.current = undefined;
     setActiveEditTarget(undefined);
     setRichTextSelection(undefined);
@@ -192,13 +198,8 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     const eventId = interactionEventId(event);
     const targetKey = documentEditTargetKey(target);
     const currentEditTarget = activeEditTargetRef.current;
-    const renderedAnchor = globalThis.document.querySelector<HTMLElement>('[data-document-edit-active="true"]');
-    const preserveCurrentAnchor = currentEditTarget?.targetKey === targetKey &&
-      renderedAnchor?.dataset.documentRenderId === currentEditTarget.anchorRenderId &&
-      renderedAnchor.dataset.documentEditTargetKey === targetKey;
-    const nextEditTarget = preserveCurrentAnchor
-      ? currentEditTarget
-      : { targetKey, anchorRenderId: renderId };
+    const preserveCurrentAnchor = currentEditTarget?.targetKey === targetKey && currentEditTarget.anchorRenderId === renderId;
+    const nextEditTarget = preserveCurrentAnchor ? currentEditTarget : { targetKey, anchorRenderId: renderId };
     const previousSelection = interactionSelectionRef.current;
     if (previousSelection) {
       pendingSelectionEventIdRef.current = eventId;
@@ -212,7 +213,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     }
     activeEditTargetRef.current = nextEditTarget;
     setActiveEditTarget(nextEditTarget);
-    session.setSelection(undefined);
+    session.setSelection(selectDocumentEditTarget(target));
     setLayerFocusRequest(undefined);
     setRichTextSelection((current) => (
       current && documentEditTargetKey(current.target) === targetKey
@@ -230,6 +231,49 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       anchorRenderId: nextEditTarget.anchorRenderId,
     });
   }, [session.setSelection]);
+
+  useEffect(() => {
+    let pointerOwner: Element | undefined;
+    const endOutside = (event: PointerEvent) => {
+      pointerOwner = undefined;
+      const element = event.target instanceof Element ? event.target : undefined;
+      if (element?.closest('.markdown-selection-toolbar, [aria-label="Markdown 빠른 삽입"]')) return;
+      const markdown = element?.closest<HTMLElement>("[data-markdown-edit-source-id]");
+      if (markdown) return;
+      if (!getMarkdownEditorPin()) return;
+      const item = element?.closest<HTMLElement>("[data-repeater-item-id]");
+      const node = element?.closest<HTMLElement>(".document-node--component-instance") ?? element?.closest<HTMLElement>("[data-document-node-id]");
+      const nextSelection = item?.dataset.repeaterNodeId && item.dataset.repeaterItemId
+        ? selectRepeaterItem(item.dataset.repeaterNodeId, item.dataset.repeaterItemId)
+        : node?.dataset.documentNodeId ? selectNode(node.dataset.documentNodeId) : undefined;
+      if (nextSelection) pointerOwner = item ?? node ?? undefined;
+      endMarkdownEditing();
+      if (nextSelection) session.setSelection(nextSelection);
+      activeEditTargetRef.current = undefined;
+      setActiveEditTarget(undefined);
+    };
+    const preservePointerSelection = (event: globalThis.MouseEvent) => {
+      if (pointerOwner && event.target instanceof Node && !pointerOwner.contains(event.target)) {
+        // Repagination can move the clicked DOM between pointerdown and click.
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      pointerOwner = undefined;
+    };
+    globalThis.document.addEventListener("click", preservePointerSelection, true);
+    globalThis.document.addEventListener("pointerdown", endOutside, true);
+    return () => {
+      globalThis.document.removeEventListener("click", preservePointerSelection, true);
+      globalThis.document.removeEventListener("pointerdown", endOutside, true);
+      endMarkdownEditing();
+      dismissDeferredMarkdownChange();
+    };
+  }, [session.setSelection]);
+
+  useEffect(() => window.documents.onBeforeClose(async () => {
+    endMarkdownEditing();
+    return session.saveUntilClean();
+  }), [session.saveUntilClean]);
 
   const selectFromPreview = useCallback((target: RenderSelectionTarget, event?: Event) => {
     const selection = contentSelectionFromRenderTarget(target);
@@ -333,12 +377,14 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
 
   const returnToLibrary = async () => {
     if (returning) return;
+    endMarkdownEditing();
     setReturning(true);
     if (await session.saveUntilClean()) await onBack();
     setReturning(false);
   };
 
   const exportPdf = async () => {
+    endMarkdownEditing();
     setExporting(true);
     session.setExportedPath(null);
     if (!await session.saveUntilClean()) {
@@ -393,6 +439,15 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
 
   return (
     <div className="app-shell flex h-full flex-col bg-background text-foreground">
+      {deferredMarkdownChange && <div role="status" className="flex items-center gap-3 border-b bg-background px-5 py-2 text-sm">
+        <span>편집 중 다른 본문 변경을 보류했습니다.</span>
+        <Button size="sm" variant="outline" onClick={() => {
+          endMarkdownEditing();
+          updateDocument((current) => updateDocumentEditValue(current, deferredMarkdownChange.target, deferredMarkdownChange.source));
+          dismissDeferredMarkdownChange();
+        }}>보류한 변경 적용</Button>
+        <Button size="sm" variant="ghost" onClick={dismissDeferredMarkdownChange}>현재 내용 유지</Button>
+      </div>}
       <header className="app-toolbar relative z-20 grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center gap-5 border-b border-border bg-background px-5 [-webkit-app-region:drag]">
         <div className="flex min-w-0 items-center gap-3">
           <Button type="button" variant="outline" disabled={returning} className="[-webkit-app-region:no-drag]" onClick={() => void returnToLibrary()}>
@@ -481,6 +536,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
               documentUpdate={session.documentUpdate}
               mode="screen"
               selectedNodeId={selectionPreviewNodeId(session.selection)}
+              selectedEditTargetKey={session.selection?.editTarget ? documentEditTargetKey(session.selection.editTarget) : undefined}
               selectedRepeaterItem={selectionPreviewRepeaterItem(session.selection)}
               selectableNodeIds={selectableNodeIds}
               selectionMode="content"
@@ -960,6 +1016,7 @@ function updateAffectsSelection(
 }
 
 function selectionKey(selection: DocumentSelection | undefined): string {
+  if (selection?.editTarget) return documentEditTargetKey(selection.editTarget);
   if (!selection) return "";
   if (selection.kind === "node") return `node:${selection.nodeId}`;
   if (selection.kind === "repeater-item") return `item:${selection.nodeId}:${selection.itemId}`;

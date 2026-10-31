@@ -131,3 +131,8 @@ Jira 공식 문법과 맞추려면 최소한 `* ` 불릿과 `2) ` 형태의 번�
 
 - Markdown의 제목·목록·인용문 시각값을 문서 데이터가 소유하는 문제는 [Document-owned Markdown styles](document-owned-markdown-styles.md)에서 다룬다.
 - component 구조 편집과 Preview 선택 경계는 `docs/08-preview-component-selection-boundary/`에서 완료했다.
+
+
+## 후속 구현 결과 (2026-10-24)
+
+[10. Markdown 편집 DOM 단일 소유권](../10-markdown-editor-ownership/handoff.md)에서 작성 명령을 Tiptap/ProseMirror transaction으로 이전했다. source map 편집과 React selection 복원은 제거했고 hidden Electron의 Space·Tab·IME·저장·PDF 및 실제 문서 안전 복사본 검증을 완료했다. 사용자 실기기 수동 수용 확인은 별도로 남긴다.

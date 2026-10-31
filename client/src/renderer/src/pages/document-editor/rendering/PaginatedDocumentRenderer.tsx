@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type RefObject,
 } from "react";
@@ -32,6 +33,7 @@ import {
   resolveRenderScope,
 } from "./update/renderPipeline.ts";
 import "./document.css";
+import { getMarkdownEditorPin, subscribeMarkdownEditor, pinnedMarkdownDocument } from "../markdown/editor/markdownEditorLifecycle.ts";
 
 type Unit = ReturnType<typeof collectPaginationUnits>[number];
 
@@ -40,6 +42,7 @@ type PaginatedDocumentRendererProps = {
   documentUpdate?: DocumentUpdate;
   mode: "screen" | "print";
   selectedNodeId?: string;
+  selectedEditTargetKey?: string;
   selectedRepeaterItem?: { nodeId: string; itemId: string };
   selectableNodeIds?: ReadonlySet<string>;
   selectionMode?: RenderSelectionMode;
@@ -58,6 +61,7 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
   documentUpdate,
   mode,
   selectedNodeId,
+  selectedEditTargetKey,
   selectedRepeaterItem,
   selectableNodeIds,
   selectionMode = "content",
@@ -70,14 +74,15 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
   zoom = 1,
   onLayoutReady,
 }: PaginatedDocumentRendererProps) {
+  const editorPin = useSyncExternalStore(subscribeMarkdownEditor, getMarkdownEditorPin);
   const previousTreeRef = useRef<ReturnType<typeof buildRenderTree> | undefined>(undefined);
   const previousUnitsRef = useRef<Unit[]>([]);
   const heightCacheRef = useRef(new Map<string, number>());
   const tree = useMemo(() => {
-    const next = reuseRenderTree(previousTreeRef.current, buildRenderTree(document));
+    const next = reuseRenderTree(previousTreeRef.current, buildRenderTree(mode === "screen" && editorPin ? pinnedMarkdownDocument(document) : document));
     previousTreeRef.current = next;
     return next;
-  }, [document]);
+  }, [document, editorPin, mode]);
   const root = requireContainer(tree);
   const units = useMemo(() => {
     const next = reusePaginationUnits(previousUnitsRef.current, collectPaginationUnits(tree));
@@ -109,6 +114,7 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
   useLayoutEffect(() => {
     let canceled = false;
     const measure = (forceAll = false) => {
+      if (mode === "screen" && editorPin) return;
       if (canceled || !measureContentRef.current) return;
       const rootElement = measureContentRef.current.querySelector(
         ":scope > .document-renderer--measure > .document-node",
@@ -173,7 +179,7 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
       observer.disconnect();
       window.removeEventListener("resize", scheduleIfBoundsChanged);
     };
-  }, [renderWorkPlan, units]);
+  }, [renderWorkPlan, units, editorPin, mode]);
 
   useLayoutEffect(() => {
     if (!layoutPass || !onLayoutReady) return;
@@ -185,6 +191,7 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
     <div
       className={`paginated-document paginated-document--${mode}`}
       data-document-page-count={pages.length}
+      data-markdown-editor-pinned={mode === "screen" && editorPin ? "true" : undefined}
       data-document-layout-ready={layoutPass > 0 || undefined}
     >
       <div
@@ -197,6 +204,7 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
               <NodeRenderer
                 node={{ ...root, children: page.units.map((unit) => unit.node) }}
                 selectedNodeId={selectedNodeId}
+                selectedEditTargetKey={selectedEditTargetKey}
                 selectedRepeaterItem={selectedRepeaterItem}
                 selectableNodeIds={selectableNodeIds}
                 selectionMode={selectionMode}
@@ -210,6 +218,7 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
               {mode === "screen" && (
                 <PageSelectionOutline
                   selectedNodeId={selectedNodeId}
+                  selectedEditTargetKey={selectedEditTargetKey}
                   selectedRepeaterItem={selectedRepeaterItem}
                   layoutKey={page.units}
                   zoom={zoom}
@@ -242,11 +251,13 @@ type SelectionOutlineRect = {
 
 function PageSelectionOutline({
   selectedNodeId,
+  selectedEditTargetKey,
   selectedRepeaterItem,
   layoutKey,
   zoom,
 }: {
   selectedNodeId?: string;
+  selectedEditTargetKey?: string;
   selectedRepeaterItem?: { nodeId: string; itemId: string };
   layoutKey: readonly Unit[];
   zoom: number;
@@ -255,6 +266,7 @@ function PageSelectionOutline({
   const rect = useSelectionOutlineRect(
     markerRef,
     selectedNodeId,
+    selectedEditTargetKey,
     selectedRepeaterItem,
     layoutKey,
     zoom,
@@ -264,7 +276,8 @@ function PageSelectionOutline({
       ref={markerRef}
       className="document-selection-outline"
       data-document-selection-outline={rect ? "true" : undefined}
-      data-document-selection-kind={selectedRepeaterItem ? "repeater-item" : selectedNodeId ? "node" : undefined}
+      data-document-selection-target={selectedEditTargetKey}
+      data-document-selection-kind={selectedEditTargetKey ? "edit-target" : selectedRepeaterItem ? "repeater-item" : selectedNodeId ? "node" : undefined}
       style={rect}
       aria-hidden="true"
     />
@@ -274,6 +287,7 @@ function PageSelectionOutline({
 function useSelectionOutlineRect(
   markerRef: RefObject<HTMLDivElement | null>,
   selectedNodeId: string | undefined,
+  selectedEditTargetKey: string | undefined,
   selectedRepeaterItem: { nodeId: string; itemId: string } | undefined,
   layoutKey: readonly Unit[],
   zoom: number,
@@ -288,7 +302,9 @@ function useSelectionOutlineRect(
     }
     const selectedElements = () => Array.from(
       container.querySelectorAll<HTMLElement>('[data-document-selected="true"]'),
-    ).filter((element) => selectedRepeaterItem
+    ).filter((element) => selectedEditTargetKey
+      ? element.dataset.documentEditTargetKey === selectedEditTargetKey
+      : selectedRepeaterItem
       ? element.classList.contains("document-repeater-item") &&
         element.dataset.repeaterNodeId === selectedRepeaterItem.nodeId &&
         element.dataset.repeaterItemId === selectedRepeaterItem.itemId
@@ -328,7 +344,7 @@ function useSelectionOutlineRect(
       observer.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [layoutKey, markerRef, selectedNodeId, selectedRepeaterItem, zoom]);
+  }, [layoutKey, markerRef, selectedNodeId, selectedEditTargetKey, selectedRepeaterItem, zoom]);
 
   return rect;
 }
@@ -361,6 +377,7 @@ function samePaginatedRendererProps(
     previous.documentUpdate === next.documentUpdate &&
     previous.mode === next.mode &&
     previous.selectedNodeId === next.selectedNodeId &&
+    previous.selectedEditTargetKey === next.selectedEditTargetKey &&
     previous.selectedRepeaterItem?.nodeId === next.selectedRepeaterItem?.nodeId &&
     previous.selectedRepeaterItem?.itemId === next.selectedRepeaterItem?.itemId &&
     previous.selectableNodeIds === next.selectableNodeIds &&

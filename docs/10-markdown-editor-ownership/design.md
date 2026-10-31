@@ -63,6 +63,10 @@ Preview block click
 
 문서 selection의 identity는 기존 `DocumentEditTarget`을 유지한다. pagination 때문에 동일 source가 여러 fragment에 보이더라도 editor session과 editable owner는 하나뿐이다. 같은 target의 다른 block을 클릭하면 현재 block snapshot을 canonical source range에 반영한 다음 새 block session을 연다.
 
+`anchorRenderId`는 pagination된 fragment 중 editor host를 mount할 위치를 찾는 내부 좌표일 뿐, 문서 selection identity가 아니다. editor를 활성화할 때 기존 문서 selection을 비우거나, anchor fragment에만 문서 selection과 같은 outline을 표시하면 사용자는 Markdown 내부 문단·제목·목록이 별도 요소로 선택된 것으로 인식한다. 문단, 제목, 인용문과 목록 중 어느 곳을 클릭하더라도 외부 selection은 같은 `DocumentEditTarget`을 유지하고, 달라지는 것은 active block session과 그 내부 caret뿐이어야 한다.
+
+2026-10-18 실제 화면 기록에서는 입력 중인 문단의 줄 수에 맞춰 파란 outline 높이만 변하고 같은 Markdown source의 다른 block은 outline에서 제외되는 현재 동작을 확인했다. 이는 `targetKey + anchorRenderId`로 활성 fragment를 정한 뒤 document selection을 해제하고, 활성 fragment 자체에 outline을 그리는 기존 구현에서 발생한다. 새 editor 통합에서는 `anchorRenderId`를 mount anchor로만 사용하고 document selection 표시와 분리한다.
+
 ### 입력 중
 
 ```text
@@ -136,6 +140,7 @@ canonical 저장 값은 계속 Markdown 문자열이므로 `DocumentData` schema
 - paste와 drop은 확정 transaction 하나이며 keyboard input rule sequence로 재생하지 않는다.
 - heading level 변경은 block 첫 content 위치에서 Space로 marker가 완성될 때만 실행하고, 제목 중간의 `#`는 literal text로 유지한다.
 - editor 내부 text selection은 문서 node selection outline을 추가로 만들지 않는다.
+- active block 또는 pagination fragment는 별도의 문서 selection outline을 만들지 않는다. 문서 선택 표시는 동일 `DocumentEditTarget`의 논리적 소유 범위를 나타낸다.
 - 측정용 renderer와 print renderer에는 editable host를 mount하지 않는다.
 - 비정상 종료 직전 아직 publish되지 않은 composition 임시값은 저장 대상이 아니다. 확정 transaction은 지연 없이 publish 가능해야 한다.
 
@@ -180,3 +185,18 @@ block codec은 session 시작 시 full source, block index, source range와 bloc
 단위 테스트는 Markdown parse/serialize, supported syntax round-trip, command transaction과 session acknowledgement를 검증한다. Electron E2E는 빠른 한글, 단어마다 Space, 목록 Enter·Tab, unrelated React update, pagination, target switch, 저장·재열기와 PDF를 하나의 사용자 흐름으로 실행한다. 테스트 window는 사용자 키보드와 마우스를 가져가지 않도록 headless 모드를 유지한다.
 
 마지막으로 실제 기존 문서는 내용과 저장 파일을 먼저 read-only로 확인하고, 앱의 기존 backup이 보존되는 조건에서 열기·작성·저장·재열기·PDF를 검증한다.
+
+
+## 제품 통합 결과 (2026-10-24)
+
+위 설계의 top-level block 소유 범위를 제품에 적용했다. `MarkdownEditorHost`의 React 자식은 비어 있으며 ProseMirror가 mount 이후 모든 editable DOM과 selection을 관리한다. 초기 클릭 위치만 preview text offset을 editor position으로 변환하고, 입력 이후에는 DOM/source selection을 복원하지 않는다.
+
+`DocumentSelection`은 기존 layer owner와 함께 `editTarget`을 보관한다. page outline은 full target key가 같은 fragment의 합집합을 표시하며 component prop과 repeater item prop도 각각 구분한다. mount anchor와 문서 선택 identity는 분리되어 있다.
+
+`markdownEditorLifecycle`은 한 활성 문서의 owner, 최초 preview source, 현재 canonical source, block별 range delta를 관리한다. 입력 중 target의 preview index와 페이지 위치를 고정하고, 완료된 block은 최신 snapshot의 read-only preview를 표시한다. 화면 페이지 높이는 임시 확장을 허용하며 editor 종료 후 최종 pagination을 수행한다. 측정·print에는 editor를 mount하지 않는다.
+
+실제 외부 source 변경은 flush 뒤 보류하고 UI에서 적용/현재 값 유지로 해결한다. session acknowledgement는 view에 재적용하지 않는다. 클릭만 하고 편집하지 않은 session은 canonical normalization을 publish하지 않는다. 지원 문법 판정은 full source AST의 해당 block으로 수행하므로 reference definition이 slice 밖에 있어도 gate를 우회하지 않는다.
+
+앱 종료는 main의 close guard → renderer session 종료/flush → 기존 saveUntilClean → main close acknowledgement 순서다. 저장 실패 시 창을 유지한다. source schema와 atomic save/backup 정책은 그대로다.
+
+`MarkdownContent`의 React contentEditable, source-range composition/echo 처리와 selection 복원 경로는 제거했다. old source transaction 테스트는 editor command 및 hidden Chromium input 회귀로 대체했고, preview parser와 legacy serialization 테스트는 유지했다.

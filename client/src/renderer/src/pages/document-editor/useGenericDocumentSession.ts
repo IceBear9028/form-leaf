@@ -1,3 +1,4 @@
+import { flushMarkdownEditing, reconcileMarkdownDocumentUpdate } from "./markdown/editor/markdownEditorLifecycle.ts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DocumentData } from "../../../../foundation/documentModel.ts";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
@@ -48,6 +49,7 @@ export function useGenericDocumentSession(
   const inFlightSaveRef = useRef<Promise<boolean> | undefined>(undefined);
 
   const saveNow = useCallback(async (): Promise<boolean> => {
+    flushMarkdownEditing();
     if (saveTimerRef.current) {
       window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = undefined;
@@ -94,7 +96,7 @@ export function useGenericDocumentSession(
     operations?: readonly DocumentUpdateOperation[],
   ) => {
     const current = documentRef.current;
-    const next = typeof change === "function" ? change(current) : change;
+    const next = reconcileMarkdownDocumentUpdate(typeof change === "function" ? change(current) : change);
     if (next === current) return;
     revisionRef.current += 1;
     documentRef.current = next;

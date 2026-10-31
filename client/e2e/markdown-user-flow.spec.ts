@@ -13,496 +13,306 @@ import {
 
 const documentId = "document-markdown-user-flow";
 
-test("Preview Markdown 사용자 흐름은 입력을 가로채지 않고 작성·저장·재열기·PDF를 유지한다", async () => {
+test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF", async () => {
+  test.setTimeout(180_000);
   const temporaryRoot = await mkdtemp(join(tmpdir(), "formleaf-playwright-markdown."));
   const userData = join(temporaryRoot, "user-data");
   const pdfPath = join(temporaryRoot, "markdown-user-flow.pdf");
   await seedFixture(userData);
-
+  const initial = await readFixture(userData);
   let application: ElectronApplication | undefined;
   try {
     ({ application } = await launchApplication(userData));
     let page = await application.firstWindow();
-    expect(await application.evaluate(({ app }) => app.getName())).toBe("Formleaf");
-    await expect(page).toHaveTitle("Formleaf");
-    await expect(page.getByText("Formleaf", { exact: true })).toBeVisible();
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
     await openFixture(page);
+    const target = (id: string) => page.locator(`.document-page-stack--screen [data-document-node-id="${id}"][data-document-edit-target="true"]`);
+    const editor = () => page.locator('[data-markdown-editor-host] .ProseMirror');
+    const outside = () => target("node-outside");
+    const component = () => page.locator('.document-page-stack--screen [data-document-node-id="node-instance"] [data-document-edit-target="true"]');
+    const item = (id: string) => page.locator(`.document-page-stack--screen [data-repeater-item-id="${id}"] [data-document-edit-target="true"]`);
 
-    const directSelector = '[data-document-node-id="node-direct"][data-document-edit-target="true"]';
-    const spacesSelector = '[data-document-node-id="node-spaces"][data-document-edit-target="true"]';
-    const indentScopeSelector = '[data-document-node-id="node-indent-scope"][data-document-edit-target="true"]';
-    const emptyNestedIndentSelector = '[data-document-node-id="node-empty-nested-indent"][data-document-edit-target="true"]';
-    const strongBreakSelector = '[data-document-node-id="node-strong-break"][data-document-edit-target="true"]';
-    const headingChangeSelector = '[data-document-node-id="node-heading-change"][data-document-edit-target="true"]';
-    const compositionSelector = '[data-document-node-id="node-composition"][data-document-edit-target="true"]';
-    const compositionSpaceSelector = '[data-document-node-id="node-composition-space"][data-document-edit-target="true"]';
-    const compositionCaretSelector = '[data-document-node-id="node-composition-caret"][data-document-edit-target="true"]';
-    const emptyCompositionSelector = '[data-document-node-id="node-empty-composition"][data-document-edit-target="true"]';
-    const compositionBurstSelector = '[data-document-node-id="node-composition-burst"][data-document-edit-target="true"]';
-    const compositionReplacementSelector = '[data-document-node-id="node-composition-replacement"][data-document-edit-target="true"]';
-    const shortcutSelector = '[data-document-node-id="node-shortcut"][data-document-edit-target="true"]';
-    const pasteSelector = '[data-document-node-id="node-paste"][data-document-edit-target="true"]';
-    const componentSelector = '[data-document-node-id="node-instance"] [data-document-node-id="component-markdown"][data-document-edit-target="true"]';
-    const repeaterASelector = '[data-repeater-item-id="item-a"] [data-document-node-id="component-markdown"][data-document-edit-target="true"]';
-    const repeaterBSelector = '[data-repeater-item-id="item-b"] [data-document-node-id="component-markdown"][data-document-edit-target="true"]';
-
-    await test.step("한 번에 하나의 데이터 소유 단위만 편집 focus를 가진다", async () => {
-      await activateAtEnd(page, page.locator(directSelector));
-      await activateAtEnd(page, page.locator(componentSelector));
-      await activateAtEnd(page, page.locator(repeaterASelector));
-      await expect(page.locator('[data-document-edit-active="true"]')).toHaveCount(1);
-      await expect(page.locator(repeaterASelector).last()).toHaveAttribute("data-document-edit-active", "true");
-      await expect(page.locator('[data-document-selected="true"]')).toHaveCount(0);
+    await test.step("문단·제목·인용·불릿의 문서 선택과 클릭한 글자 위치", async () => {
+      for (const [index, tag] of ["p", "h2", "blockquote p", "li"].entries()) {
+        const block = target("node-selection").locator(`[data-markdown-preview-block="${index}"]`);
+        await clickBeforeText(page, block.locator(tag).first(), "CD");
+        await expect(editor()).toHaveCount(1);
+        await expect(editor()).toBeFocused();
+        await page.keyboard.insertText("X");
+        await expect(editor()).toContainText("ABXCD");
+        await expect.poll(() => target("node-selection").evaluateAll((elements) => elements.every((element) => element.getAttribute("data-document-selected") === "true"))).toBe(true);
+        expect(await target("node-selection").evaluateAll((elements) => elements.every((element) => getComputedStyle(element).outlineStyle === "none"))).toBe(true);
+      }
+      await outside().click();
+      await expect(editor()).toHaveCount(0);
+      await expect(target("node-selection").first()).not.toHaveAttribute("data-document-selected", "true");
+      await expect(outside()).toHaveAttribute("data-document-selected", "true");
+      await expect.poll(async () => (await readFixture(userData)).nodes["node-selection"].source).toBe("문단 ABXCD\n\n## 제목 ABXCD\n\n> 인용 ABXCD\n\n- 목록 ABXCD");
     });
 
-    await test.step("같은 Markdown의 pagination 조각 클릭은 선택 단위를 바꾸지 않고 caret만 옮긴다", async () => {
-      const fragments = page.locator('[data-document-node-id="node-long"][data-document-edit-target="true"]');
-      await expect(fragments).toHaveCount(36);
-      const firstFragment = fragments.first();
-      await activateAtEnd(page, firstFragment);
-      const anchorRenderId = await firstFragment.getAttribute("data-document-render-id");
-      const targetKey = await firstFragment.getAttribute("data-document-edit-target-key");
-      expect(anchorRenderId).toBeTruthy();
-      expect(targetKey).toBe("node:node-long");
-
-      const laterFragment = fragments.nth(5);
-      await laterFragment.scrollIntoViewIfNeeded();
-      await laterFragment.locator('[data-markdown-source-map]').last().click();
-
-      await expect(page.locator('[data-document-edit-active="true"]')).toHaveCount(1);
-      await expect(firstFragment).toHaveAttribute("data-document-edit-active", "true");
-      await expect(firstFragment).toHaveAttribute("data-document-render-id", anchorRenderId!);
-      await expect(laterFragment).not.toHaveAttribute("data-document-edit-active", "true");
-      await expect(laterFragment).toHaveAttribute("data-document-edit-target-key", targetKey!);
-      await expect(page.locator('[data-document-selected="true"]')).toHaveCount(0);
-    });
-
-    await test.step("목록을 연속 작성하고 빠른 삽입으로 제목을 만든다", async () => {
-      await activateAtEnd(page, page.locator(directSelector));
-      await page.keyboard.press("Minus");
-      await expect(page.locator(`${directSelector} [contenteditable="true"]`)).toBeFocused();
-      await page.keyboard.press("Space");
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-direct"].source).toBe("- ");
+    await test.step("목록 Enter·Tab·Shift+Tab·빠른 삽입·제목 level", async () => {
+      await activateAtEnd(page, target("node-direct").first());
+      await page.keyboard.type("- ");
       await page.keyboard.insertText("첫 항목");
       await page.keyboard.press("Enter");
       await page.keyboard.insertText("둘째 항목");
-      await dispatchEditingKey(page, "Tab", "Tab");
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-direct"].source).toBe(
-        "- 첫 항목\n    - 둘째 항목",
-      );
-      await dispatchEditingKey(page, "Tab", "Tab", true);
+      await page.keyboard.press("Tab");
+      await expect(editor().locator("ul ul li")).toHaveText("둘째 항목");
+      await page.keyboard.press("Shift+Tab");
+      await expect(editor().locator("ul > li")).toHaveCount(2);
       await page.keyboard.press("Enter");
       await page.keyboard.press("Enter");
-      await insertSequentially(page, "/h2");
+      await page.keyboard.type("/h2");
       await expect(page.getByRole("listbox", { name: "Markdown 빠른 삽입" })).toBeVisible();
       await page.keyboard.press("Enter");
       await page.keyboard.insertText("사용자 흐름");
-      await activateAtEnd(page, page.locator(componentSelector));
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-direct"].source).toBe(
-        "- 첫 항목\n- 둘째 항목\n\n## 사용자 흐름",
-      );
+      await outside().click();
+      await expect.poll(async () => (await readFixture(userData)).nodes["node-direct"].source).toBe("- 첫 항목\n- 둘째 항목\n\n## 사용자 흐름");
+      await activateAtEnd(page, target("node-heading-change"));
+      await clickBeforeText(page, editor().locator("h1, h2, h3"), "기존");
+      await page.keyboard.type("## ");
+      await expect(editor().locator("h2")).toHaveText("기존 제목");
+      await clickBeforeText(page, editor().locator("h1, h2, h3"), "기존");
+      await page.keyboard.type("### ");
+      await expect(editor().locator("h3")).toHaveText("기존 제목");
     });
 
-    await test.step("Space keydown을 연속 입력하면 공백을 그대로 보존한다", async () => {
-      await activateAtEnd(page, page.locator(spacesSelector));
-      await page.keyboard.insertText("앞");
-      await page.keyboard.press("Space");
-      await page.keyboard.press("Space");
-      await page.keyboard.press("Space");
-      await page.keyboard.insertText("뒤");
-      await activateAtEnd(page, page.locator(componentSelector));
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-spaces"].source).toBe("앞   뒤");
-      await expect(page.locator(spacesSelector)).toContainText("앞   뒤");
-    });
-
-    await test.step("Tab은 현재 항목만 들여쓰고 아래 h 항목의 계층을 유지한다", async () => {
-      const target = page.locator(indentScopeSelector);
-      await activateAtEnd(page, target);
-      const secondItemText = target.locator(".markdown-list > li").nth(1)
-        .locator('[data-markdown-source-map]').last();
-      const box = await secondItemText.boundingBox();
-      if (!box) throw new Error("둘째 목록 항목의 source 위치를 찾지 못했습니다.");
-      await secondItemText.click({ position: { x: Math.max(1, box.width - 1), y: Math.max(1, box.height / 2) } });
-      await dispatchEditingKey(page, "Tab", "Tab");
-      await activateAtEnd(page, page.locator(componentSelector));
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-indent-scope"].source).toBe(
-        "- 첫째\n    - 둘째\n- h\n# 아래 제목",
-      );
-      await expect(target.locator(".markdown-list").first().locator(":scope > li")).toHaveCount(2);
-      await expect(target.locator("h1")).toHaveText("아래 제목");
-    });
-
-    await test.step("빈 중첩 불릿을 Tab으로 들여써도 다음 제목으로 바뀌거나 focus가 이동하지 않는다", async () => {
-      const target = page.locator(emptyNestedIndentSelector).filter({
-        has: page.locator(".markdown-empty-list-item"),
-      });
-      const caret = target.locator(".markdown-empty-list-item [data-markdown-source-map]");
-      await caret.evaluate((element) => {
-        element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      });
-      await caret.evaluate((element) => {
-        const editable = element.closest<HTMLElement>('[contenteditable="true"]');
-        const text = element.firstChild;
-        if (!editable || !text) throw new Error("빈 중첩 불릿 caret을 찾지 못했습니다.");
-        editable.focus();
-        const range = document.createRange();
-        range.setStart(text, text.textContent?.length ?? 0);
-        range.collapse(true);
-        const selection = window.getSelection();
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-      });
-      await dispatchEditingKey(page, "Tab", "Tab");
-
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-empty-nested-indent"].source).toBe(
-        "- 상위\n    - 기존 하위\n        - \n# 다음 제목",
-      );
-      const activeTarget = page.locator(`${emptyNestedIndentSelector}[data-document-edit-active="true"]`);
-      await expect(activeTarget).toHaveCount(1);
-      await expect(activeTarget.locator(".markdown-empty-list-item")).toHaveCount(1);
-      await expect(activeTarget.locator("h1, h2, h3, h4, h5, h6")).toHaveCount(0);
-      await expect(page.locator(`${emptyNestedIndentSelector} h1`)).toHaveText("다음 제목");
-    });
-
-    await test.step("굵은 목록 끝의 Shift+Enter는 닫는 marker 뒤에 줄바꿈을 둔다", async () => {
-      const target = page.locator(strongBreakSelector);
-      const strongText = target.locator("strong [data-markdown-source-map]").last();
-      await strongText.scrollIntoViewIfNeeded();
-      const box = await strongText.boundingBox();
-      if (!box) throw new Error("굵은 목록 문장의 source 위치를 찾지 못했습니다.");
-      await strongText.click({
-        position: { x: Math.max(1, box.width - 1), y: Math.max(1, box.height / 2) },
-      });
-      await dispatchEditingKey(page, "Enter", "Enter", true);
-      await activateAtEnd(page, page.locator(componentSelector));
-
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-strong-break"].source).toBe(
-        "- 첫째\n- 구축한 모델을 **작업자별 생산성 모니터링 기능으로 확장**<br>\n\n## 다음 제목",
-      );
-      await expect(target.locator("strong").filter({ hasText: "작업자별 생산성 모니터링 기능으로 확장" })).toHaveCount(1);
-      expect((await target.allTextContents()).join("")).not.toContain("**");
-    });
-
-    await test.step("이미 적용된 제목의 첫 글자 앞에서 marker를 다시 입력하면 level이 계속 변경된다", async () => {
-      const target = page.locator(headingChangeSelector);
-      await setMarkdownCaretAtFirstText(target);
-      await page.keyboard.insertText("##");
-      await page.keyboard.press("Space");
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-heading-change"].source).toBe(
-        "## 기존 제목",
-      );
-      await expect(target.locator("h2")).toHaveText("기존 제목");
-
-      await setMarkdownCaretAtFirstText(target);
-      await page.keyboard.insertText("###");
-      await page.keyboard.press("Space");
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-heading-change"].source).toBe(
-        "### 기존 제목",
-      );
-      await expect(target.locator("h3")).toHaveText("기존 제목");
-    });
-
-    await test.step("굵은 구간 끝의 한글 조합 직후 Space는 닫는 marker 밖에 입력된다", async () => {
-      const target = page.locator(strongBreakSelector);
-      const strongText = target.locator("strong [data-markdown-source-map]").last();
-      const box = await strongText.boundingBox();
-      if (!box) throw new Error("굵은 목록 문장의 source 위치를 찾지 못했습니다.");
-      await strongText.click({
-        position: { x: Math.max(1, box.width - 1), y: Math.max(1, box.height / 2) },
-      });
+    await test.step("빠른 한글·Space·composition 중 publish와 부모 rerender", async () => {
+      await activateAtEnd(page, target("node-composition-caret"));
+      await editor().evaluate((element) => { (window as any).ownershipRoot = element; });
+      await page.keyboard.insertText("가");
       const cdp = await page.context().newCDPSession(page);
-      await insertComposedText(cdp, "는");
-      await page.keyboard.press("Space");
-      await insertComposedText(cdp, "아");
-      await activateAtEnd(page, page.locator(componentSelector));
-
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-strong-break"].source).toBe(
-        "- 첫째\n- 구축한 모델을 **작업자별 생산성 모니터링 기능으로 확장는** 아<br>\n\n## 다음 제목",
-      );
-      expect((await target.allTextContents()).join("")).not.toContain("**");
-    });
-
-    await test.step("한글 조합 확정 echo는 중복 저장하지 않고 다음 Space는 보존한다", async () => {
-      await activateAtEnd(page, page.locator(compositionSelector));
-      await dispatchCompositionCommit(page, compositionSelector, "한글", false);
-      await page.keyboard.press("Space");
-      await dispatchCompositionCommit(page, compositionSelector, "입력", true);
-      await activateAtEnd(page, page.locator(componentSelector));
-
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-composition"].source).toBe(
-        "조합: 한글 입력",
-      );
-    });
-
-    await test.step("Space keydown이 조합 확정 echo보다 먼저 와도 직전 한글을 중복하지 않는다", async () => {
-      const words = ["띄어쓰기가", "자주", "일어나도", "중복되지", "않는다"];
-      for (const word of words) {
-        await activateAtEnd(page, page.locator(compositionSpaceSelector));
-        await dispatchSpaceTriggeredCompositionCommit(page, compositionSpaceSelector, word);
-        await expect.poll(async () => (
-          (await readFixture(userData)).nodes["node-composition-space"].source
-        )).toBe(`공백: ${words.slice(0, words.indexOf(word) + 1).join(" ")} `);
-      }
-      await activateAtEnd(page, page.locator(componentSelector));
-
-      await expect.poll(async () => (
-        (await readFixture(userData)).nodes["node-composition-space"].source
-      )).toBe("공백: 띄어쓰기가 자주 일어나도 중복되지 않는다 ");
-    });
-
-    await test.step("이전 저장이 반영돼도 진행 중인 다음 한글 조합의 caret을 덮어쓰지 않는다", async () => {
-      const target = page.locator(compositionCaretSelector);
-      await activateAtEnd(page, target);
-      const cdp = await page.context().newCDPSession(page);
-      await insertComposedText(cdp, "가");
-      await cdp.send("Input.imeSetComposition", {
-        text: "나",
-        selectionStart: 1,
-        selectionEnd: 1,
+      await cdp.send("Input.imeSetComposition", { text: "나", selectionStart: 1, selectionEnd: 1 });
+      await page.getByRole("button", { name: "확대", exact: true }).evaluate((element: HTMLButtonElement) => element.click());
+      await page.getByRole("complementary", { name: "Properties" }).locator("input").first().evaluate((element) => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+        setter.call(element, "IME 중 DocumentData publish");
+        element.dispatchEvent(new Event("input", { bubbles: true }));
       });
-      await page.waitForTimeout(250);
-
-      await expect.poll(async () => target.evaluate((element) => {
-        const editable = element.querySelector<HTMLElement>('[contenteditable="true"]');
-        const selection = window.getSelection();
-        if (!editable || !selection?.rangeCount) return undefined;
-        const suffix = document.createRange();
-        suffix.setStart(selection.anchorNode!, selection.anchorOffset);
-        suffix.setEndAfter(editable.lastChild!);
-        return {
-          composing: editable.dataset.markdownComposing,
-          suffixAfterCaret: suffix.toString().replaceAll("\u200b", ""),
-        };
-      })).toEqual({ composing: "true", suffixAfterCaret: "" });
-
+      await page.waitForTimeout(800);
+      await expect(editor()).toBeFocused();
+      expect(await editor().evaluate((element) => (window as any).ownershipRoot === element)).toBe(true);
+      await expect(editor()).toHaveText("경쟁: 가나");
+      expect((await readFixture(userData)).nodes["node-composition-caret"].source).toBe("경쟁: 가");
+      expect((await readFixture(userData)).nodes["node-composition-caret"].name).toBe("IME 중 DocumentData publish");
       await cdp.send("Input.insertText", { text: "나" });
-      await activateAtEnd(page, page.locator(componentSelector));
-      await expect.poll(async () => (
-        (await readFixture(userData)).nodes["node-composition-caret"].source
-      )).toBe("경쟁: 가나");
-    });
-
-    await test.step("빈 Markdown의 첫 한글 조합도 동일한 흐름으로 한 번만 저장한다", async () => {
-      await activateAtEnd(page, page.locator(emptyCompositionSelector));
-      await dispatchCompositionCommit(page, emptyCompositionSelector, "첫 입력", true);
-      await activateAtEnd(page, page.locator(componentSelector));
-
-      await expect.poll(async () => (
-        (await readFixture(userData)).nodes["node-empty-composition"].source
-      )).toBe("첫 입력");
-    });
-
-    await test.step("여러 한글 음절과 공백을 빠르게 연속 확정해도 원문이 중복되지 않는다", async () => {
-      await activateAtEnd(page, page.locator(compositionBurstSelector));
-      const cdp = await page.context().newCDPSession(page);
-      const phrase = "것인데 정말로 해볼 수 있다는";
-      for (const character of phrase) {
-        if (character === " ") await page.keyboard.press("Space");
-        else await insertComposedText(cdp, character);
+      for (const word of ["다", "빠른", "한글", "입력"]) {
+        await page.keyboard.press("Space");
+        await insertComposedText(cdp, word);
       }
-      await activateAtEnd(page, page.locator(componentSelector));
-
-      await expect.poll(async () => (
-        (await readFixture(userData)).nodes["node-composition-burst"].source
-      )).toBe(`연속: ${phrase}`);
+      await page.keyboard.press("Space");
+      await page.keyboard.press("Space");
+      await page.keyboard.insertText("끝");
+      await expect(editor()).toHaveText("경쟁: 가나 다 빠른 한글 입력  끝");
+      expect(await editor().evaluate((element) => (window as any).ownershipRoot === element)).toBe(true);
+      expect(await caretSuffix(editor())).toBe("");
+      await expect(page.locator('.document-measure-page [contenteditable="true"]')).toHaveCount(0);
+      await outside().click();
+      await expect.poll(async () => (await readFixture(userData)).nodes["node-composition-caret"].source).toBe("경쟁: 가나 다 빠른 한글 입력  끝");
+      await cdp.detach();
     });
 
-    await test.step("IME가 직전 조합 글자를 교체하면 target range만 바꾸고 중복 추가하지 않는다", async () => {
-      await activateAtEnd(page, page.locator(compositionReplacementSelector));
-      await dispatchCompositionReplacement(page, compositionReplacementSelector, "ㅎ", "하");
-      await activateAtEnd(page, page.locator(componentSelector));
-
-      await expect.poll(async () => (
-        (await readFixture(userData)).nodes["node-composition-replacement"].source
-      )).toBe("치환: 하");
-    });
-
-    await test.step("인라인 자동 서식은 한 번의 undo와 redo로 왕복한다", async () => {
-      await activateAtEnd(page, page.locator(directSelector));
-      await page.keyboard.press("Enter");
-      await insertSequentially(page, "**");
-      await page.keyboard.insertText("굵게");
-      await insertSequentially(page, "**");
-      await expect(page.locator(`${directSelector} strong`)).toHaveCount(1);
-      await page.keyboard.press("Meta+z");
-      await expect(page.locator(`${directSelector} strong`)).toHaveCount(0);
-      await page.keyboard.press("Meta+Shift+z");
-      await expect(page.locator(`${directSelector} strong`)).toHaveCount(1);
-
-      await activateAtEnd(page, page.locator(shortcutSelector));
+    await test.step("toolbar·shortcut·undo/redo·literal paste", async () => {
+      await activateAtEnd(page, target("node-shortcut"));
       await page.keyboard.press("Meta+b");
-      await page.keyboard.insertText("단축키");
-      await expect(page.locator(`${shortcutSelector} strong`)).toContainText("단축키");
-
-      await activateAtEnd(page, page.locator(pasteSelector));
-      await page.evaluate((text) => {
-        const editable = document.activeElement?.closest('[contenteditable="true"]');
-        if (!editable) throw new Error("paste 대상 Markdown 편집기를 찾지 못했습니다.");
-        const data = new DataTransfer();
-        data.setData("text/plain", text);
-        editable.dispatchEvent(new ClipboardEvent("paste", {
-          bubbles: true,
-          cancelable: true,
-          clipboardData: data,
-        }));
-      }, "**붙여넣기 원문**");
-      await activateAtEnd(page, page.locator(componentSelector));
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-shortcut"].source).toBe("**단축키**");
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-paste"].source).toBe("\\*\\*붙여넣기 원문\\*\\*");
+      await page.keyboard.insertText("굵게");
+      await expect(editor().locator("strong")).toHaveText("굵게");
+      await page.keyboard.press("Meta+z");
+      await expect(editor()).toHaveText("");
+      await page.keyboard.press("Meta+Shift+z");
+      await expect(editor().locator("strong")).toHaveText("굵게");
+      await page.keyboard.press("Meta+a");
+      await page.getByRole("button", { name: "기울임", exact: true }).click();
+      await expect(editor().locator("em")).toHaveText("굵게");
+      await activateAtEnd(page, target("node-paste"));
+      await editor().evaluate((element) => {
+        const clipboardData = new DataTransfer();
+        clipboardData.setData("text/plain", "**붙여넣기 원문**");
+        element.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }));
+      });
+      await expect(editor()).toHaveText("**붙여넣기 원문**");
+      await expect(editor().locator("strong")).toHaveCount(0);
     });
 
-    await test.step("component prop과 repeater item prop은 독립적으로 저장된다", async () => {
-      await activateAtEnd(page, page.locator(componentSelector));
+    await test.step("component·repeater prop lifecycle", async () => {
+      await activateAtEnd(page, component().first());
       await page.keyboard.press("Enter");
-      await page.keyboard.press("Minus");
-      await page.keyboard.press("Space");
+      await page.keyboard.type("- ");
+      await expect(component().first()).toHaveAttribute("data-document-selected", "true");
+      await expect(page.locator('[data-document-selection-outline="true"][data-document-selection-target="instance:node-instance:prop:prop-markdown"]')).toHaveCount(1);
       await page.keyboard.insertText("컴포넌트 항목");
-
-      await activateAtEnd(page, page.locator(repeaterASelector));
+      await exercisePropComposition(page);
+      await activateAtEnd(page, item("item-a").first());
       await page.keyboard.press("Enter");
-      await insertSequentially(page, "[]");
-      await expect.poll(async () => (
-        (await readFixture(userData)).nodes["node-repeater"].items[0].props["prop-markdown"]
-      )).toBe("반복 A 시작\n\n\\[\\]");
-      await page.keyboard.press("Space");
-      await expect.poll(async () => (
-        (await readFixture(userData)).nodes["node-repeater"].items[0].props["prop-markdown"]
-      )).toBe("반복 A 시작\n\n- [ ] ");
+      await page.keyboard.type("[] ");
+      await expect(item("item-a").first()).toHaveAttribute("data-document-selected", "true");
+      await expect(item("item-b").first()).not.toHaveAttribute("data-document-selected", "true");
       await page.keyboard.insertText("확인 항목");
-      await page.locator(`${repeaterASelector} input[type="checkbox"]`).click();
-      await activateAtEnd(page, page.locator(repeaterBSelector));
-
+      await exercisePropComposition(page);
+      await editor().locator('input[type="checkbox"]').click();
+      await activateAtEnd(page, item("item-b").first());
+      await outside().click();
       await expect.poll(async () => {
-        const document = await readFixture(userData);
-        return {
-          component: document.nodes["node-instance"].props["prop-markdown"],
-          repeaterA: document.nodes["node-repeater"].items[0].props["prop-markdown"],
-          repeaterB: document.nodes["node-repeater"].items[1].props["prop-markdown"],
-          defaultValue: document.components["component-markdown-card"].propDefinitions[0].defaultValue,
-        };
-      }).toEqual({
-        component: "컴포넌트 시작\n\n- 컴포넌트 항목",
-        repeaterA: "반복 A 시작\n\n- [x] 확인 항목",
-        repeaterB: "반복 B 유지",
-        defaultValue: "컴포넌트 시작",
-      });
+        const doc = await readFixture(userData);
+        return [doc.nodes["node-instance"].props["prop-markdown"], doc.nodes["node-repeater"].items[0].props["prop-markdown"], doc.nodes["node-repeater"].items[1].props["prop-markdown"], doc.components["component-markdown-card"].propDefinitions[0].defaultValue];
+      }).toEqual(["컴포넌트 시작\n\n- 컴포넌트 항목 한글", "반복 A 시작\n\n- [x] 확인 항목 한글", "반복 B 유지", "컴포넌트 시작"]);
     });
 
-    await test.step("Markdown 외부 영역은 pagination 조각이 아니라 repeater item 전체를 선택한다", async () => {
-      const itemFragments = page.locator(
-        '.document-page-stack--screen [data-repeater-node-id="node-repeater"][data-repeater-item-id="item-a"]',
-      );
-      expect(await itemFragments.count()).toBeGreaterThan(1);
-      const markdownOutsideEditableSurface = itemFragments.first().locator(
-        '[data-document-edit-target="true"]',
-      ).first();
-      await markdownOutsideEditableSurface.dispatchEvent("mousedown");
-      await markdownOutsideEditableSurface.dispatchEvent("click");
-
-      await expect(page.locator('[data-document-edit-active="true"]')).toHaveCount(0);
-      await expect.poll(() => itemFragments.evaluateAll((elements) => (
-        elements.every((element) => element.getAttribute("data-document-selected") === "true")
-      ))).toBe(true);
-      const outline = page.locator(
-        '[data-document-selection-outline="true"][data-document-selection-kind="repeater-item"]',
-      );
-      await expect(outline).toHaveCount(1);
-      const geometry = await page.evaluate(() => {
-        const selection = document.querySelector<HTMLElement>(
-          '[data-document-selection-outline="true"][data-document-selection-kind="repeater-item"]',
-        );
-        const pageContent = selection?.parentElement;
-        if (!selection || !pageContent) throw new Error("repeater item selection outline을 찾지 못했습니다.");
-        const fragments = Array.from(pageContent.querySelectorAll<HTMLElement>(
-          '[data-repeater-node-id="node-repeater"][data-repeater-item-id="item-a"]',
-        ));
-        const selectionBounds = selection.getBoundingClientRect();
-        const fragmentBounds = fragments.map((fragment) => fragment.getBoundingClientRect());
-        return {
-          selection: {
-            left: selectionBounds.left,
-            top: selectionBounds.top,
-            right: selectionBounds.right,
-            bottom: selectionBounds.bottom,
-          },
-          union: {
-            left: Math.min(...fragmentBounds.map((bounds) => bounds.left)),
-            top: Math.min(...fragmentBounds.map((bounds) => bounds.top)),
-            right: Math.max(...fragmentBounds.map((bounds) => bounds.right)),
-            bottom: Math.max(...fragmentBounds.map((bounds) => bounds.bottom)),
-          },
-        };
-      });
-      expect(geometry.selection.left).toBeCloseTo(geometry.union.left, 0);
-      expect(geometry.selection.top).toBeCloseTo(geometry.union.top, 0);
-      expect(geometry.selection.right).toBeCloseTo(geometry.union.right, 0);
-      expect(geometry.selection.bottom).toBeCloseTo(geometry.union.bottom, 0);
+    await test.step("09 작성 명령을 source 보정 없이 editor input rule로 실행한다", async () => {
+      const cases = [
+        ["* ", "ul"], ["2) ", "ol"], ["> ", "blockquote"], ["```", "pre"], ["---", "hr"],
+        ["**굵게**", "strong"], ["*기울임*", "em"], ["~~취소선~~", "s"], ["`코드`", "code"],
+        ["++밑줄++", "u"], ["[링크](https://example.com)", "a"],
+      ];
+      for (const [index, [input, selector]] of cases.entries()) {
+        await activateAtEnd(page, target(`node-rule-${index}`));
+        await page.keyboard.type(input);
+        await expect(editor().locator(selector)).toHaveCount(1);
+      }
+      await activateAtEnd(page, target("node-empty-nested-indent").first());
+      await page.keyboard.press("Tab");
+      await expect(editor().locator("ul ul ul > li")).toHaveCount(1);
+      await expect(target("node-empty-nested-indent").locator("h1")).toHaveText("다음 제목");
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Backspace");
+      await expect(editor()).toBeFocused();
+      await outside().click();
     });
 
-    await test.step("pagination fragment와 한글 조합은 canonical source를 한 번만 바꾼다", async () => {
-      const laterFragment = page.locator('[data-document-node-id="node-long"][data-document-edit-target="true"]:not([data-markdown-fragment-first="true"])').nth(1);
-      await expect(laterFragment).toBeVisible();
-      await activateAtEnd(page, laterFragment);
-      await page.keyboard.insertText("경계확인");
+    await test.step("table·image·footnote·reference·HTML read-only 보존", async () => {
+      const fallback = target("node-fallback");
+      for (const readonly of await fallback.locator('[data-markdown-readonly="true"]').all()) {
+        if (!await readonly.isVisible()) continue;
+        await readonly.click({ force: true });
+        await expect(editor()).toHaveCount(0);
+      }
+      await activateAtEnd(page, fallback.first());
+      await page.keyboard.insertText(" 수정");
+      await outside().click();
+      await expect.poll(async () => (await readFixture(userData)).nodes["node-fallback"].source).toBe(initial.nodes["node-fallback"].source.replace("수정 가능", "수정 가능 수정"));
+    });
+
+    await test.step("다른 page block 전환과 source range 갱신", async () => {
+      const fragments = target("node-long");
+      await expect(fragments).toHaveCount(36);
+      await activateAtEnd(page, fragments.first());
+      await page.keyboard.press("Enter");
+      await page.keyboard.insertText("추가 문단");
+      await activateAtEnd(page, fragments.nth(5));
+      await page.keyboard.insertText(" 한글 입력");
+      await expect(editor()).toHaveCount(1);
+      await expect.poll(() => fragments.evaluateAll((elements) => elements.every((el) => el.getAttribute("data-document-selected") === "true"))).toBe(true);
+      await outside().click();
+      await expect.poll(async () => (await readFixture(userData)).nodes["node-long"].source).toContain("페이지 경계 확인 문장 3. 한글 입력");
+    });
+
+    await page.keyboard.press("Meta+s");
+    await page.getByRole("button", { name: "문서 목록" }).click();
+    await expect(page.getByText("로컬 문서 보관함")).toBeVisible();
+    await application.close();
+    ({ application } = await launchApplication(userData));
+    page = await application.firstWindow();
+    await openFixture(page);
+    await expect(target("node-direct").locator("h2")).toHaveText("사용자 흐름");
+    await expect(target("node-shortcut").locator("strong")).toHaveText("굵게");
+    await expect(item("item-a").locator('input[type="checkbox"]')).toBeChecked();
+    await expect(editor()).toHaveCount(0);
+    await application.evaluate(async ({ dialog }, destination) => {
+      dialog.showSaveDialog = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+        return { canceled: false, filePath: destination };
+      };
+    }, pdfPath);
+    await page.getByRole("button", { name: "PDF 내보내기" }).click();
+    const print = page.locator(".document-print-surface");
+    await expect(print).toBeAttached();
+    for (const text of ["사용자 흐름", "컴포넌트 항목", "확인 항목", "한글 입력"]) await expect(print).toContainText(text);
+    await expect(print.locator('[contenteditable="true"], [data-document-selected="true"], [data-markdown-editor-host]')).toHaveCount(0);
+    await expect(print.locator('input[type="checkbox"]').first()).toBeChecked();
+    await expect(page.getByText("PDF 저장 완료")).toBeVisible({ timeout: 20_000 });
+    expect((await stat(pdfPath)).size).toBeGreaterThan(1_000);
+    expect((await readFile(pdfPath)).subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    await test.step("앱 종료는 진행 중인 editor를 flush하고 저장을 기다린다", async () => {
+      await activateAtEnd(page, target("node-empty-composition"));
       const cdp = await page.context().newCDPSession(page);
-      await cdp.send("Input.imeSetComposition", { text: "ㅎ", selectionStart: 1, selectionEnd: 1 });
-      await cdp.send("Input.imeSetComposition", { text: "한", selectionStart: 1, selectionEnd: 1 });
-      await cdp.send("Input.insertText", { text: "한글 입력" });
-      await activateAtEnd(page, page.locator(directSelector));
-
-      await expect.poll(async () => {
-        const source = (await readFixture(userData)).nodes["node-long"].source;
-        return occurrences(source, "경계확인") === 1 &&
-          occurrences(source, "한글 입력") === 1 &&
-          !source.includes("ㅎ");
-      }).toBe(true);
-      await expect(page.locator('[data-document-edit-active="true"]')).toHaveCount(1);
-    });
-
-    await test.step("저장 후 앱을 다시 열어도 작성 결과가 유지된다", async () => {
-      await page.getByRole("button", { name: "문서 목록" }).click();
-      await expect(page.getByText("로컬 문서 보관함")).toBeVisible();
-      await application?.close();
+      await cdp.send("Input.imeSetComposition", { text: "종료 저장", selectionStart: 5, selectionEnd: 5 });
+      await application!.close();
       application = undefined;
-
+      expect((await readFixture(userData)).nodes["node-empty-composition"].source).toBe("종료 저장");
       ({ application } = await launchApplication(userData));
       page = await application.firstWindow();
       await openFixture(page);
-      await expect(page.locator(`${directSelector} h2`)).toContainText("사용자 흐름");
-      await expect(page.locator(`${directSelector} strong`)).toContainText("굵게");
-      await expect(page.locator(`${shortcutSelector} strong`)).toContainText("단축키");
-      await expect(page.locator(`${repeaterASelector} input[type="checkbox"]`)).toBeChecked();
-      await expect(page.locator('[data-document-edit-active="true"]')).toHaveCount(0);
+      await expect(target("node-empty-composition")).toHaveText("종료 저장");
     });
-
-    await test.step("제품 PDF export handler가 실제 PDF를 만든다", async () => {
-      await application.evaluate(async ({ dialog }, destination) => {
-        dialog.showSaveDialog = async () => {
-          await new Promise((resolve) => setTimeout(resolve, 3_000));
-          return { canceled: false, filePath: destination };
-        };
-      }, pdfPath);
-
-      await page.getByRole("button", { name: "PDF 내보내기" }).click();
-      const printSurface = page.locator(".document-print-surface");
-      await expect(printSurface).toBeAttached();
-      await expect(printSurface).toContainText("사용자 흐름");
-      await expect(printSurface).toContainText("컴포넌트 항목");
-      await expect(printSurface).toContainText("확인 항목");
-      await expect(printSurface).toContainText("한글 입력");
-      await expect(printSurface.locator('input[type="checkbox"]').first()).toBeChecked();
-      await expect(printSurface.locator('[data-document-selected="true"], [data-document-edit-active="true"], [role="listbox"]')).toHaveCount(0);
-      await expect(page.getByText("PDF 저장 완료")).toBeVisible({ timeout: 20_000 });
-      await expect.poll(async () => (await stat(pdfPath)).size).toBeGreaterThan(1_000);
-      const signature = (await readFile(pdfPath)).subarray(0, 5).toString("ascii");
-      expect(signature).toBe("%PDF-");
-    });
+    expect(errors).toEqual([]);
   } finally {
     await application?.close().catch(() => undefined);
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });
 
+async function exercisePropComposition(page: Page) {
+  const root = page.locator('[data-markdown-editor-host] .ProseMirror');
+  await root.evaluate((element) => { (window as any).propEditorRoot = element; });
+  await page.keyboard.press("Space");
+  const cdp = await page.context().newCDPSession(page);
+  await insertComposedText(cdp, "한");
+  await cdp.send("Input.imeSetComposition", { text: "글", selectionStart: 1, selectionEnd: 1 });
+  await page.getByRole("button", { name: "축소", exact: true }).evaluate((element: HTMLButtonElement) => element.click());
+  await expect(root).toBeFocused();
+  expect(await root.evaluate((element) => (window as any).propEditorRoot === element)).toBe(true);
+  await cdp.send("Input.insertText", { text: "글" });
+  expect(await caretSuffix(root)).toBe("");
+  await cdp.detach();
+}
+
+async function activateAtEnd(page: Page, target: Locator): Promise<void> {
+  await target.locator('[data-markdown-preview-block]').first().click();
+  const editor = page.locator('[data-markdown-editor-host] .ProseMirror');
+  await expect(editor).toBeFocused();
+  await editor.evaluate((element: HTMLElement) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    document.dispatchEvent(new Event("selectionchange"));
+  });
+}
+async function clickBeforeText(page: Page, locator: Locator, suffix: string) {
+  await locator.scrollIntoViewIfNeeded();
+  const point = await locator.evaluate((element, suffix) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const index = node.textContent?.indexOf(suffix) ?? -1;
+      if (index < 0) continue;
+      const range = document.createRange();
+      range.setStart(node, index);
+      range.setEnd(node, index + 1);
+      const rect = range.getBoundingClientRect();
+      return { x: rect.left + 1, y: rect.top + rect.height / 2 };
+    }
+    throw new Error("클릭할 글자 위치가 없습니다.");
+  }, suffix);
+  await page.mouse.click(point.x, point.y);
+}
+async function caretSuffix(editor: Locator) {
+  return editor.evaluate((element) => {
+    const selection = window.getSelection();
+    if (!selection?.anchorNode) return undefined;
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.setStart(selection.anchorNode, selection.anchorOffset);
+    return range.toString();
+  });
+}
+async function insertComposedText(cdp: Awaited<ReturnType<Page["context"]>["newCDPSession"]>, text: string) {
+  await cdp.send("Input.imeSetComposition", { text, selectionStart: text.length, selectionEnd: text.length });
+  await cdp.send("Input.insertText", { text });
+}
 async function launchApplication(userData: string): Promise<{ application: ElectronApplication }> {
   const application = await electron.launch({
     executablePath: electronPath,
@@ -521,39 +331,6 @@ async function openFixture(page: Page): Promise<void> {
   await expect(page.getByRole("button", { name: /Markdown 사용자 흐름 테스트/ })).toBeVisible();
   await page.getByRole("button", { name: /Markdown 사용자 흐름 테스트/ }).click();
   await expect(page.getByRole("main", { name: "문서 미리보기" })).toBeVisible();
-}
-
-async function activateAtEnd(page: Page, targets: Locator): Promise<void> {
-  const target = targets.last();
-  await target.scrollIntoViewIfNeeded();
-  const editable = target.locator('[contenteditable="true"]').first();
-  const mapped = editable.locator('[data-markdown-source-map]').last();
-  if (await mapped.count() && await mapped.isVisible()) {
-    const box = await mapped.boundingBox();
-    if (!box) throw new Error("Markdown source 위치를 화면에서 찾지 못했습니다.");
-    await mapped.click({ position: { x: Math.max(1, box.width - 1), y: Math.max(1, box.height / 2) } });
-  } else {
-    await editable.click();
-  }
-  await expect(targets.filter({ has: page.locator(':scope[data-document-edit-active="true"]') })).toHaveCount(1);
-}
-
-async function setMarkdownCaretAtFirstText(target: Locator): Promise<void> {
-  await target.scrollIntoViewIfNeeded();
-  const mapped = target.locator('[data-markdown-source-map]').first();
-  await mapped.click();
-  await mapped.evaluate((element) => {
-    const editable = element.closest<HTMLElement>('[contenteditable="true"]');
-    const text = element.firstChild;
-    if (!editable || !text) throw new Error("제목의 첫 text 위치를 찾지 못했습니다.");
-    editable.focus();
-    const range = document.createRange();
-    range.setStart(text, 0);
-    range.collapse(true);
-    const selection = window.getSelection();
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-  });
 }
 
 async function seedFixture(userData: string): Promise<void> {
@@ -662,6 +439,21 @@ async function seedFixture(userData: string): Promise<void> {
     source: Array.from({ length: 18 }, (_, index) => `### 긴 문단 ${index + 1}\n\n페이지 경계 확인 문장 ${index + 1}.`).join("\n\n"),
   }, undefined, options);
 
+  document = addNode(document, rootNodeId, {
+    id: "node-selection", type: "markdown", name: "선택 경계", visible: true,
+    source: "문단 ABCD\n\n## 제목 ABCD\n\n> 인용 ABCD\n\n- 목록 ABCD",
+  }, undefined, options);
+  document = addNode(document, rootNodeId, {
+    id: "node-fallback", type: "markdown", name: "원문 보존", visible: true,
+    source: "수정 가능\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\n![이미지](https://example.com/a.png)\n\n[참조][ref]\n\n[ref]: https://example.com\n\n각주[^1]\n\n[^1]: 설명\n\n<div>원문</div>",
+  }, undefined, options);
+  document = addNode(document, rootNodeId, {
+    id: "node-outside", type: "text", name: "외부 텍스트", visible: true, value: "외부 요소",
+  }, undefined, options);
+
+  for (let index = 0; index < 11; index += 1) {
+    document = addNode(document, rootNodeId, { id: `node-rule-${index}`, type: "markdown", name: `명령 ${index}`, visible: true, source: "" }, undefined, options);
+  }
   const workspace = join(userData, "workspaces");
   await mkdir(join(workspace, "documents"), { recursive: true });
   await mkdir(join(workspace, "document-trash"), { recursive: true });
@@ -678,162 +470,4 @@ async function readFixture(userData: string): Promise<DocumentData> {
     join(userData, "workspaces", "documents", `${documentId}.document.json`),
     "utf8",
   )) as DocumentData;
-}
-
-function occurrences(source: string, value: string): number {
-  return source.split(value).length - 1;
-}
-
-async function insertSequentially(page: Page, value: string): Promise<void> {
-  for (const character of value) {
-    await page.keyboard.insertText(character);
-    await page.waitForTimeout(80);
-  }
-}
-
-async function dispatchEditingKey(
-  page: Page,
-  key: string,
-  code: string,
-  shiftKey = false,
-): Promise<void> {
-  await page.evaluate(({ key, code, shiftKey }) => {
-    const target = document.activeElement;
-    if (!(target instanceof HTMLElement) || target.contentEditable !== "true") {
-      throw new Error("활성 Markdown contenteditable을 찾지 못했습니다.");
-    }
-    const handled = !target.dispatchEvent(new KeyboardEvent("keydown", {
-      key,
-      code,
-      shiftKey,
-      bubbles: true,
-      cancelable: true,
-    }));
-    if (!handled) throw new Error(`${code} keydown을 Markdown 편집기가 처리하지 않았습니다.`);
-  }, { key, code, shiftKey });
-}
-
-async function insertComposedText(
-  cdp: Awaited<ReturnType<Page["context"]>["newCDPSession"]>,
-  text: string,
-): Promise<void> {
-  await cdp.send("Input.imeSetComposition", {
-    text,
-    selectionStart: text.length,
-    selectionEnd: text.length,
-  });
-  await cdp.send("Input.insertText", { text });
-}
-
-async function dispatchCompositionCommit(
-  page: Page,
-  selector: string,
-  text: string,
-  dispatchFinalEcho: boolean,
-): Promise<void> {
-  await page.locator(selector).evaluate((element, options) => {
-    const editable = element.querySelector<HTMLElement>('[contenteditable="true"]');
-    if (!editable) throw new Error("한글 조합 대상 Markdown 편집기를 찾지 못했습니다.");
-    editable.dispatchEvent(new CompositionEvent("compositionstart", {
-      bubbles: true,
-      data: "",
-    }));
-    editable.dispatchEvent(new CompositionEvent("compositionend", {
-      bubbles: true,
-      data: options.text,
-    }));
-    if (options.dispatchFinalEcho) {
-      editable.dispatchEvent(new InputEvent("beforeinput", {
-        bubbles: true,
-        cancelable: true,
-        inputType: "insertText",
-        data: options.text,
-      }));
-    }
-  }, { text, dispatchFinalEcho });
-}
-
-async function dispatchSpaceTriggeredCompositionCommit(
-  page: Page,
-  selector: string,
-  text: string,
-): Promise<void> {
-  await page.locator(selector).evaluate((element, committedText) => {
-    const editable = element.querySelector<HTMLElement>('[contenteditable="true"]');
-    if (!editable) throw new Error("한글 조합 대상 Markdown 편집기를 찾지 못했습니다.");
-    editable.dispatchEvent(new CompositionEvent("compositionstart", {
-      bubbles: true,
-      data: "",
-    }));
-    editable.dispatchEvent(new CompositionEvent("compositionend", {
-      bubbles: true,
-      data: committedText,
-    }));
-    editable.dispatchEvent(new KeyboardEvent("keydown", {
-      bubbles: true,
-      cancelable: true,
-      key: " ",
-      code: "Space",
-    }));
-    editable.dispatchEvent(new InputEvent("beforeinput", {
-      bubbles: true,
-      cancelable: true,
-      inputType: "insertText",
-      data: committedText,
-    }));
-    editable.dispatchEvent(new InputEvent("beforeinput", {
-      bubbles: true,
-      cancelable: true,
-      inputType: "insertText",
-      data: " ",
-    }));
-  }, text);
-}
-
-async function dispatchCompositionReplacement(
-  page: Page,
-  selector: string,
-  previousText: string,
-  replacement: string,
-): Promise<void> {
-  await page.locator(selector).evaluate((element, options) => {
-    const editable = element.querySelector<HTMLElement>('[contenteditable="true"]');
-    const segment = Array.from(
-      editable?.querySelectorAll<HTMLElement>('[data-markdown-source-map]') ?? [],
-    ).findLast((candidate) => candidate.textContent?.endsWith(options.previousText));
-    const textNode = segment?.firstChild;
-    if (!editable || !segment || !textNode) {
-      throw new Error("한글 조합 교체 대상 source segment를 찾지 못했습니다.");
-    }
-    const end = textNode.textContent?.length ?? 0;
-    const selection = window.getSelection();
-    const caret = document.createRange();
-    caret.setStart(textNode, end);
-    caret.collapse(true);
-    selection?.removeAllRanges();
-    selection?.addRange(caret);
-
-    editable.dispatchEvent(new CompositionEvent("compositionstart", {
-      bubbles: true,
-      data: options.previousText,
-    }));
-    const targetRange = new StaticRange({
-      startContainer: textNode,
-      startOffset: end - options.previousText.length,
-      endContainer: textNode,
-      endOffset: end,
-    });
-    editable.dispatchEvent(new InputEvent("beforeinput", {
-      bubbles: true,
-      cancelable: false,
-      inputType: "insertCompositionText",
-      data: options.replacement,
-      isComposing: true,
-      targetRanges: [targetRange],
-    }));
-    editable.dispatchEvent(new CompositionEvent("compositionend", {
-      bubbles: true,
-      data: options.replacement,
-    }));
-  }, { previousText, replacement });
 }
