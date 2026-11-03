@@ -31,6 +31,10 @@ const api: DocumentApi = {
     return () => ipcRenderer.removeListener(IPC.editorRequest, listener);
   },
   reportEditorContext: (context) => ipcRenderer.send(IPC.editorContext, context),
+  onLibraryChange: (handler) => {
+    ipcRenderer.on(IPC.libraryChanged, handler);
+    return () => ipcRenderer.removeListener(IPC.libraryChanged, handler);
+  },
   listDocuments: () => ipcRenderer.invoke(IPC.listDocuments),
   listDeletedDocuments: () => ipcRenderer.invoke(IPC.listDeletedDocuments),
   createDocument: () => ipcRenderer.invoke(IPC.createDocument),

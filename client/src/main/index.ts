@@ -122,7 +122,7 @@ app.whenReady().then(() => {
   const workspace = workspaceDirectory();
   const documents = new DocumentRepository(workspace);
   const components = new ComponentLibraryRepository(workspace);
-  const service = new DocumentService(documents, components, workspace, { coordinator: editorCoordinator });
+  const service = new DocumentService(documents, components, workspace, { coordinator: editorCoordinator, onCommitted: () => mainWindow?.webContents.send(IPC.libraryChanged) });
   const policy = new AccessPolicy(workspace);
   service.setCreatedGrantHandler((credentialId, documentId) => policy.grantCreated(credentialId, documentId));
   const agentServer = new AgentServer(policy, (id) => createAgentProtocol(policy, service, id, app.getVersion()));

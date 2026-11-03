@@ -37,6 +37,8 @@ export function useDocumentLibrary() {
     void load();
   }, [load]);
 
+  useEffect(() => window.documents.onLibraryChange(() => { void load(false); }), [load]);
+
   const create = async (): Promise<SavedDocument | undefined> => {
     if (busyId) return undefined;
     setBusyId("create");

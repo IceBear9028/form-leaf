@@ -18,7 +18,7 @@ test("F03: 실제 MCP 내용 변경·저장·화면 ack와 composition 중 busy 
   await repository.save(fixture.documentId, fixture);
   const policy = new AccessPolicy(workspace); await policy.initialize();
   const { connection, token } = await policy.create("작성 에이전트");
-  await policy.setGrants(connection.id, { ...emptyGrants(), documentIds: [fixture.documentId], write: true }); await policy.setEnabled(true);
+  await policy.setGrants(connection.id, { ...emptyGrants(), documentIds: [fixture.documentId], write: true, create: true }); await policy.setEnabled(true);
   const client = new Client({ name: "content-e2e", version: "1" }); let app: ElectronApplication | undefined;
   try {
     app = await electron.launch({ executablePath: electronPath as unknown as string, args: ["."], cwd: process.cwd(), env: { ...process.env, DOCUMENT_USER_DATA_DIRECTORY: userData, DOCUMENT_E2E_HEADLESS: "1" } });
@@ -53,5 +53,10 @@ test("F03: 실제 MCP 내용 변경·저장·화면 ack와 composition 중 busy 
     expect(persisted.nodes.instance.type === "component-instance" && persisted.nodes.instance.props.prop).toBe("외부 컴포넌트");
     expect(persisted.nodes.repeater.type === "repeater" && persisted.nodes.repeater.items[0].props.prop).toBe("외부 항목");
     expect(persisted.components.component.propDefinitions[0].defaultValue).toBe("기본 **원문**");
+    await page.getByRole("button", { name: "문서 목록", exact: true }).click();
+    const newDocument = (await client.callTool({ name: "create_document", arguments: { name: "MCP 새 문서", requestId: randomUUID() } })).structuredContent as any;
+    expect(newDocument.ok).toBe(true);
+    await expect(page.getByRole("button", { name: /MCP 새 문서/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "내 문서", exact: true })).toBeVisible();
   } finally { await client.close(); await app?.close(); await rm(temporary, { recursive: true, force: true }); }
 });

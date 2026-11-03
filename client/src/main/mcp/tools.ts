@@ -12,6 +12,7 @@ import { AgentReads } from "./readTools.ts";
 
 const resourcePager = new CursorPager();
 const descriptions: Partial<Record<ToolName, string>> = {
+  create_document: "Create an empty document with the default root/style. Requires create and write. The new document is granted to this connection without changing UI selection. Use a UUID requestId and reuse the same input/ID after disconnects.",
   apply_operations: "Apply one atomic batch to a permitted saved document. Requires write and expectedRevision. Editing/dirty documents return DOCUMENT_BUSY without flushing. dryRun validates without persisting IDs or a reservation. Real writes require a unique UUID requestId; retry the same normalized input under that ID or query get_operation.",
   get_context: "Read current connection capabilities and the permitted saved document context. Unsaved drafts are never returned.",
   list_documents: "Find permitted documents by name. Get a saved revision with get_document before editing.",
@@ -42,6 +43,11 @@ export function createAgentProtocol(policy: AccessPolicy, service: DocumentServi
       const input = <N extends ToolName>(_name: N) => parsed.data as ToolInput<N>;
       let data: unknown;
       switch (name) {
+        case "create_document": {
+          const args = input(name);
+          data = await service.createForAgent({ credentialId, requestId: args.requestId, hash: requestHash(name, args) }, args.name, () => { policy.capability(credentialId, "create"); });
+          break;
+        }
         case "apply_operations": {
           const args = input(name);
           const identity = args.dryRun ? undefined : { credentialId, requestId: args.requestId, hash: requestHash(name, args) };

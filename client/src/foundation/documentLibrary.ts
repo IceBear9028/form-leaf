@@ -37,6 +37,7 @@ export type DocumentApi = {
   onBeforeClose: (handler: () => Promise<boolean>) => () => void;
   onEditorRequest: (handler: (request: EditorRequest) => EditorReply) => () => void;
   reportEditorContext: (context: EditorContext | null) => void;
+  onLibraryChange: (handler: () => void) => () => void;
   listDocuments: () => Promise<DocumentSummary[]>;
   listDeletedDocuments: () => Promise<DeletedDocumentSummary[]>;
   createDocument: () => Promise<{ summary: DocumentSummary; document: DocumentData; revision: string }>;

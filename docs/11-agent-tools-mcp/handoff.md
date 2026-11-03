@@ -49,6 +49,14 @@
 
 ## 이번에 바꾼 것 — 2026-11-03
 
+### F04 문서 구성 구현
+
+- create_document를 생성 grant/index/journal 복구와 연결했다. 새 문서를 자동으로 열지 않고 목록을 갱신한다. UI 저장·관리도 commit 알림으로 목록을 최신화한다.
+- add/move/duplicate/visibility/archive/restore node를 연결했다. root 변경 금지, cycle·활성 문서 container·제거 후 index 범위·기존 asset/component 참조를 검증한다. 보관된 부모로 복원하지 않는다.
+- `test/agent-structure.test.mjs` 3개 통과: 생성·구조·ID·보관/복원·root/cycle/index/asset 거절과 실제 SDK 생성/grant/재전송. 공통 service의 생성 장애 4경계 복구 테스트도 유지한다.
+- hidden HTTP 작성 E2E에 생성 후 목록 자동 갱신·편집기 자동 진입 없음 검증을 추가해 통과했다. 전체 test/build(typecheck 포함) 통과.
+- 다음 기능은 F05 컴포넌트 import/prop/item이다.
+
 ### F03 내용 수정 구현
 
 - node/component prop/repeater item prop의 set_edit_value와 replace_text를 공통 service/CAS/idle/journal에 연결했다. canonical Markdown을 codec 왕복 없이 변경하며 rich-text는 runs 전체 교체만 허용한다.

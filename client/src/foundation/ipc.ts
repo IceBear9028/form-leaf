@@ -10,6 +10,7 @@ export const IPC = {
   closeGuard: "document:close-guard",
   requestClose: "document:request-close",
   completeClose: "document:complete-close",
+  libraryChanged: "document:library-changed",
   listDocuments: "document:list",
   listDeletedDocuments: "document:list-deleted",
   createDocument: "document:create",

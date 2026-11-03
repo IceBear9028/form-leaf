@@ -1,3 +1,4 @@
+import { applyNodeOperation, NODE_OPERATIONS } from "./nodeOperations.ts";
 import type { DocumentData } from "../../foundation/documentModel.ts";
 import { updateDocumentEditValue, documentEditTargetKey } from "../../foundation/documentEditing.ts";
 import { readEditTarget } from "../../foundation/documentCommandTargets.ts";
@@ -5,7 +6,7 @@ import { failure, CommandFailure, type Operation, type OperationResult } from ".
 import { assertDocumentData } from "../../foundation/documentValidation.ts";
 import type { Mutation } from "./documentService.ts";
 
-export const AVAILABLE_OPERATIONS: Operation["type"][] = ["set_edit_value", "replace_text"];
+export const AVAILABLE_OPERATIONS: Operation["type"][] = ["set_edit_value", "replace_text", ...NODE_OPERATIONS];
 export function applyDocumentOperations(document: DocumentData, operations: Operation[]): Mutation {
   let next = structuredClone(document);
   const affectedNodeIds = new Set<string>();
@@ -13,6 +14,13 @@ export function applyDocumentOperations(document: DocumentData, operations: Oper
   const results: OperationResult[] = [];
   for (const [operationIndex, operation] of operations.entries()) {
     try {
+      const step = applyNodeOperation(next, operation);
+      if (step) {
+        next = step.document;
+        step.nodeIds.forEach((id) => affectedNodeIds.add(id));
+        results.push({ operationIndex, type: operation.type, ...(step.created ? { created: step.created } : {}), ...(step.idMap ? { idMap: step.idMap } : {}) });
+        continue;
+      }
       if (operation.type !== "set_edit_value" && operation.type !== "replace_text") failure("UNSUPPORTED_OPERATION", "이 변경 명령은 아직 제공하지 않습니다.");
       const current = readEditTarget(next, operation.target);
       let value;

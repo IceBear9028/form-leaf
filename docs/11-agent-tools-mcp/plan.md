@@ -62,8 +62,9 @@ flowchart TD
 | 공통 저장 기반 | 완료, `6368045` | service 10개 / hidden coordinator 1개 / 기존 Markdown E2E 2개 |
 | F01 연결·권한 | 완료, `39cfdd9` | access 2개 / hidden UI 1개. 추가 도구/resource 권한은 도구 연결 시 재검증 |
 | F02 문맥·대상 | 완료, `ec4c6f3` | reads 4개 / HTTP access 회귀 / 전체 test·build |
-| F03 내용 수정 | 구현·검증 완료 | content 3개 / 실제 MCP hidden E2E 1개 / 연결·coordinator 회귀 |
-| F04–F08 | 대기 | 기능별 adapter/출력/결과 UI와 전체 흐름 |
+| F03 내용 수정 | 완료, `9272786` | content 3개 / 실제 MCP hidden E2E 1개 / 연결·coordinator 회귀 |
+| F04 문서 구성 | 구현·검증 완료 | structure 3개 / 생성 grant·journal 복구 / hidden 목록 갱신 |
+| F05–F08 | 대기 | 재사용/style/출력/결과 UI와 전체 흐름 |
 
 ## 기능과 검증 단계의 대응
 
@@ -141,13 +142,13 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 | 4-4 | instance와 반복 항목 | set_component_prop, clear_component_prop, add_item, move_item, duplicate_item, remove_item, set_item_prop |
 | 4-5 | 라이브러리 재사용 | import_component, add_component_instance |
 
-- [ ] 4-1 연결 및 세 가지 target 유형 검증.
-- [ ] 4-2 연결 및 root/cycle/보관 배치/생성 ID 검증.
+- [x] 4-1 연결 및 세 가지 target 유형 검증.
+- [x] 4-2 연결 및 root/cycle/보관 배치/생성 ID 검증.
 - [ ] 4-3 연결 및 다른 node의 공유 스타일 불변 검증.
 - [ ] 4-4 연결 및 default/override, active prop 유형, 제거 영향 검증.
 - [ ] 4-5 연결 및 library revision·ID 재매핑·기본값·asset 참조 검증.
 - [ ] dryRun 무변경, 전체 batch 실패 무변경, unsupported Markdown 원문 보존 검증.
-- [ ] 생성 문서 grant 추가와 journal 복구의 일관성 검증.
+- [x] 생성 문서 grant 추가와 journal 복구의 일관성 검증.
 
 완료 기준: README와 기능 상세의 문장 수정·항목 추가·빈 문서 작성·컴포넌트 재사용 예시를 도구 호출로 수행한다.
 

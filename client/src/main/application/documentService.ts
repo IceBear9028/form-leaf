@@ -24,18 +24,19 @@ export class DocumentService {
   readonly coordinator: EditorCoordinator;
   private grantCreated: (credentialId: string, documentId: string) => Promise<void> = async () => undefined;
   private fault?: (point: FaultPoint) => void;
+  private readonly onCommitted?: () => void;
   private readonly repository: DocumentRepository;
   private readonly components: ComponentLibraryRepository;
   constructor(
     repository: DocumentRepository,
     components: ComponentLibraryRepository,
     workspace: string,
-    options: { coordinator?: EditorCoordinator; fault?: (point: FaultPoint) => void } = {},
+    options: { coordinator?: EditorCoordinator; fault?: (point: FaultPoint) => void; onCommitted?: () => void } = {},
   ) {
     this.repository = repository; this.components = components;
     this.journal = new OperationJournal(workspace);
     this.coordinator = options.coordinator ?? new EditorCoordinator();
-    this.fault = options.fault;
+    this.fault = options.fault; this.onCommitted = options.onCommitted;
   }
   setCreatedGrantHandler(handler: (credentialId: string, documentId: string) => Promise<void>): void { this.grantCreated = handler; }
   initialize(): Promise<void> {
@@ -119,7 +120,7 @@ export class DocumentService {
       // Management acts from the library screen; never rename/remove an open draft behind its back.
       const context = await this.coordinator.inspect(id);
       if (context) failure("DOCUMENT_BUSY", "열린 문서를 닫은 뒤 문서 관리 작업을 진행하세요.");
-      return action();
+      const result = await action(); this.notifyCommitted(); return result;
     });
   }
   async operation(credentialId: string, requestId: string): Promise<JournalEntry | undefined> {
@@ -195,6 +196,10 @@ export class DocumentService {
     if (entry.response.status === "pending") return { requestId: identity.requestId, status: "pending" };
     throw new CommandFailure("OPERATION_RECOVERY_REQUIRED", "이전 저장 결과를 먼저 확인하세요.");
   }
+  private notifyCommitted(): void {
+    // Window teardown cannot change the outcome of an already durable write.
+    try { this.onCommitted?.(); } catch { /* The library refreshes on its next load. */ }
+  }
   private async commit(identity: MutationIdentity, snapshot: DocumentData, previousRevision: string | null, result: JournalResult["result"], created = false): Promise<DocumentSummary> {
     this.writable(snapshot.documentId);
     const entry: JournalEntry = {
@@ -210,6 +215,7 @@ export class DocumentService {
       this.fault?.("grant-saved");
       await this.journal.finish(entry, { ...entry.response, status: "completed", outcome: "committed" });
       this.fault?.("completed");
+      this.notifyCommitted();
       return summary;
     } catch {
       this.blocked.add(snapshot.documentId);
