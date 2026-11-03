@@ -60,8 +60,8 @@ flowchart TD
 |---|---|---|
 | 계약 기반 | 완료, `d587142` | 계약 6개 / 전체 test / build |
 | 공통 저장 기반 | 완료, `6368045` | service 10개 / hidden coordinator 1개 / 기존 Markdown E2E 2개 |
-| F01 연결·권한 | 연결 UI·HTTP·policy 구현/검증 완료 | access 2개 / hidden UI 1개. 추가 도구/resource 권한은 도구 연결 시 재검증 |
-| F02 문맥·대상 | 다음 작업 | 실제 읽기 도구·cursor·resource |
+| F01 연결·권한 | 완료, `39cfdd9` | access 2개 / hidden UI 1개. 추가 도구/resource 권한은 도구 연결 시 재검증 |
+| F02 문맥·대상 | 조회 도구·cursor·resource 구현/검증 완료 | reads 4개 / HTTP access 회귀 / 전체 test·build |
 | F03–F08 | 대기 | 기능별 adapter/출력/결과 UI와 전체 흐름 |
 
 ## 기능과 검증 단계의 대응
@@ -118,11 +118,11 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] 앱 설정에 MCP 활성화·endpoint·연결 이름·token 발급/폐기 UI 추가.
 - [x] 연결별 documentIds 및 write/create/libraryRead/render grant 설정·저장.
 - [x] loopback 서버 lifecycle·Host/Origin·인증·입력 크기 제한.
-- [ ] get_context, list_documents, get_document, list_edit_targets, get_edit_value 구현.
-- [ ] list_components, get_component와 library/document 식별자 분리 구현.
-- [ ] get_operation, schema/document resources 구현.
-- [ ] 목록·instructions·resource·로그에도 문서 권한 적용; 비허용 이름·집계 노출 검사.
-- [ ] 읽기 전용·권한 변경·폐기 token·만료 cursor·잘못된 origin 검증.
+- [x] get_context, list_documents, get_document, list_edit_targets, get_edit_value 구현.
+- [x] list_components, get_component와 library/document 식별자 분리 구현.
+- [x] get_operation, schema/document resources 구현.
+- [x] 목록·instructions·resource·로그에도 문서 권한 적용; 비허용 이름·집계 노출 검사.
+- [x] 읽기 전용·권한 변경·폐기 token·만료 cursor·잘못된 origin 검증.
 
 완료 기준: 외부 MCP client가 도구를 발견하고 허용된 저장 문서·target만 조회할 수 있다.
 

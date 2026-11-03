@@ -6,7 +6,7 @@
 - 작업 번호: 11 / 브랜치: `feat/11-agent-tools-mcp` (기준 `main@6821494`)
 - 문서·공통 템플릿 커밋: `b65fc85`.
 - 사용자 요청에 따라 구현과 기능별 검증 후 커밋을 진행한다. AI 로그인/채팅은 후속 범위다.
-- 1단계 계약 완료, 2단계 공통 저장 기반 구현·검증 완료(명령 adapter 통합은 남음), 3단계 조회 연결 진행 중, 4–6단계 대기. F01 연결 서버와 설정 UI가 구현됐으며 현재 get_context만 공개한다.
+- 1단계 계약 완료, 2단계 공통 저장 기반 구현·검증 완료(명령 adapter 통합은 남음), 3단계 조회 연결 진행 중, 4–6단계 대기. F01/F02 연결과 읽기 도구 8개, schema/document resource 구현. 외부 쓰기·render는 아직 공개하지 않는다.
 - 실제 사용자 데이터·backup은 변경하지 않았다.
 
 ## 구현 증거 — 계약 기반
@@ -37,6 +37,15 @@
 - 현재 `get_context`만 실제 공개했다. F02 이후 구현한 도구를 추가하고, 각 도구/resource의 정보 노출 경계를 그때 재검증한다. MCP는 외부 CLI의 별도 OS 파일 권한을 제한하지 않는다.
 - `test/agent-access.test.mjs` 2개 통과: 기본 거절/영속 hash/폐기/create-write, 실제 HTTP SDK client·인증·Host/Origin·body 한도·권한 변경.
 - hidden `e2e/agent-connection.spec.ts` 1개 통과: UI에서 발급→연결→문서 허용→쓰기/생성 연동→폐기→서버 끄기. 실제 사용자 clipboard나 키보드/마우스를 사용하지 않았다.
+
+## 구현 증거 — F02 문맥·대상
+
+- `get_context/list_documents/get_document/list_edit_targets/get_edit_value/list_components/get_component/get_operation` 조회와 schema/document resources를 연결했다. 실제 공개 도구는 tools/list를 기준으로 한다.
+- canonical DTO는 asset metadata만 반환한다. 문서 outline은 component 내부를 직접 노출하지 않고 문서 active/archived tree를 표시한다. typed target은 active text/Markdown/rich-text 값만 포함하고 기본값/override·숨김을 표시한다.
+- HMAC cursor는 credential·query·snapshot/revision에 묶고 10분 만료를 검사한다. resource 목록도 100개씩 나눈다.
+- 문서/컴포넌트 조회 전후 및 resource 경로에서 현재 권한을 확인한다. 비허용/미존재 문서는 같은 오류로 처리한다. 지원하지 않는 Markdown은 compatibility 정보와 원문을 그대로 반환한다.
+- `test/agent-reads.test.mjs` 4개 통과: 비허용 정보/resource/context 차단, 세 target과 상속/보관/숨김, 원문/asset metadata, revision/credential/query/만료/변조 cursor. 전체 `npm test`와 build(typecheck 포함) 통과.
+- 다음 기능 F03에서 내용 변경 adapter를 연결한다. F05에서 library import·prop/item 쓰기, F07에서 실제 render, F08에서 작업 결과 UI를 검증한다.
 
 ## 이번에 바꾼 것 — 2026-11-03
 
