@@ -77,12 +77,17 @@ test("12도구의 기본값과 JSON schema, output error union이 일치한다",
     assert.equal(schema.safeParse({ ...inputs[name], unsafe: true }).success, false);
     const definition = toolDefinition(name, name);
     assert.equal(definition.inputSchema.type, "object");
+    for (const keyword of ["anyOf", "oneOf", "allOf"]) assert.equal(keyword in definition.inputSchema, false, `${name}: model-facing root must be an object`);
     assert.equal(definition.outputSchema.type, "object");
     assert.equal(toolOutputSchemas[name].safeParse({ ok: false, error: { code: "NOT_FOUND_OR_DENIED", message: "거절", retryable: false } }).success, true);
   }
   assert.equal(toolInputSchemas.list_documents.parse({}).limit, 50);
   assert.equal(toolInputSchemas.create_document.parse(inputs.create_document).name, "새 문서");
   assert.equal(toolInputSchemas.get_document.parse(inputs.get_document).view, "outline");
+  assert.match(toolDefinition("apply_operations", "apply").inputSchema.properties.requestId.description, /Required.*real writes/);
+  assert.match(toolDefinition("get_component", "component").inputSchema.properties.libraryItemId.description, /source=library/);
+  assert.equal(toolInputSchemas.get_component.safeParse({ source: "library", libraryItemId: "l", documentId: "d" }).success, false);
+  assert.equal(toolInputSchemas.get_component.safeParse({ source: "document", documentId: "d" }).success, false);
 });
 test("F03/F07/F08: dryRun에는 requestId 금지, PDF에는 경로 금지, batch 한도", () => {
   const base = { ...inputs.apply_operations, dryRun: true };

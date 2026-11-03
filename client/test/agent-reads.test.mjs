@@ -90,6 +90,22 @@ test("F02: revision 변경 후 target cursor를 거절한다", async (t) => {
   assert.equal((await call("list_edit_targets", { documentId: document.documentId, limit: 1, cursor: first.nextCursor })).error.code, "INVALID_CURSOR");
 });
 
+test("F02: 큰 기존 값은 입력 글자 수 제한과 분리하고 JSON 한도 초과만 명시적으로 거절한다", async (t) => {
+  const { service, document, call } = await setup(t);
+  let snapshot = await service.load(document.documentId);
+  const long = "가".repeat(100_001);
+  snapshot.document.nodes.text.value = long;
+  snapshot.document.components.component.propDefinitions[0].defaultValue = long;
+  await service.save(document.documentId, snapshot.document, snapshot.revision);
+  assert.equal((await call("get_edit_value", { documentId: document.documentId, target: { kind: "node", nodeId: "text" } })).data.value, long);
+  assert.equal((await call("get_component", { source: "document", documentId: document.documentId, componentId: "component" })).data.propDefinitions[0].defaultValue, long);
+  snapshot = await service.load(document.documentId);
+  snapshot.document.nodes.text.value = "가".repeat(800_000);
+  await service.save(document.documentId, snapshot.document, snapshot.revision);
+  const oversized = await call("get_edit_value", { documentId: document.documentId, target: { kind: "node", nodeId: "text" } });
+  assert.equal(oversized.ok, false); assert.equal(oversized.error.code, "RESULT_TOO_LARGE");
+});
+
 test("F02: cursor는 credential/query/snapshot/만료에 묶이고 변조를 거절한다", () => {
   let now = 0; const pager = new CursorPager(() => now);
   const items = [{ id: 1 }, { id: 2 }];

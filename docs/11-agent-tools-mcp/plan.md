@@ -67,7 +67,7 @@ flowchart TD
 | F05 재사용 | 완료, `fdc9051` | components 2개 / library 조회·remap·revision·원본 불변 / 전체 test·build |
 | F06 스타일 | 완료, `baaac77` | style 3개 / 전체 test·build / F07에서 실제 출력 비교 |
 | F07 출력 | 완료, `d564ca4` | output 3개 / hidden PNG·PDF·IME E2E / 4쪽 PDF 의미·시각 검사 |
-| F08 복구·결과 UI | 구현·로컬 검증 완료 | history 2개 / hidden 결과·PDF 저장·재시작 E2E 1개 |
+| F08 복구·결과 UI | 완료, `56a1929` | history 2개 / hidden 결과·PDF 저장·재시작 E2E 1개 |
 
 ## 기능과 검증 단계의 대응
 
@@ -141,15 +141,15 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 |---|---|---|
 | 4-1 | 새 문서와 내용 | create_document, set_edit_value, replace_text |
 | 4-2 | 요소 구조 | add_node, move_node, duplicate_node, set_visibility, archive_node, restore_node |
-| 4-3 | 개별 스타일 | update_node_style, 공유 style 사본 분리 |
-| 4-4 | instance와 반복 항목 | set_component_prop, clear_component_prop, add_item, move_item, duplicate_item, remove_item, set_item_prop |
-| 4-5 | 라이브러리 재사용 | import_component, add_component_instance |
+| 4-3 | instance와 반복 항목 | set_component_prop, clear_component_prop, add_item, move_item, duplicate_item, remove_item, set_item_prop |
+| 4-4 | 라이브러리 재사용 | import_component, add_component_instance |
+| 4-5 | 개별 스타일 | update_node_style, 공유 style 사본 분리 |
 
 - [x] 4-1 연결 및 세 가지 target 유형 검증.
 - [x] 4-2 연결 및 root/cycle/보관 배치/생성 ID 검증.
-- [x] 4-3 연결 및 다른 node의 공유 스타일 불변 검증.
-- [x] 4-4 연결 및 default/override, active prop 유형, 제거 영향 검증.
-- [x] 4-5 연결 및 library revision·ID 재매핑·기본값·asset 참조 검증.
+- [x] 4-5 연결 및 다른 node의 공유 스타일 불변 검증.
+- [x] 4-3 연결 및 default/override, active prop 유형, 제거 영향 검증.
+- [x] 4-4 연결 및 library revision·ID 재매핑·기본값·asset 참조 검증.
 - [x] dryRun 무변경, 전체 batch 실패 무변경, unsupported Markdown 원문 보존 검증.
 - [x] 생성 문서 grant 추가와 journal 복구의 일관성 검증.
 

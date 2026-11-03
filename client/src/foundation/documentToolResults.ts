@@ -1,6 +1,6 @@
 import { z } from "zod";
 import {
-  opaqueIdSchema as id, editTargetSchema, directEditValueSchema, componentPropValueSchema,
+  opaqueIdSchema as id, editTargetSchema,
   toolResultSchema, createResultSchema, applyResultSchema, exportToolResultSchema, journalResultSchema,
 } from "./documentCommandSchemas.ts";
 const object = z.strictObject;
@@ -10,6 +10,11 @@ const asset = object({ id, name: z.string(), mimeType: z.string() });
 const assets = z.array(asset);
 // The canonical DTO is read-only and validated by the document model before redaction.
 const records = z.record(z.string(), z.json());
+// Input limits must not reject existing canonical values. Reads are bounded by
+// the whole response byte budget; the canonical model validates stored marks.
+const storedRichText = object({ runs: z.array(object({ text: z.string(), marks: z.array(z.json()).optional() })) });
+const storedEditValue = z.union([z.string(), storedRichText]);
+const storedPropValue = z.union([z.string(), z.number().finite(), z.boolean(), storedRichText, object({ assetId: id.optional(), alt: z.string() })]);
 const capabilities = object({ documentIds: z.array(id), write: z.boolean(), create: z.boolean(), libraryRead: z.boolean(), render: z.boolean() });
 const valueType = z.enum(["text", "markdown", "rich-text"]);
 const valueSource = z.enum(["node", "default", "override"]);
@@ -24,7 +29,7 @@ const componentBase = { componentId: id, name: z.string(), rootNodeId: id,
   propDefinitions: z.array(object({ id, name: z.string(), status: z.enum(["active", "archived"]),
     valueType: z.enum(["text", "rich-text", "markdown", "number", "boolean", "image"]),
     binding: object({ nodeId: id, property: z.enum(["text.value", "rich-text.value", "markdown.source", "image.value"]) }),
-    defaultValue: componentPropValueSchema,
+    defaultValue: storedPropValue,
   })), nodes: records, styles: records, assets,
 };
 export const toolDataSchemas = {
@@ -43,7 +48,7 @@ export const toolDataSchemas = {
     }) }),
   ]),
   list_edit_targets: object({ documentId: id, revision, items: z.array(targetItem), nextCursor: z.string().nullable() }),
-  get_edit_value: object({ documentId: id, revision, target: editTargetSchema, valueType, value: directEditValueSchema, valueSource, ...flags,
+  get_edit_value: object({ documentId: id, revision, target: editTargetSchema, valueType, value: storedEditValue, valueSource, ...flags,
     markdownCompatibility: object({ editorSupported: z.boolean(), reasons: z.array(z.string()) }).optional(),
   }),
   create_document: createResultSchema,

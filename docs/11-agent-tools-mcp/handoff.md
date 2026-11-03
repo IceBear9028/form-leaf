@@ -22,7 +22,8 @@
 | F05 재사용 | `fdc9051` | library revision/import remap, instance prop·repeater item |
 | F06 스타일 | `baaac77` | 공유 사본 분리, style patch·font·color 검증 |
 | F07 출력 | `d564ca4` | 고정 snapshot hidden PNG/PDF, artifact·만료·예산·복구 |
-| F08 작업 결과 | 이번 기능 커밋 | 최근 50건, 상태·저장/화면 구분, PDF 열기/저장, 재연결·권한 철회 |
+| F08 작업 결과 | `56a1929` | 최근 50건, 상태·저장/화면 구분, PDF 열기/저장, 재연결·권한 철회 |
+| 통합 보정 | F08 이후 fix 커밋 | 큰 기존 값 조회, 모델용 object 입력 schema, 출력 파일 resource 경계 |
 
 기능 상세와 계약의 목록은 유지하고 현재 구현 근거를 연결했다. 기능 번호와 구현 커밋을 대응하며 기능마다 별도 기획 문서를 새로 만들지 않았다.
 
@@ -34,7 +35,7 @@
 
 `AccessPolicy`는 256-bit 난수 token의 hash만 mode 0600 관리 파일에 저장한다. 원문은 발급 시 한 번 표시한다. 문서별 읽기와 write/create/libraryRead/render는 앱에서 설정하며 create는 write에 의존한다. 이 권한은 MCP 경계이며 외부 에이전트의 별도 shell/파일 접근을 제한하지 않는다.
 
-읽기는 저장본 기준이다. 세 DocumentEditTarget은 whole Markdown value를 가리키며 block·DOM·caret을 identity로 만들지 않는다. 권한 없는 문서의 이름·집계·resource를 노출하지 않는다. target/list cursor는 credential·query·snapshot에 묶고 10분 후 만료한다. asset은 metadata만 제공한다.
+읽기는 저장본 기준이다. 최종 조회 회귀에서 입력 100,000자 제한이 기존 저장값 출력에 적용되던 문제를 수정했다. 큰 기존 text/prop은 원문으로 읽고 전체 JSON 한도 초과는 RESULT_TOO_LARGE로 명시한다. 세 DocumentEditTarget은 whole Markdown value를 가리키며 block·DOM·caret을 identity로 만들지 않는다. 권한 없는 문서의 이름·집계·resource를 노출하지 않는다. target/list cursor는 credential·query·snapshot에 묶고 10분 후 만료한다. asset은 metadata만 제공한다.
 
 ### 저장과 editor ownership
 
@@ -56,6 +57,8 @@ style은 공유 사본을 분리하고 그룹 깊이 병합·배열 교체·leaf
 
 ### 결과 UI와 외부 연결 안내
 
+모델용 tools/list 입력 schema는 최상위 object로 제공한다. 조건부 필수 필드는 property 설명에 명시하고 원래 strict union으로 서버 검증한다. Claude Code의 root union 자동 변환에 의존하지 않으며 실제 계정 세션 검증과는 구분한다. 출력 resource 경계는 플랫폼별 absolute path 판정을 사용해 Windows의 다른 drive 경로도 허용하지 않는다. Windows 실제 출력 시험은 여전히 미수행이다.
+
 연결 설정 화면은 최근 50개 agent 작업을 2초마다 조회한다. 본문·staged result·token은 요약 DTO에서 제외한다. pending/completed/failed/recovery_required와 저장 성공/화면 ack 미확인을 구분하고 자동 재시도 버튼은 제공하지 않는다. 권한 철회 뒤 로컬 작성자는 요청 발생·상태만 보고 문서명·revision·artifact는 보지 못한다.
 
 PDF 열기/다른 위치에 저장은 main의 검증된 artifact ID에서 시작한다. 임의 파일 경로를 받는 MCP 도구는 없다. 저장 대화상자가 닫힌 후에도 권한·만료를 재확인하며 사용자 선택 위치에 임시 파일을 쓴 뒤 교체한다. 별도 저장한 PDF는 artifact 정리 대상이 아니다.
@@ -66,11 +69,12 @@ Codex/Claude Code 설정 예시 복사를 제공한다. 실제 token 대신 FORM
 
 | 검사 | 실제 결과 |
 |---|---|
-| `npm test` | 25개 test script, 총 145개 테스트 통과 |
+| `npm test` | 25개 test script, 총 146개 테스트 통과 |
 | `npm run typecheck` | 통과 |
 | `npm run build` | 통과, main·일반 preload·출력 전용 preload·renderer 생성 |
-| `npx playwright test` | hidden Electron 7개 통과(52.0초), 실제 원본 경로 opt-in 시험 1개 skip |
+| `npx playwright test` | hidden Electron 7개 통과(최종 48.9초), 실제 원본 경로 opt-in 시험 1개 skip |
 | PDF 의미/시각 검사 | 임시 출력 4쪽의 node/component/item·마지막 문단 보존, 미저장 IME 제외, 18pt/#123456 확인. PyMuPDF 추출/픽셀 검사 및 페이지 이미지 검수 |
+| 문서 정합성 | 15개 문서 상대 링크 132개·JSON 예시 7개·요구 45개·AC 47개 확인, git diff --check 통과 |
 | 결과 UI | 작업 카드 screenshot 검수. PDF OS 열기는 mock, 저장 대화상자는 임시 목적지를 반환하는 mock으로 검증 |
 
 테스트 파일은 `client/test/agent-*.test.mjs`와 `client/e2e/agent-*.spec.ts`, 기존 Markdown ownership/user-flow E2E다. 빠른 한글·반복 Space·Enter·Tab/Shift+Tab, 부모 publish/rerender, 세 target 저장/재열기/PDF와 외부 쓰기 busy 보호를 포함한다.

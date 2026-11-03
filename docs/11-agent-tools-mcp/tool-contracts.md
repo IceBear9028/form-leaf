@@ -469,3 +469,11 @@ artifact는 생성 후 24시간 유지하고 앱 시작 시/주기적으로 만�
 설정 화면의 Codex `config.toml` 예시는 `url`과 `bearer_token_env_var = "FORMLEAF_MCP_TOKEN"`, Claude Code `.mcp.json` 예시는 `type: "http"`, `url`, `Authorization: "Bearer ${FORMLEAF_MCP_TOKEN}"`를 사용한다. 실제 token은 예시에 넣지 않고 외부 클라이언트 실행 환경에서 설정한다. 기존 설정을 자동 덮어쓰거나 계정 로그인을 대행하지 않는다.
 
 설정 형식은 2026-11-03 [OpenAI 공식 MCP 문서](https://developers.openai.com/codex/mcp)와 [Claude Code 공식 MCP 문서](https://code.claude.com/docs/en/mcp)의 HTTP/환경 변수 항목으로 확인했다. 두 제품의 실제 로그인 세션에서 실행한 검증 결과는 아니다.
+
+기존 저장값의 조회에는 입력 문자열 100,000자 제한을 재적용하지 않는다. `get_edit_value`/component 기본값은 원문을 보존하고 전체 응답 2MiB 한도를 넘으면 `RESULT_TOO_LARGE`로 거절한다. 일부를 조용히 잘라 반환하지 않는다.
+
+### 모델에 전달하는 입력 schema
+
+`tools/list`의 입력은 모든 도구에서 최상위 object이며 anyOf/oneOf/allOf를 두지 않는다. `apply_operations`의 dryRun/requestId 조건과 `get_component`의 source별 필수 필드는 각 property 설명으로 안내하고, 서버는 원래 strict union으로 상호 배타·필수 필드를 검증한다. 따라서 안내 schema의 optional이 모든 조합을 허용한다는 뜻은 아니다. 중첩 operation/target union은 유지한다.
+
+이는 Claude Code의 최상위 union 변환/제외에 의존하지 않기 위한 호환성 처리다. [공식 schema 제약](https://code.claude.com/docs/en/mcp#tool-input-schemas-with-a-root-level-combinator)을 확인하고 SDK 계약 fixture로 object root와 서버의 잘못된 조합 거절을 검사했다. 실제 로그인 client 시험은 별도로 남아 있다.

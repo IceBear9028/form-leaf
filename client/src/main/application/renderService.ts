@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain, nativeImage } from "electron";
 import { randomUUID } from "node:crypto";
-import { join, relative } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { IPC } from "../../foundation/ipc.ts";
@@ -51,7 +51,7 @@ export class RenderService implements SnapshotRenderer {
         try {
           const url = new URL(details.url);
           if (url.protocol === "data:" || url.protocol === "blob:") allowed = true;
-          else if (url.protocol === "file:") { const path = relative(this.rendererDirectory, fileURLToPath(url)); allowed = !path.startsWith("..") && !path.startsWith("/"); }
+          else if (url.protocol === "file:") { const path = relative(this.rendererDirectory, fileURLToPath(url)); allowed = !path.startsWith("..") && !isAbsolute(path); }
           else if (devOrigin && url.origin === devOrigin) allowed = true;
         } catch { /* Reject invalid resource URLs. */ }
         if (!allowed) warnings.add("문서의 외부 resource를 불러오지 않았습니다.");
