@@ -391,3 +391,13 @@ MCP 자체에는 모델 API key가 필요하지 않다. 에이전트의 추론�
 - 요청 시 documentId·DocumentEditTarget·revision을 고정한다. 응답 대기 중 다른 요소를 클릭해도 이미 보낸 요청 대상은 바꾸지 않는다.
 - 사용자의 조합·편집 lifecycle을 유지하며 AI 쓰기가 강제로 blur·composition 종료를 일으키지 않게 한다.
 - 로그인·대화·세션 lifecycle과 MCP 도구 lifecycle을 분리한다. 에이전트 연결이 끊겨도 문서 저장 상태를 별도로 확인할 수 있어야 한다.
+
+## 구현 결정 보강 — 2026-11-03
+
+O01: SDK 1.32.2/Zod 4.6.7을 정확 버전으로 고정하고 실제 SDK client/server의 JSON·image·resource 전달 fixture를 통과했다.
+
+O02/O06: `DocumentService`를 모든 제품 저장 IPC의 writer로 삼는다. 별도 staged snapshot과 journal을 먼저 기록하고, canonical/index 저장 이후 완료를 기록한다. 이전/다음 hash로 복구를 판정하며 불명 상태는 문서 writer를 차단한다. UI 쓰기도 같은 journal/CAS를 사용하며 요청 결과가 불명이면 draft를 보존한다. 단일 프로세스 workspace lock을 추가했다. 관리 명령은 열린 문서를 거절하고 기존 repository rollback을 재사용한다.
+
+O03: 기존 focus/IME/dirty/saving/component draft가 없을 때 renderer가 동기적으로 root를 inert로 예약하고 acquire에 응답한다. 짧은 적용 구간 동안 “에이전트 변경 적용 중” 상태를 표시한다. apply는 lease와 busy를 재검사한 뒤 React snapshot을 flushSync하고 ack한다. 예약 중 발생한 프로그램적 draft 갱신은 보존하고 apply를 거절한다. timeout/오류는 release하며 저장 후 ack 실패는 persisted=true/uiSynced=false다. 활성 편집기를 flush하거나 selection을 복원하는 경로는 추가하지 않는다.
+
+이 결정의 증거와 남은 검증은 [handoff](handoff.md)와 [plan](plan.md)에 기록한다. operation adapter와 실제 MCP 권한 적용까지 완료한 상태는 아니다.

@@ -1,4 +1,7 @@
 export const IPC = {
+  editorRequest: "agent:editor-request",
+  editorReply: "agent:editor-reply",
+  editorContext: "agent:editor-context",
   closeGuard: "document:close-guard",
   requestClose: "document:request-close",
   completeClose: "document:complete-close",

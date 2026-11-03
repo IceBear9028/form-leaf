@@ -88,12 +88,14 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 대상: 모든 조회·쓰기의 기반. MCP 서버를 붙이기 전에 진행한다.
 
 - [ ] 기존 foundation operation과 repository를 documentService로 연결.
-- [ ] UI IPC도 같은 service와 expectedRevision 사용.
+- [x] UI IPC도 같은 service와 expectedRevision 사용.
 - [ ] node·component prop·repeater item prop의 동일한 읽기·쓰기 검증.
-- [ ] dirty·saving·IME·component draft 확인, idle 적용 handshake와 snapshot acknowledgement.
+- [x] dirty·saving·IME·component draft 확인, idle 적용 handshake와 snapshot acknowledgement.
 - [ ] batch 사본 적용·graph 검증·단일 snapshot 저장; 부분 변경 방지.
-- [ ] request journal·staged snapshot·index 갱신 순서·재시작 복구 구현.
-- [ ] 같은 requestId 재전송, 다른 입력 재사용, 저장 후 UI 동기화 실패 검증.
+- [x] request journal·staged snapshot·index 갱신 순서·재시작 복구 구현.
+- [x] 같은 requestId 재전송, 다른 입력 재사용, 저장 후 UI 동기화 실패 검증.
+
+진행 증거: `agent-document-service.test.mjs` 10개, hidden `agent-editor-coordination.spec.ts` 1개와 기존 Markdown E2E 2개 통과. operation adapter·세 target batch 검증은 후속 기능에서 연결하며 외부 쓰기는 아직 공개하지 않는다.
 
 완료 기준: stale UI 자동 저장과 두 외부 변경이 서로 덮어쓰지 않는다. 장애 후 중복 생성하지 않으며 결과 불명 상태를 명시한다.
 

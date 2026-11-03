@@ -18,6 +18,17 @@
 - `test/agent-contracts.test.mjs`: 6개 통과, `npm test` 전체 통과, `npm run build` (typecheck 포함) 통과. `git diff --check` 통과.
 - 아직 문서 참조·권한·설치 font·실제 HTTP·hidden render 검증은 아니다. feature 전체 완료로 표시하지 않는다.
 
+## 구현 증거 — 공통 저장 기반
+
+- 모든 제품 document/library IPC writer를 `DocumentService` 직렬화 구간으로 전환. UI load/save에 저장 revision을 전달하고 stale save를 거절해 draft를 유지한다. workspace는 Electron single-instance lock으로 중복 프로세스 writer를 막는다.
+- canonical snapshot과 index 저장 전에 별도 staged snapshot·journal을 기록한다. 재시작 시 previous/next hash와 비교해 문서/index/생성 grant를 재조정하며, 판정 불명 문서는 새 writer를 차단한다. 기존 backup은 repository 정책으로 유지한다.
+- renderer acquire→apply→release handshake를 추가했다. focus/IME/dirty/saving/component draft가 있으면 거절한다. idle일 때만 잠시 앱 root를 inert로 예약하고 상태를 표시한 뒤 snapshot 렌더를 flushSync하여 ack한다. 늦은 apply가 새 draft를 덮지 않도록 재검사한다.
+- 외부 snapshot 뒤 문서 수준 undo/redo를 비운다. 활성 Tiptap session은 acquire 자체가 거절되므로 root/caret/composition을 바꾸지 않는다.
+- `test/agent-document-service.test.mjs` 10개 통과: CAS 경쟁, dryRun·부분 실패 무변경, request 재전송, 4개 저장 경계 장애/재시작, 손상 staged snapshot 차단, ack 실패, 실행 시 권한 재검사.
+- hidden Electron: 기존 ownership/user-flow 2개 통과. `e2e/agent-editor-coordination.spec.ts` 1개 통과: 실제 inert 예약·snapshot ack·stale save·IME 중 거절/root/focus 보존. 첫 실행의 잘못된 문서 버튼 exact selector를 실제 접근성 이름에 맞게 수정했다.
+- `npm test`, build(typecheck 포함), diff check 통과. 모든 저장 시험은 임시 workspace에서 수행했다.
+- **남은 gate:** 18개 operation adapter와 전체 graph/prop 검증, 실제 HTTP 권한 연결, 각 feature 전체 AC. 공통 저장 기반만으로 F03/F08 완료를 선언하지 않는다.
+
 ## 이번에 바꾼 것 — 2026-11-03
 
 | 영역 | 실제 변경과 이유 |

@@ -1,5 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { join } from "node:path";
+import { DocumentService } from "./application/documentService.ts";
+import { EditorCoordinator } from "./application/editorCoordinator.ts";
 import { DocumentRepository } from "./document/documentRepository";
 import { ComponentLibraryRepository } from "./document/componentLibraryRepository";
 import { registerDocumentHandlers } from "./registerDocumentHandlers";
@@ -12,6 +14,15 @@ const legacyUserDataDirectory = process.env.DOCUMENT_USER_DATA_DIRECTORY ??
 app.setName("Formleaf");
 app.setPath("userData", legacyUserDataDirectory);
 
+const ownsWorkspace = app.requestSingleInstanceLock();
+if (!ownsWorkspace) app.quit();
+const editorCoordinator = new EditorCoordinator();
+ipcMain.on(IPC.editorContext, (event, context) => {
+  if (event.sender === mainWindow?.webContents) editorCoordinator.update(context);
+});
+ipcMain.on(IPC.editorReply, (event, reply) => {
+  if (event.sender === mainWindow?.webContents) editorCoordinator.reply(reply);
+});
 let mainWindow: BrowserWindow | null = null;
 let closeGuard = false;
 let closePending = false;
@@ -55,6 +66,7 @@ function createWindow(): void {
     },
   });
 
+  editorCoordinator.attach((request) => mainWindow?.webContents.send(IPC.editorRequest, request));
   if (!headlessE2eEnabled) mainWindow.once("ready-to-show", () => mainWindow?.show());
   mainWindow.on("close", (event) => {
     if (!closeGuard || closeApproved) return;
@@ -64,6 +76,7 @@ function createWindow(): void {
     mainWindow?.webContents.send(IPC.requestClose);
   });
   mainWindow.on("closed", () => {
+    editorCoordinator.detach();
     mainWindow = null;
     closeGuard = closePending = closeApproved = false;
     if (quitRequested) app.quit();
@@ -101,21 +114,20 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  if (!ownsWorkspace) return;
   const workspace = workspaceDirectory();
   const documents = new DocumentRepository(workspace);
   const components = new ComponentLibraryRepository(workspace);
-  registerDocumentHandlers(
-    documents,
-    components,
-  );
+  const service = new DocumentService(documents, components, workspace, { coordinator: editorCoordinator });
+  registerDocumentHandlers(service);
   registerPdfHandlers({
     documentsDirectory: app.getPath("documents"),
     getMainWindow: () => mainWindow,
   });
-  void Promise.allSettled([
-    documents.initialize(),
-    components.initialize(),
-  ]).then(createWindow);
+  void service.initialize().then(createWindow).catch((error) => {
+    console.error("Formleaf storage initialization failed", error);
+    app.quit();
+  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

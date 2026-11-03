@@ -17,12 +17,21 @@ const api: DocumentApi = {
       ipcRenderer.send(IPC.closeGuard, false);
     };
   },
+  onEditorRequest: (handler) => {
+    const listener = (_event: Electron.IpcRendererEvent, request: Parameters<typeof handler>[0]) => {
+      try { ipcRenderer.send(IPC.editorReply, handler(request)); }
+      catch { ipcRenderer.send(IPC.editorReply, { requestId: request.requestId, ok: false, context: null }); }
+    };
+    ipcRenderer.on(IPC.editorRequest, listener);
+    return () => ipcRenderer.removeListener(IPC.editorRequest, listener);
+  },
+  reportEditorContext: (context) => ipcRenderer.send(IPC.editorContext, context),
   listDocuments: () => ipcRenderer.invoke(IPC.listDocuments),
   listDeletedDocuments: () => ipcRenderer.invoke(IPC.listDeletedDocuments),
   createDocument: () => ipcRenderer.invoke(IPC.createDocument),
   loadDocument: (id: string) => ipcRenderer.invoke(IPC.loadDocument, id),
-  saveDocument: (id: string, document: DocumentData) =>
-    ipcRenderer.invoke(IPC.saveDocument, id, document),
+  saveDocument: (id: string, document: DocumentData, expectedRevision: string) =>
+    ipcRenderer.invoke(IPC.saveDocument, id, document, expectedRevision),
   renameDocument: (id: string, title: string) =>
     ipcRenderer.invoke(IPC.renameDocument, id, title),
   deleteDocument: (id: string) => ipcRenderer.invoke(IPC.deleteDocument, id),

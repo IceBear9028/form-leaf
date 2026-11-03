@@ -1,3 +1,4 @@
+import type { SavedDocument, SaveDocumentResult, EditorContext, EditorRequest, EditorReply } from "./documentSessionProtocol.ts";
 import type { PdfExportResult } from "./document.ts";
 import type { DocumentData } from "./documentModel.ts";
 import type {
@@ -28,11 +29,13 @@ export type DocumentLibraryIndex = {
 
 export type DocumentApi = {
   onBeforeClose: (handler: () => Promise<boolean>) => () => void;
+  onEditorRequest: (handler: (request: EditorRequest) => EditorReply) => () => void;
+  reportEditorContext: (context: EditorContext | null) => void;
   listDocuments: () => Promise<DocumentSummary[]>;
   listDeletedDocuments: () => Promise<DeletedDocumentSummary[]>;
-  createDocument: () => Promise<{ summary: DocumentSummary; document: DocumentData }>;
-  loadDocument: (id: string) => Promise<DocumentData>;
-  saveDocument: (id: string, document: DocumentData) => Promise<DocumentSummary>;
+  createDocument: () => Promise<{ summary: DocumentSummary; document: DocumentData; revision: string }>;
+  loadDocument: (id: string) => Promise<SavedDocument>;
+  saveDocument: (id: string, document: DocumentData, expectedRevision: string) => Promise<SaveDocumentResult>;
   renameDocument: (id: string, name: string) => Promise<DocumentSummary>;
   deleteDocument: (id: string) => Promise<void>;
   restoreDocument: (id: string) => Promise<DocumentSummary>;

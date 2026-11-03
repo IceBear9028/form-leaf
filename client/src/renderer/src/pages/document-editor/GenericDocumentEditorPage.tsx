@@ -72,14 +72,16 @@ const MemoPropertyInspector = memo(PropertyInspector);
 
 export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage({
   initialDocument,
+  initialRevision,
   onSummaryChange,
   onBack,
 }: {
   initialDocument: DocumentData;
+  initialRevision: string;
   onSummaryChange: (summary: DocumentSummary) => void;
   onBack: () => Promise<void>;
 }) {
-  const session = useGenericDocumentSession(initialDocument, onSummaryChange);
+  const session = useGenericDocumentSession(initialDocument, onSummaryChange, initialRevision);
   const deferredMarkdownChange = useSyncExternalStore(subscribeMarkdownEditor, getDeferredMarkdownChange);
   const previewRef = useRef<HTMLDivElement>(null);
   const undoRef = useRef<DocumentData[]>([]);
@@ -91,6 +93,8 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   const [exporting, setExporting] = useState(false);
   const [returning, setReturning] = useState(false);
   const [editingComponentId, setEditingComponentId] = useState<string>();
+  session.setEditorBusy(!!activeEditTarget || !!editingComponentId || exporting || returning);
+  useEffect(() => { undoRef.current = []; redoRef.current = []; }, [session.externalGeneration]);
   const [printSnapshot, setPrintSnapshot] = useState<DocumentData>();
   const printReadyRef = useRef<(() => void) | undefined>(undefined);
   const [layerFocusRequest, setLayerFocusRequest] = useState<DocumentLayerFocusRequest>();
