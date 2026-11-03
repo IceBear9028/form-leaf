@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-2026-11-03 — 문서 커밋 `b65fc85` 이후 구현 시작. 1단계 계약 완료, 2단계 공통 저장 기반 구현·검증 완료(명령 adapter 통합은 남음), 3단계 조회 연결 진행 중, 4–6단계 대기. 기능별 제품 완료는 별도 검증 후 기록한다.
+2026-11-03 — 1–4단계 및 F01–F06 구현·검증·커밋 완료. 5단계 진행 중: F07 출력 검증 완료, F08 결과 UI를 이어서 구현한다. 6단계 외부 클라이언트 검증은 대기.
 
 이번 작업의 구현 기준은 [README](README.md)의 범위와 기능 상세, [tool-contracts](tool-contracts.md)다. AI 로그인·내부 채팅·관리되는 에이전트 실행 환경은 후속이다. 문서 작성과 코드 구현의 완료를 구분한다.
 
@@ -54,7 +54,7 @@ flowchart TD
 
 ## 기능별 구현 커밋 진행
 
-사용자의 2026-11-03 요청에 따라 공통 기반 이후 F01→F08 순서로 검증하고 커밋한다. 단계 2의 operation adapter/세 target 검증은 F03–F06에서 연결한다. 현재 공개된 서버는 연결 확인(`get_context`)만 제공하며 외부 쓰기는 아직 열지 않았다.
+사용자의 2026-11-03 요청에 따라 공통 기반 이후 F01→F08 순서로 검증하고 커밋한다. 단계 2의 operation adapter/세 target 검증은 F03–F06에서 연결한다. 서버는 기본 비활성이며 사용자가 허용한 범위에서 12개 도구와 18개 명령을 제공한다.
 
 | 단위 | 현재 상태 | 검증 |
 |---|---|---|
@@ -65,8 +65,9 @@ flowchart TD
 | F03 내용 수정 | 완료, `9272786` | content 3개 / 실제 MCP hidden E2E 1개 / 연결·coordinator 회귀 |
 | F04 문서 구성 | 완료, `68bace1` | structure 3개 / 생성 grant·journal 복구 / hidden 목록 갱신 |
 | F05 재사용 | 완료, `fdc9051` | components 2개 / library 조회·remap·revision·원본 불변 / 전체 test·build |
-| F06 스타일 | 구현·검증 진행 | 공유 style·patch·CSS·font 검증, 출력 비교는 F07에서 통합 |
-| F07–F08 | 대기 | 출력/결과 UI와 전체 흐름 |
+| F06 스타일 | 완료, `baaac77` | style 3개 / 전체 test·build / F07에서 실제 출력 비교 |
+| F07 출력 | 구현·검증 완료 | output 3개 / hidden PNG·PDF·IME E2E / 4쪽 PDF 의미·시각 검사 |
+| F08 복구·결과 UI | 대기 | journal 기반 준비, 최근 작업·PDF 저장 UI 남음 |
 
 ## 기능과 검증 단계의 대응
 
@@ -99,11 +100,11 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 
 증거: `client/test/agent-contracts.test.mjs` 6개 테스트 통과. SDK 1.32.2 / Zod 4.6.7을 정확한 버전으로 고정하고 in-memory MCP client로 structuredContent·오류·image·resource 전달을 확인했다. 실제 HTTP 인증·render 결과·문서 참조/설치 font 검사는 후속 단계다.
 
-## 2. 공통 service와 저장 충돌 방지 — 기반 완료, 명령 통합 검증 대기
+## 2. 공통 service와 저장 충돌 방지 — 완료
 
 대상: 모든 조회·쓰기의 기반. MCP 서버를 붙이기 전에 진행한다.
 
-- [ ] 기존 foundation operation과 repository를 documentService로 연결.
+- [x] 기존 foundation operation과 repository를 documentService로 연결.
 - [x] UI IPC도 같은 service와 expectedRevision 사용.
 - [x] node·component prop·repeater item prop의 동일한 읽기·쓰기 검증.
 - [x] dirty·saving·IME·component draft 확인, idle 적용 handshake와 snapshot acknowledgement.
@@ -111,11 +112,11 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] request journal·staged snapshot·index 갱신 순서·재시작 복구 구현.
 - [x] 같은 requestId 재전송, 다른 입력 재사용, 저장 후 UI 동기화 실패 검증.
 
-진행 증거: `agent-document-service.test.mjs` 10개, hidden `agent-editor-coordination.spec.ts` 1개와 기존 Markdown E2E 2개 통과. operation adapter·세 target batch 검증은 후속 기능에서 연결하며 외부 쓰기는 아직 공개하지 않는다.
+진행 증거: `agent-document-service.test.mjs` 10개, hidden `agent-editor-coordination.spec.ts` 1개와 기존 Markdown E2E 2개 통과. F03–F06에서 operation adapter와 세 target batch 검증을 연결했고 grant가 있는 외부 쓰기를 제공한다.
 
 완료 기준: stale UI 자동 저장과 두 외부 변경이 서로 덮어쓰지 않는다. 장애 후 중복 생성하지 않으며 결과 불명 상태를 명시한다.
 
-## 3. 연결 설정과 조회 도구 — 진행 중
+## 3. 연결 설정과 조회 도구 — 완료
 
 대상: T01–T05, T08–T09, T12의 조회 경로.
 
@@ -130,7 +131,7 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 
 완료 기준: 외부 MCP client가 도구를 발견하고 허용된 저장 문서·target만 조회할 수 있다.
 
-## 4. 문서 생성과 변경 도구
+## 4. 문서 생성과 변경 도구 — 완료
 
 대상: T06–T07, T12의 생성/수정 결과.
 
@@ -149,22 +150,22 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] 4-3 연결 및 다른 node의 공유 스타일 불변 검증.
 - [x] 4-4 연결 및 default/override, active prop 유형, 제거 영향 검증.
 - [x] 4-5 연결 및 library revision·ID 재매핑·기본값·asset 참조 검증.
-- [ ] dryRun 무변경, 전체 batch 실패 무변경, unsupported Markdown 원문 보존 검증.
+- [x] dryRun 무변경, 전체 batch 실패 무변경, unsupported Markdown 원문 보존 검증.
 - [x] 생성 문서 grant 추가와 journal 복구의 일관성 검증.
 
 완료 기준: README와 기능 상세의 문장 수정·항목 추가·빈 문서 작성·컴포넌트 재사용 예시를 도구 호출로 수행한다.
 
-## 5. 결과 확인과 출력
+## 5. 결과 확인과 출력 — 진행 중
 
 대상: T10–T11, T12의 출력 job, artifact resource와 앱 결과 화면.
 
-- [ ] revision에 고정한 hidden renderer job 구현.
-- [ ] font/image/pagination 준비 신호와 timeout 처리.
-- [ ] preview_document 페이지 PNG와 warning 반환.
-- [ ] export_pdf 비동기 job·get_operation 완료 조회.
-- [ ] artifact URI·소유 credential·현재 grant·24시간 만료·저장 예산 구현.
+- [x] revision에 고정한 hidden renderer job 구현.
+- [x] font/image/pagination 준비 신호와 timeout 처리.
+- [x] preview_document 페이지 PNG와 warning 반환.
+- [x] export_pdf 비동기 job·get_operation 완료 조회.
+- [x] artifact URI·소유 credential·현재 grant·24시간 만료·저장 예산 구현.
 - [ ] 앱에서 최근 작업 상태와 PDF 열기/다른 위치에 저장 제공.
-- [ ] 문서 선택·포커스·활성 editor root 불변 검증.
+- [x] 문서 선택·포커스·활성 editor root 불변 검증.
 
 완료 기준: 요청한 revision의 페이지 이미지와 PDF를 얻고, 권한 폐기 뒤 artifact를 읽지 못한다. artifact 정리가 사용자 문서·backup에 영향을 주지 않는다.
 

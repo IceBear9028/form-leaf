@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   opaqueIdSchema as id, editTargetSchema, directEditValueSchema, componentPropValueSchema,
-  toolResultSchema, createResultSchema, applyResultSchema, pendingSchema, journalResultSchema,
+  toolResultSchema, createResultSchema, applyResultSchema, exportToolResultSchema, journalResultSchema,
 } from "./documentCommandSchemas.ts";
 const object = z.strictObject;
 const revision = z.string();
@@ -55,7 +55,7 @@ export const toolDataSchemas = {
   ]),
   preview_document: object({ documentId: id, revision, page: z.number().int().positive(), pageCount: z.number().int().positive(),
     widthPx: z.number().int().positive().max(2048), heightPx: z.number().int().positive().max(2048), mimeType: z.literal("image/png"), warnings: z.array(z.string()) }),
-  export_pdf: pendingSchema,
+  export_pdf: exportToolResultSchema,
   get_operation: journalResultSchema,
 } as const;
 export const toolOutputSchemas = {

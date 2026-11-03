@@ -129,7 +129,7 @@ export class AgentReads {
     const entry = await this.service.operation(this.credentialId, input.requestId);
     if (!entry) failure("NOT_FOUND_OR_DENIED", "작업을 찾을 수 없거나 접근할 수 없습니다.");
     if (entry.created && entry.response.status !== "completed" && !this.policy.current(this.credentialId).documentIds.includes(entry.documentId)) this.policy.capability(this.credentialId, "create");
-    else this.policy.document(this.credentialId, entry.documentId);
+    else this.policy.document(this.credentialId, entry.documentId, entry.response.tool === "export_pdf" ? "render" : undefined);
     if (entry.response.status === "completed") return entry.response;
     const { result: _stagedResult, ...response } = entry.response;
     return response;

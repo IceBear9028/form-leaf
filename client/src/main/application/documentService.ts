@@ -46,6 +46,7 @@ export class DocumentService {
   private async recover(): Promise<void> {
     await Promise.all([this.repository.initialize(), this.components.initialize()]);
     for (const entry of await this.journal.list()) {
+      if (entry.response.tool === "export_pdf") continue;
       if (entry.response.status !== "pending" && entry.response.status !== "recovery_required") continue;
       try {
         const snapshot = await this.journal.snapshot(entry);
@@ -169,6 +170,30 @@ export class DocumentService {
       const result: CreateResult = { requestId: identity.requestId, status: "completed", documentId: document.documentId, rootNodeId: document.rootNodeId, revision: documentRevision(document), persisted: true };
       await this.commit(identity, document, null, result, true);
       return result;
+    });
+  }
+  async prepareExport(
+    identity: MutationIdentity, documentId: string, expectedRevision: string, authorize: Authorize,
+    reserve: (snapshot: SavedDocument) => Promise<string>,
+  ): Promise<{ entry: JournalEntry; duplicate: boolean }> {
+    await authorize();
+    return this.serial(async () => {
+      await authorize();
+      const previous = await this.journal.get(identity.credentialId, identity.requestId);
+      if (previous) {
+        if (previous.requestHash !== identity.hash) failure("REQUEST_ID_REUSED", "이 requestId는 다른 입력에 이미 사용했습니다.");
+        return { entry: previous, duplicate: true };
+      }
+      const document = await this.repository.load(documentId);
+      this.assertRevision(document, expectedRevision);
+      const artifactId = await reserve({ document, revision: expectedRevision });
+      await authorize();
+      const entry: JournalEntry = { credentialId: identity.credentialId, requestHash: identity.hash, documentId,
+        previousRevision: expectedRevision, nextRevision: expectedRevision, created: false, stagedId: randomUUID(), artifactId,
+        response: { requestId: identity.requestId, tool: "export_pdf", status: "pending", outcome: "not_committed" } };
+      try { await this.journal.prepare(entry, document); }
+      catch { failure("PERSISTENCE_FAILED", "출력 작업 기록을 확인할 수 없습니다.", { outcome: "unknown" }); }
+      return { entry, duplicate: false };
     });
   }
   private assertRevision(document: DocumentData, expected: string): void {

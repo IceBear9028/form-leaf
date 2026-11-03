@@ -1,3 +1,4 @@
+import { AgentRenderPage } from "../pages/agent-render/AgentRenderPage.tsx";
 import { AgentSettingsPage } from "../pages/agent-settings/AgentSettingsPage.tsx";
 import { handleEditorRequest } from "../pages/document-editor/agentEditorBridge.ts";
 import { useCallback, useEffect, useState } from "react";
@@ -20,6 +21,7 @@ type AppView =
   | { type: "editor"; document: DocumentData; revision: string };
 
 export function App() {
+  if (new URLSearchParams(location.search).has("agentRender")) return <AgentRenderPage />;
   if (new URLSearchParams(location.search).get("editorOwnershipSpike") === "1") {
     return <MarkdownEditorOwnershipSpike />;
   }

@@ -1,3 +1,5 @@
+import type { OutputService } from "../application/outputService.ts";
+import { artifactResult } from "../application/artifactRepository.ts";
 import { FontCatalog } from "../application/fontCatalog.ts";
 import { applyDocumentOperations } from "../application/documentOperationAdapter.ts";
 import { requestHash } from "../application/documentRevision.ts";
@@ -14,6 +16,8 @@ import { AgentReads } from "./readTools.ts";
 const fontCatalog = new FontCatalog();
 const resourcePager = new CursorPager();
 const descriptions: Partial<Record<ToolName, string>> = {
+  preview_document: "Render one page of the requested saved revision in an isolated hidden window. Requires render. Active editing is preserved. Returns PNG content, dimensions, page count and warnings; external resources are blocked.",
+  export_pdf: "Queue a PDF of the requested saved revision. Requires render and a UUID requestId. Query get_operation for completion and read the artifact resource. No output path is accepted. Artifacts expire after 24 hours; current permissions apply on every read.",
   create_document: "Create an empty document with the default root/style. Requires create and write. The new document is granted to this connection without changing UI selection. Use a UUID requestId and reuse the same input/ID after disconnects.",
   apply_operations: "Apply one atomic batch to a permitted saved document. Requires write and expectedRevision. Editing/dirty documents return DOCUMENT_BUSY without flushing. dryRun validates without persisting IDs or a reservation. Real writes require a unique UUID requestId; retry the same normalized input under that ID or query get_operation.",
   get_context: "Read current connection capabilities and the permitted saved document context. Unsaved drafts are never returned.",
@@ -25,7 +29,8 @@ const descriptions: Partial<Record<ToolName, string>> = {
   get_component: "Read a library component package or a component in a permitted document. Props include types, defaults and active/archived status. Image bytes are excluded.",
   get_operation: "Read this credential's persistent operation status. Unknown outcomes must not be automatically re-executed with a new requestId. Current document permissions still apply.",
 };
-export function createAgentProtocol(policy: AccessPolicy, service: DocumentService, credentialId: string, appVersion: string): Server {
+export function createAgentProtocol(policy: AccessPolicy, service: DocumentService, credentialId: string, appVersion: string, outputs?: OutputService): Server {
+  const available = Object.fromEntries(Object.entries(descriptions).filter(([name]) => outputs || (name !== "preview_document" && name !== "export_pdf"))) as Partial<Record<ToolName, string>>;
   const reads = new AgentReads(policy, service, credentialId, appVersion);
   const server = new Server({ name: "formleaf", version: appVersion }, {
     capabilities: { tools: {}, resources: {} },
@@ -33,18 +38,23 @@ export function createAgentProtocol(policy: AccessPolicy, service: DocumentServi
   });
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     policy.current(credentialId);
-    return { tools: (Object.keys(descriptions) as ToolName[]).map((name) => toolDefinition(name, descriptions[name]!)) };
+    return { tools: (Object.keys(available) as ToolName[]).map((name) => toolDefinition(name, available[name]!)) };
   });
   server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
     const name = params.name as ToolName;
-    if (!Object.hasOwn(descriptions, name)) throw new McpError(ErrorCode.InvalidParams, "Unknown tool");
+    if (!Object.hasOwn(available, name)) throw new McpError(ErrorCode.InvalidParams, "Unknown tool");
     try {
       policy.current(credentialId);
       const parsed = toolInputSchemas[name].safeParse(params.arguments ?? {});
       if (!parsed.success) throw new CommandFailure("VALIDATION_FAILED", "입력 형식·필드·값 범위를 확인하세요.");
       const input = <N extends ToolName>(_name: N) => parsed.data as ToolInput<N>;
       let data: unknown;
+      let image: Buffer | undefined;
       switch (name) {
+        case "preview_document": {
+          const preview = await outputs!.preview(credentialId, input(name)); data = preview.data; image = preview.image; break;
+        }
+        case "export_pdf": data = await outputs!.export(credentialId, input(name)); break;
         case "create_document": {
           const args = input(name);
           data = await service.createForAgent({ credentialId, requestId: args.requestId, hash: requestHash(name, args) }, args.name, () => { policy.capability(credentialId, "create"); });
@@ -83,7 +93,9 @@ export function createAgentProtocol(policy: AccessPolicy, service: DocumentServi
       policy.current(credentialId);
       if ("documentId" in parsed.data) policy.document(credentialId, parsed.data.documentId);
       if (name === "list_components" || ("source" in parsed.data && parsed.data.source === "library")) policy.capability(credentialId, "libraryRead");
-      return encodeToolResult(name, { ok: true, data });
+      const result = encodeToolResult(name, { ok: true, data });
+      if (image) result.content.push({ type: "image", mimeType: "image/png", data: image.toString("base64") });
+      return result;
     } catch (error) {
       const detail = error instanceof CommandFailure ? error.detail : { code: "NOT_FOUND_OR_DENIED" as const, message: "요청한 정보에 접근할 수 없습니다.", retryable: false };
       return encodeToolResult(name, { ok: false, error: detail });
@@ -91,9 +103,12 @@ export function createAgentProtocol(policy: AccessPolicy, service: DocumentServi
   });
   server.setRequestHandler(ListResourcesRequestSchema, async ({ params }) => {
     const documents = await service.list(); const grants = policy.current(credentialId);
+    const artifacts = outputs && grants.render ? (await outputs.artifacts.list()).filter((item) => item.credentialId === credentialId && item.status === "completed" && item.expiresAt > new Date().toISOString() && documents.some((doc) => doc.id === item.documentId) && grants.documentIds.includes(item.documentId)) : [];
+    policy.current(credentialId);
     const resources = [
+      ...artifacts.filter((item) => { const current = policy.current(credentialId); return current.render && current.documentIds.includes(item.documentId); }).map((item) => ({ uri: `formleaf://artifacts/${item.artifactId}`, name: item.filename, mimeType: "application/pdf" })),
       { uri: "formleaf://schema/document", name: "Formleaf document schema", mimeType: "application/json" },
-      ...documents.filter((doc) => grants.documentIds.includes(doc.id)).map((doc) => ({ uri: `formleaf://documents/${encodeURIComponent(doc.id)}`, name: doc.name, mimeType: "application/json" })),
+      ...documents.filter((doc) => policy.current(credentialId).documentIds.includes(doc.id)).map((doc) => ({ uri: `formleaf://documents/${encodeURIComponent(doc.id)}`, name: doc.name, mimeType: "application/json" })),
     ];
     const result = resourcePager.page(resources, credentialId, { resource: "documents" }, 100, params?.cursor);
     return { resources: result.items, ...(result.nextCursor ? { nextCursor: result.nextCursor } : {}) };
@@ -106,6 +121,10 @@ export function createAgentProtocol(policy: AccessPolicy, service: DocumentServi
     try {
       policy.current(credentialId);
       let data: unknown;
+      if (outputs && /^formleaf:\/\/artifacts\/[^/?#]+$/.test(params.uri)) {
+        const artifact = await outputs.artifact(credentialId, params.uri.slice("formleaf://artifacts/".length));
+        return { contents: [{ uri: params.uri, mimeType: "application/pdf", blob: artifact.bytes.toString("base64") }], _meta: artifactResult(artifact.metadata) };
+      }
       if (params.uri === "formleaf://schema/document") data = reads.schema();
       else if (/^formleaf:\/\/documents\/[^/?#]+$/.test(params.uri)) {
         const documentId = decodeURIComponent(params.uri.slice("formleaf://documents/".length));

@@ -49,6 +49,13 @@
 
 ## 이번에 바꾼 것 — 2026-11-03
 
+### F07 출력 구현
+
+- revision에 고정한 별도 hidden renderer와 최소 preload를 연결했다. 현재 편집기·조합·선택은 건드리지 않고 저장 snapshot으로 pagination/font/image 준비 후 PNG와 PDF를 만든다. 외부 resource는 차단하고 warning을 반환한다.
+- PDF는 journal pending→artifact commit→completed 순서로 처리한다. 재시작 시 완료 표식과 미완료 출력을 구분하며 재출력하지 않는다. 현재 권한·소유 credential·24시간 만료·100MiB 예산·출력 크기 한도를 검사한다. 정리는 새 artifact 영역의 정해진 파일만 지운다.
+- output unit 3개와 hidden `agent-output.spec.ts` 통과: 2개 페이지 PNG, 범위 오류, PDF 비동기/재조회, 외부 resource 차단, 활성 IME/root/focus 불변, 권한 철회 확인. F06의 18pt/#123456와 세 target 저장 내용을 4쪽 PDF에서 검사했다. PyMuPDF 텍스트/크기/픽셀 검사와 렌더 이미지 검수 통과. 실제 사용자 문서나 키보드·마우스를 사용하지 않았다.
+- 다음은 F08 최근 작업 결과와 PDF 열기/저장 UI다. 실제 로그인된 Codex/Claude Code 연결 시험은 아직 하지 않았다.
+
 ### F06 스타일 구현
 
 - update_node_style을 연결해 18개 변경 명령이 모두 구현됐다. 공유 style은 사본을 분리하고 기존 공유 node/정의의 style은 유지한다. 동일 patch는 새 ID를 만들지 않는다.

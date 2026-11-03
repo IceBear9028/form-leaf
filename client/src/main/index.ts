@@ -1,3 +1,6 @@
+import { RenderService } from "./application/renderService.ts";
+import { OutputService } from "./application/outputService.ts";
+import { ArtifactRepository } from "./application/artifactRepository.ts";
 import { AccessPolicy } from "./mcp/accessPolicy.ts";
 import { AgentServer } from "./mcp/server.ts";
 import { createAgentProtocol } from "./mcp/tools.ts";
@@ -125,14 +128,19 @@ app.whenReady().then(() => {
   const service = new DocumentService(documents, components, workspace, { coordinator: editorCoordinator, onCommitted: () => mainWindow?.webContents.send(IPC.libraryChanged) });
   const policy = new AccessPolicy(workspace);
   service.setCreatedGrantHandler((credentialId, documentId) => policy.grantCreated(credentialId, documentId));
-  const agentServer = new AgentServer(policy, (id) => createAgentProtocol(policy, service, id, app.getVersion()));
+  const renderer = new RenderService(join(__dirname, "../renderer"), join(__dirname, "../preload/render.js"));
+  const artifacts = new ArtifactRepository(workspace);
+  const outputs = new OutputService(service, policy, renderer, artifacts);
+  const agentServer = new AgentServer(policy, (id) => createAgentProtocol(policy, service, id, app.getVersion(), outputs));
   registerAgentHandlers(policy, agentServer, service);
   registerDocumentHandlers(service);
   registerPdfHandlers({
     documentsDirectory: app.getPath("documents"),
     getMainWindow: () => mainWindow,
   });
-  void policy.initialize().then(() => service.initialize()).then(async () => {
+  void policy.initialize().then(() => service.initialize()).then(() => outputs.initialize()).then(async () => {
+    const cleanup = setInterval(() => { void artifacts.cleanup().catch(() => undefined); }, 60 * 60_000);
+    cleanup.unref();
     if (policy.settings().enabled) await agentServer.start().catch(() => policy.setEnabled(false));
     createWindow();
   }).catch((error) => {

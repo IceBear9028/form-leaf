@@ -166,6 +166,9 @@ export const exportResultSchema = object({
   mimeType: z.literal("application/pdf"), byteSize: nonnegative.int().max(AGENT_LIMITS.pdfBytes),
   expiresAt: z.iso.datetime(), warnings: z.array(z.string()),
 });
+export const exportToolResultSchema = z.union([pendingSchema, object({
+  requestId, status: z.literal("completed"), ...exportResultSchema.shape,
+})]);
 export const journalResultSchema = object({
   requestId, tool: z.enum(["create_document", "apply_operations", "export_pdf"]),
   status: z.enum(["pending", "completed", "failed", "recovery_required"]),

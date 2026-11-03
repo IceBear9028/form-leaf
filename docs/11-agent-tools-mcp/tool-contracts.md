@@ -221,7 +221,7 @@ type ApplyInput = {
 - `failed`는 미반영이 확인된 경우다. 저장 여부 불명이면 recovery_required로 표시하고 무조건 다시 실행하지 않는다.
 - request journal은 앱 재시작 뒤에도 유지한다. 첫 버전에는 자동 삭제를 넣지 않는다. 본문 대신 입력 hash·대상·revision·필요한 복구 정보·결과를 기록하고 인증 token은 기록하지 않는다. artifact의 만료와 journal의 생존은 별개다.
 - 입력 hash는 도구명과 정규화된 전체 인자로 계산한다(requestId 제외). 권한 확인 뒤 기존 결과를 반환하고 다른 입력이면 `REQUEST_ID_REUSED`다. dryRun에는 requestId가 없다.
-- 같은 요청이 아직 처리 중이면 T06/T07/T11 재호출도 `{ requestId, status: "pending" }`을 반환하며 새 실행을 시작하지 않는다. 완료 결과는 T12로 확인한다.
+- 같은 요청이 아직 처리 중이면 T06/T07/T11 재호출도 `{ requestId, status: "pending" }`을 반환하며 새 실행을 시작하지 않는다. 완료 결과는 T12로 확인한다. 완료된 T11 재호출은 같은 artifact result에 `{ requestId, status: "completed" }`를 더해 반환하며 새 PDF를 만들지 않는다.
 
 ### 변경 실행 순서
 
