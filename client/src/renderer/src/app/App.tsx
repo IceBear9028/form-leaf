@@ -1,3 +1,4 @@
+import { AgentSettingsPage } from "../pages/agent-settings/AgentSettingsPage.tsx";
 import { handleEditorRequest } from "../pages/document-editor/agentEditorBridge.ts";
 import { useCallback, useEffect, useState } from "react";
 import type { DocumentData } from "../../../foundation/document";
@@ -15,6 +16,7 @@ import { MarkdownEditorOwnershipSpike } from "../pages/document-editor/markdown/
 type AppView =
   | { type: "library" }
   | { type: "trash" }
+  | { type: "agents" }
   | { type: "editor"; document: DocumentData; revision: string };
 
 export function App() {
@@ -48,6 +50,8 @@ function AppContent() {
   if (library.loading) {
     return <LoadingScreen label="문서 목록을 불러오는 중…" />;
   }
+
+  if (view.type === "agents") return <AgentSettingsPage onBack={() => setView({ type: "library" })} />;
 
   if (view.type === "editor") {
     return (
@@ -90,6 +94,7 @@ function AppContent() {
       onRename={library.rename}
       onDelete={library.moveToTrash}
       onOpenTrash={() => setView({ type: "trash" })}
+      onAgentSettings={() => setView({ type: "agents" })}
       onRetry={() => void library.load()}
     />
   );

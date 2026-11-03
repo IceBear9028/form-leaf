@@ -1,3 +1,7 @@
+import { AccessPolicy } from "./mcp/accessPolicy.ts";
+import { AgentServer } from "./mcp/server.ts";
+import { createAgentProtocol } from "./mcp/tools.ts";
+import { registerAgentHandlers } from "./mcp/registerAgentHandlers.ts";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { join } from "node:path";
 import { DocumentService } from "./application/documentService.ts";
@@ -119,12 +123,19 @@ app.whenReady().then(() => {
   const documents = new DocumentRepository(workspace);
   const components = new ComponentLibraryRepository(workspace);
   const service = new DocumentService(documents, components, workspace, { coordinator: editorCoordinator });
+  const policy = new AccessPolicy(workspace);
+  service.setCreatedGrantHandler((credentialId, documentId) => policy.grantCreated(credentialId, documentId));
+  const agentServer = new AgentServer(policy, (id) => createAgentProtocol(policy, service, id, app.getVersion()));
+  registerAgentHandlers(policy, agentServer, service);
   registerDocumentHandlers(service);
   registerPdfHandlers({
     documentsDirectory: app.getPath("documents"),
     getMainWindow: () => mainWindow,
   });
-  void service.initialize().then(createWindow).catch((error) => {
+  void policy.initialize().then(() => service.initialize()).then(async () => {
+    if (policy.settings().enabled) await agentServer.start().catch(() => policy.setEnabled(false));
+    createWindow();
+  }).catch((error) => {
     console.error("Formleaf storage initialization failed", error);
     app.quit();
   });

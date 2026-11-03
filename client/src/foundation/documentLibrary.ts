@@ -1,3 +1,4 @@
+import type { AgentSettings, AgentConnection, AgentGrants } from "./agentConnection.ts";
 import type { SavedDocument, SaveDocumentResult, EditorContext, EditorRequest, EditorReply } from "./documentSessionProtocol.ts";
 import type { PdfExportResult } from "./document.ts";
 import type { DocumentData } from "./documentModel.ts";
@@ -28,6 +29,11 @@ export type DocumentLibraryIndex = {
 };
 
 export type DocumentApi = {
+  agentSettings: () => Promise<AgentSettings>;
+  agentEnable: (enabled: boolean) => Promise<AgentSettings>;
+  agentCreateConnection: (name: string) => Promise<{ connection: AgentConnection; token: string }>;
+  agentSetGrants: (id: string, grants: AgentGrants) => Promise<void>;
+  agentRevoke: (id: string) => Promise<void>;
   onBeforeClose: (handler: () => Promise<boolean>) => () => void;
   onEditorRequest: (handler: (request: EditorRequest) => EditorReply) => () => void;
   reportEditorContext: (context: EditorContext | null) => void;

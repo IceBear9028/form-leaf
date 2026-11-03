@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-2026-11-03 — 문서 커밋 `b65fc85` 이후 구현 시작. 1단계 계약 기반 완료, 2단계 공통 저장 service 진행 중, 3–6단계 대기. 기능별 제품 완료는 별도 검증 후 기록한다.
+2026-11-03 — 문서 커밋 `b65fc85` 이후 구현 시작. 1단계 계약 완료, 2단계 공통 저장 기반 구현·검증 완료(명령 adapter 통합은 남음), 3단계 조회 연결 진행 중, 4–6단계 대기. 기능별 제품 완료는 별도 검증 후 기록한다.
 
 이번 작업의 구현 기준은 [README](README.md)의 범위와 기능 상세, [tool-contracts](tool-contracts.md)다. AI 로그인·내부 채팅·관리되는 에이전트 실행 환경은 후속이다. 문서 작성과 코드 구현의 완료를 구분한다.
 
@@ -52,6 +52,18 @@ flowchart TD
 
 **구현 중 상태 기록:** 각 단계 완료 시 아래 인수 조건에 실제 테스트 경로·명령·결과·관련 커밋을 연결하고 handoff에 기록한다. 문서에 있는 시퀀스나 체크박스만으로 실행 증거를 대체하지 않는다.
 
+## 기능별 구현 커밋 진행
+
+사용자의 2026-11-03 요청에 따라 공통 기반 이후 F01→F08 순서로 검증하고 커밋한다. 단계 2의 operation adapter/세 target 검증은 F03–F06에서 연결한다. 현재 공개된 서버는 연결 확인(`get_context`)만 제공하며 외부 쓰기는 아직 열지 않았다.
+
+| 단위 | 현재 상태 | 검증 |
+|---|---|---|
+| 계약 기반 | 완료, `d587142` | 계약 6개 / 전체 test / build |
+| 공통 저장 기반 | 완료, `6368045` | service 10개 / hidden coordinator 1개 / 기존 Markdown E2E 2개 |
+| F01 연결·권한 | 연결 UI·HTTP·policy 구현/검증 완료 | access 2개 / hidden UI 1개. 추가 도구/resource 권한은 도구 연결 시 재검증 |
+| F02 문맥·대상 | 다음 작업 | 실제 읽기 도구·cursor·resource |
+| F03–F08 | 대기 | 기능별 adapter/출력/결과 UI와 전체 흐름 |
+
 ## 기능과 검증 단계의 대응
 
 P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래는 **실행 예정인 검증**이다. 실제 결과·환경·실패 수정 근거를 남기기 전에는 완료로 표시하지 않는다. 상세 인수 조건은 링크한 기능 문서가 기준이다.
@@ -83,7 +95,7 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 
 증거: `client/test/agent-contracts.test.mjs` 6개 테스트 통과. SDK 1.32.2 / Zod 4.6.7을 정확한 버전으로 고정하고 in-memory MCP client로 structuredContent·오류·image·resource 전달을 확인했다. 실제 HTTP 인증·render 결과·문서 참조/설치 font 검사는 후속 단계다.
 
-## 2. 공통 service와 저장 충돌 방지 — 진행 중
+## 2. 공통 service와 저장 충돌 방지 — 기반 완료, 명령 통합 검증 대기
 
 대상: 모든 조회·쓰기의 기반. MCP 서버를 붙이기 전에 진행한다.
 
@@ -99,13 +111,13 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 
 완료 기준: stale UI 자동 저장과 두 외부 변경이 서로 덮어쓰지 않는다. 장애 후 중복 생성하지 않으며 결과 불명 상태를 명시한다.
 
-## 3. 연결 설정과 조회 도구
+## 3. 연결 설정과 조회 도구 — 진행 중
 
 대상: T01–T05, T08–T09, T12의 조회 경로.
 
-- [ ] 앱 설정에 MCP 활성화·endpoint·연결 이름·token 발급/폐기 UI 추가.
-- [ ] 연결별 documentIds 및 write/create/libraryRead/render grant 설정·저장.
-- [ ] loopback 서버 lifecycle·Host/Origin·인증·입력 크기 제한.
+- [x] 앱 설정에 MCP 활성화·endpoint·연결 이름·token 발급/폐기 UI 추가.
+- [x] 연결별 documentIds 및 write/create/libraryRead/render grant 설정·저장.
+- [x] loopback 서버 lifecycle·Host/Origin·인증·입력 크기 제한.
 - [ ] get_context, list_documents, get_document, list_edit_targets, get_edit_value 구현.
 - [ ] list_components, get_component와 library/document 식별자 분리 구현.
 - [ ] get_operation, schema/document resources 구현.

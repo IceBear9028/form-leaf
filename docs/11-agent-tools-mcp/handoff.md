@@ -6,7 +6,7 @@
 - 작업 번호: 11 / 브랜치: `feat/11-agent-tools-mcp` (기준 `main@6821494`)
 - 문서·공통 템플릿 커밋: `b65fc85`.
 - 사용자 요청에 따라 구현과 기능별 검증 후 커밋을 진행한다. AI 로그인/채팅은 후속 범위다.
-- 1단계 계약 기반 완료, 2단계 공통 저장 service 진행 중, 3–6단계 대기. 아직 MCP 서버를 제품에서 실행할 수 없다.
+- 1단계 계약 완료, 2단계 공통 저장 기반 구현·검증 완료(명령 adapter 통합은 남음), 3단계 조회 연결 진행 중, 4–6단계 대기. F01 연결 서버와 설정 UI가 구현됐으며 현재 get_context만 공개한다.
 - 실제 사용자 데이터·backup은 변경하지 않았다.
 
 ## 구현 증거 — 계약 기반
@@ -28,6 +28,15 @@
 - hidden Electron: 기존 ownership/user-flow 2개 통과. `e2e/agent-editor-coordination.spec.ts` 1개 통과: 실제 inert 예약·snapshot ack·stale save·IME 중 거절/root/focus 보존. 첫 실행의 잘못된 문서 버튼 exact selector를 실제 접근성 이름에 맞게 수정했다.
 - `npm test`, build(typecheck 포함), diff check 통과. 모든 저장 시험은 임시 workspace에서 수행했다.
 - **남은 gate:** 18개 operation adapter와 전체 graph/prop 검증, 실제 HTTP 권한 연결, 각 feature 전체 AC. 공통 저장 기반만으로 F03/F08 완료를 선언하지 않는다.
+
+## 구현 증거 — F01 연결·권한
+
+- 문서 목록의 “에이전트 연결” 화면: 서버 켜기/끄기, endpoint 복사, 이름별 token 발급/폐기, 읽기 문서 선택과 capability 저장. create 선택 시 write도 선택하며 write 해제 시 create를 해제한다.
+- `127.0.0.1:32516/mcp` Streamable HTTP, 기본 비활성. Host를 정확히 검사하고 Origin이 있으면 같은 loopback origin만 허용한다. Origin이 없는 CLI도 Bearer 인증을 거쳐야 한다. JSON body 2MiB 한도. 포트 충돌은 활성화 실패로 표시한다.
+- token은 256-bit 난수이며 최초 발급 응답에서만 원문 제공. permission 0600 파일에 hash·영속 credentialId·grant만 저장한다. 요청별 최신 권한을 확인하며 connection session에 권한을 고정하지 않는다.
+- 현재 `get_context`만 실제 공개했다. F02 이후 구현한 도구를 추가하고, 각 도구/resource의 정보 노출 경계를 그때 재검증한다. MCP는 외부 CLI의 별도 OS 파일 권한을 제한하지 않는다.
+- `test/agent-access.test.mjs` 2개 통과: 기본 거절/영속 hash/폐기/create-write, 실제 HTTP SDK client·인증·Host/Origin·body 한도·권한 변경.
+- hidden `e2e/agent-connection.spec.ts` 1개 통과: UI에서 발급→연결→문서 허용→쓰기/생성 연동→폐기→서버 끄기. 실제 사용자 clipboard나 키보드/마우스를 사용하지 않았다.
 
 ## 이번에 바꾼 것 — 2026-11-03
 

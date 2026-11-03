@@ -401,3 +401,5 @@ O02/O06: `DocumentService`를 모든 제품 저장 IPC의 writer로 삼는다. �
 O03: 기존 focus/IME/dirty/saving/component draft가 없을 때 renderer가 동기적으로 root를 inert로 예약하고 acquire에 응답한다. 짧은 적용 구간 동안 “에이전트 변경 적용 중” 상태를 표시한다. apply는 lease와 busy를 재검사한 뒤 React snapshot을 flushSync하고 ack한다. 예약 중 발생한 프로그램적 draft 갱신은 보존하고 apply를 거절한다. timeout/오류는 release하며 저장 후 ack 실패는 persisted=true/uiSynced=false다. 활성 편집기를 flush하거나 selection을 복원하는 경로는 추가하지 않는다.
 
 이 결정의 증거와 남은 검증은 [handoff](handoff.md)와 [plan](plan.md)에 기록한다. operation adapter와 실제 MCP 권한 적용까지 완료한 상태는 아니다.
+
+O04: token을 재조회할 필요가 없는 서버 인증이므로 복호화 가능한 OS secret 저장 대신 256-bit 난수 token의 SHA-256 hash만 앱 관리 파일(mode 0600)에 저장한다. 원문은 발급 시 한 번 표시하고 분실 시 폐기/재발급한다. 영속 credentialId는 journal 소유권에 쓰며 token 폐기 후에도 이력을 지우지 않는다. 외부 shell의 별도 파일 권한을 제한하는 sandbox로 설명하지 않는다. HTTP는 stateless 요청별 SDK server/transport를 사용하여 transport session과 작업 수명을 분리한다.

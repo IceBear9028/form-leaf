@@ -5,6 +5,11 @@ import type { ComponentLibraryPackageInput } from "../foundation/componentLibrar
 import type { DocumentApi } from "../foundation/documentLibrary";
 
 const api: DocumentApi = {
+  agentSettings: () => ipcRenderer.invoke(IPC.agentSettings),
+  agentEnable: (enabled) => ipcRenderer.invoke(IPC.agentEnable, enabled),
+  agentCreateConnection: (name) => ipcRenderer.invoke(IPC.agentCreateConnection, name),
+  agentSetGrants: (id, grants) => ipcRenderer.invoke(IPC.agentSetGrants, id, grants),
+  agentRevoke: (id) => ipcRenderer.invoke(IPC.agentRevoke, id),
   onBeforeClose: (handler) => {
     const listener = () => { void handler().then(
       (saved) => ipcRenderer.send(IPC.completeClose, saved),
