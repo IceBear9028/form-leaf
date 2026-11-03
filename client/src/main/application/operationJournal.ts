@@ -8,7 +8,7 @@ import { documentRevision } from "./documentRevision.ts";
 import { readManagedJson, writeManagedJson } from "./managedJsonStore.ts";
 
 const entrySchema = z.strictObject({
-  credentialId: z.string(), requestHash: z.string(), documentId: z.string(),
+  acceptedAt: z.iso.datetime().optional(), credentialId: z.string(), requestHash: z.string(), documentId: z.string(),
   previousRevision: z.string().nullable(), nextRevision: z.string(), created: z.boolean(),
   response: journalResultSchema, stagedId: z.uuid(), artifactId: z.uuid().optional(),
 });

@@ -1,4 +1,4 @@
-import type { AgentSettings, AgentConnection, AgentGrants } from "./agentConnection.ts";
+import type { AgentSettings, AgentConnection, AgentGrants, AgentOperationSummary } from "./agentConnection.ts";
 import type { SavedDocument, SaveDocumentResult, EditorContext, EditorRequest, EditorReply } from "./documentSessionProtocol.ts";
 import type { PdfExportResult } from "./document.ts";
 import type { DocumentData } from "./documentModel.ts";
@@ -29,6 +29,9 @@ export type DocumentLibraryIndex = {
 };
 
 export type DocumentApi = {
+  agentOperations: () => Promise<AgentOperationSummary[]>;
+  agentOpenArtifact: (credentialId: string, requestId: string) => Promise<void>;
+  agentSaveArtifact: (credentialId: string, requestId: string) => Promise<PdfExportResult>;
   agentSettings: () => Promise<AgentSettings>;
   agentEnable: (enabled: boolean) => Promise<AgentSettings>;
   agentCreateConnection: (name: string) => Promise<{ connection: AgentConnection; token: string }>;

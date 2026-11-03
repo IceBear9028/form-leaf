@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { AgentConnection, AgentGrants, AgentSettings } from "../../../../foundation/agentConnection.ts";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
 import { Button } from "@/shared/ui/button";
+import { AgentOperations } from "./AgentOperations.tsx";
+import { AgentClientExamples } from "./AgentClientExamples.tsx";
 
 export function AgentSettingsPage({ onBack }: { onBack: () => void }) {
   const [settings, setSettings] = useState<AgentSettings>();
@@ -45,11 +47,13 @@ export function AgentSettingsPage({ onBack }: { onBack: () => void }) {
           <p className="text-xs text-muted-foreground">외부 클라이언트의 Streamable HTTP MCP 설정에 주소를 등록하고, Authorization 헤더에 Bearer 토큰을 지정하세요.</p>
         </div>}
       </section>
+      {settings && <AgentClientExamples endpoint={settings.endpoint} />}
       <section className="space-y-4" aria-label="연결별 권한">
         <h2 className="font-semibold">연결별 허용 범위</h2>
         {settings?.connections.length === 0 && <p className="text-sm text-muted-foreground">아직 발급한 연결이 없습니다.</p>}
         {settings?.connections.map((connection) => <ConnectionCard key={JSON.stringify(connection)} connection={connection} documents={documents} disabled={busy} onSave={(grants) => run(() => window.documents.agentSetGrants(connection.id, grants))} onRevoke={() => run(async () => { await window.documents.agentRevoke(connection.id); if (issued?.connection.id === connection.id) setIssued(undefined); })} />)}
       </section>
+      <AgentOperations />
       <p className="text-sm text-muted-foreground">이 권한은 Formleaf 도구 호출에 적용됩니다. 외부 에이전트가 별도로 가진 터미널·파일 접근 권한은 외부 클라이언트의 설정으로 관리해야 합니다.</p>
     </div>
   </main>;

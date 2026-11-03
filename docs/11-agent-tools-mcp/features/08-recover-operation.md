@@ -1,6 +1,6 @@
 # F08. 연결 중단 후 작업 결과 확인하기
 
-상태: 구현 기준안 · 우선순위: P0 · 사용자 여정: UJ-08
+상태: 구현됨 · 로컬 검증 근거와 외부 클라이언트 미검증 조건은 [handoff](../handoff.md) 참조 · 우선순위: P0 · 사용자 여정: UJ-08
 
 [기능 전체](../README.md) · [도구 계약](../tool-contracts.md)
 
@@ -76,6 +76,6 @@ F01의 credential·grant와 공통 저장 service가 기반이다. F03–F07의 
 
 T06/T07/T11의 requestId와 T12 get_operation. 계획 2단계에서 journal·복구, 3단계에서 조회, 5단계에서 결과 UI, 6단계에서 재연결을 검증한다.
 
-원자적 파일 교체·문서 index·새 문서 grant·journal의 실패 순서는 실제 repository 경로를 기준으로 fault injection으로 확인해야 한다. 어떤 단계가 실패해도 복구 가능하다고 아직 입증한 상태는 아니다.
+원자적 파일 교체·문서 index·새 문서 grant·journal의 실패 순서는 실제 repository 경로를 기준으로 fault injection으로 확인해야 한다. 준비·canonical/index·grant·journal 완료 경계의 실패를 테스트했고 손상된 staged snapshot은 recovery_required로 유지한다. 모든 OS/파일시스템 장애를 복구한다고 보장하지 않는다.
 
 기술 실행 흐름: [실행 시퀀스](../runtime-flows.md)의 TB05의 journal 재조정과 도구 계약의 상태도를 함께 읽는다. 기능 간 의존성은 [설계](../design.md)의 기능 관계 절을 따른다.

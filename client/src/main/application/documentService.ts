@@ -188,7 +188,7 @@ export class DocumentService {
       this.assertRevision(document, expectedRevision);
       const artifactId = await reserve({ document, revision: expectedRevision });
       await authorize();
-      const entry: JournalEntry = { credentialId: identity.credentialId, requestHash: identity.hash, documentId,
+      const entry: JournalEntry = { acceptedAt: new Date().toISOString(), credentialId: identity.credentialId, requestHash: identity.hash, documentId,
         previousRevision: expectedRevision, nextRevision: expectedRevision, created: false, stagedId: randomUUID(), artifactId,
         response: { requestId: identity.requestId, tool: "export_pdf", status: "pending", outcome: "not_committed" } };
       try { await this.journal.prepare(entry, document); }
@@ -228,7 +228,7 @@ export class DocumentService {
   private async commit(identity: MutationIdentity, snapshot: DocumentData, previousRevision: string | null, result: JournalResult["result"], created = false): Promise<DocumentSummary> {
     this.writable(snapshot.documentId);
     const entry: JournalEntry = {
-      credentialId: identity.credentialId, requestHash: identity.hash, documentId: snapshot.documentId,
+      acceptedAt: new Date().toISOString(), credentialId: identity.credentialId, requestHash: identity.hash, documentId: snapshot.documentId,
       previousRevision, nextRevision: documentRevision(snapshot), created, stagedId: randomUUID(),
       response: { requestId: identity.requestId, tool: created ? "create_document" : "apply_operations", status: "pending", outcome: "unknown", result },
     };

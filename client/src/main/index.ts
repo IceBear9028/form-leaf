@@ -1,6 +1,8 @@
 import { RenderService } from "./application/renderService.ts";
 import { OutputService } from "./application/outputService.ts";
 import { ArtifactRepository } from "./application/artifactRepository.ts";
+import { OperationHistory } from "./application/operationHistory.ts";
+import { registerOperationHandlers } from "./mcp/registerOperationHandlers.ts";
 import { AccessPolicy } from "./mcp/accessPolicy.ts";
 import { AgentServer } from "./mcp/server.ts";
 import { createAgentProtocol } from "./mcp/tools.ts";
@@ -133,6 +135,7 @@ app.whenReady().then(() => {
   const outputs = new OutputService(service, policy, renderer, artifacts);
   const agentServer = new AgentServer(policy, (id) => createAgentProtocol(policy, service, id, app.getVersion(), outputs));
   registerAgentHandlers(policy, agentServer, service);
+  registerOperationHandlers(new OperationHistory(service, policy, outputs), artifacts, () => mainWindow, app.getPath("documents"));
   registerDocumentHandlers(service);
   registerPdfHandlers({
     documentsDirectory: app.getPath("documents"),

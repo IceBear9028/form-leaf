@@ -88,6 +88,7 @@ export class ArtifactRepository {
     if (!info.isFile() || info.isSymbolicLink() || info.size > this.maxBytes || info.size !== metadata.byteSize) failure("RENDER_FAILED", "출력 파일을 확인할 수 없습니다.");
     return readFile(path);
   }
+  async verifiedFilePath(id: string): Promise<string> { await this.read(id); return this.path(id, "output.pdf"); }
   async cleanup(): Promise<void> { await this.serial(() => this.cleanupInside()); }
   private async cleanupInside(): Promise<void> {
     for (const item of await this.list()) {

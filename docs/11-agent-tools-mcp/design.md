@@ -1,6 +1,6 @@
 # 에이전트 도구와 MCP 기술 설계
 
-2026-11-02 · 상태: **To-Be 구현 기준안, 제품 구현 미착수** · As-Is 확인: `main@6821494`의 소스.
+2026-11-03 · 상태: **To-Be를 F01–F08에 구현, 로컬 회귀 통과, 외부 클라이언트 검증 남음** · As-Is는 변경 전 `main@6821494`의 소스를 보존한다.
 
 이 문서는 현재 동작, 변경할 구조, 상태 소유권, 기능 관계와 선택 이유를 설명한다. 호출 순서는 [실행 흐름](runtime-flows.md), 정확한 schema는 [도구 계약](tool-contracts.md), 전환 순서와 검증은 [계획](plan.md)이 기준이다. 양식의 출처·필수 항목은 [문서 세트 양식](../../.codex/skills/resume-studio-task-workflow/references/documentation.md)에 기록한다.
 
@@ -10,7 +10,7 @@
 
 **비목표:** 모델 추론·AI 계정 로그인·내부 채팅·외부 shell sandbox·다중 사용자 실시간 협업은 이번 설계에 포함하지 않는다. MCP는 접속 경로이며 외부 프로세스 전체의 OS 권한 경계가 아니다.
 
-도식의 **기존/변경/신규** 표시는 현재 코드와의 차이다. To-Be 도식의 화살표는 구현할 계약이며 실제 존재하는 연결을 뜻하지 않는다. 일반 Mermaid로 C4의 프로세스·저장소 경계 관점을 표현하며 정식 C4 표기 전체를 적용하지는 않는다.
+도식의 **기존/변경/신규** 표시는 변경 전 기준과의 차이다. To-Be의 책임 경계는 아래 구현 메모의 실제 모듈에 연결된다. 도식만으로 모든 플랫폼·실제 클라이언트 검증이 끝났다고 판단하지 않는다. 일반 Mermaid로 C4의 프로세스·저장소 경계 관점을 표현하며 정식 C4 표기 전체를 적용하지는 않는다.
 
 ## 2. As-Is — 현재 제품의 구조와 근거
 
@@ -336,7 +336,7 @@ client/src/renderer/
 | O06 | writer 또는 grant 변경이 공통 경로 우회 | 모든 저장 IPC·문서 관리·library 변경 진입점 검색 | 허용 범위·CAS·복구를 깨는 독립 writer 없음 / 2–4 |
 | O07 | 큰 문서·연속 render job의 메모리 비용 | 기존 payload/artifact 한도 내 최악 fixture, worker 동시성 검토 | 한도 초과 명시적 실패·정리 후 editor 정상. 처리량 수치는 측정 후 결정 / 5–6 |
 
-O03의 잠금 수명·이벤트 보존 방식과 O02의 복구 완료 지점은 아직 구현으로 입증되지 않았다. 도식은 충족할 계약을 보여주며, 이 과제의 검증을 대신하지 않는다. 실패하면 MCP 쓰기를 활성화하지 않고 UI 저장 경로부터 수정한다.
+O02/O03/O06은 공통 service fault injection과 hidden Electron으로 검증했다. O01의 실제 Codex/Claude 사용성, O05의 Windows/Linux 글꼴·출력, O07의 장기 부하·최악 문서 메모리 측정은 남아 있다. 자세한 증거와 제한은 handoff에 기록하며 도식으로 실행 증거를 대체하지 않는다.
 
 전환·롤백 범위와 단계별 gate는 [plan.md](plan.md)를 따른다. MCP를 끄는 것으로 이미 저장된 사용자 변경을 되돌리거나 journal을 지우지 않는다.
 
@@ -403,3 +403,11 @@ O03: 기존 focus/IME/dirty/saving/component draft가 없을 때 renderer가 동
 이 결정의 증거와 남은 검증은 [handoff](handoff.md)와 [plan](plan.md)에 기록한다. operation adapter와 실제 MCP 권한 적용까지 완료한 상태는 아니다.
 
 O04: token을 재조회할 필요가 없는 서버 인증이므로 복호화 가능한 OS secret 저장 대신 256-bit 난수 token의 SHA-256 hash만 앱 관리 파일(mode 0600)에 저장한다. 원문은 발급 시 한 번 표시하고 분실 시 폐기/재발급한다. 영속 credentialId는 journal 소유권에 쓰며 token 폐기 후에도 이력을 지우지 않는다. 외부 shell의 별도 파일 권한을 제한하는 sandbox로 설명하지 않는다. HTTP는 stateless 요청별 SDK server/transport를 사용하여 transport session과 작업 수명을 분리한다.
+
+### 출력과 작업 결과 — F07/F08
+
+- `RenderService`는 job별 sandbox hidden BrowserWindow와 전용 preload를 만들고 하나씩 출력한다. 30초 preview/60초 PDF timeout은 queue 대기부터 포함하며 준비·load·capture·print await에도 적용한다. 외부 네트워크/임의 file resource를 차단한다.
+- `OutputService`는 CAS 검사한 저장 snapshot을 journal에 stage한다. `ArtifactRepository`의 완료 표식이 PDF commit의 근거다. 재시작은 표식을 확인하고 미완료 출력을 실패로 기록하며 자동 재출력하지 않는다.
+- artifact는 24시간/100MiB 예산으로 관리하고 pending PDF마다 최대 20MiB를 예약한다. 유효한 결과를 새 작업을 위해 지우지 않는다. 정리는 UUID artifact 하위의 고정 파일만 대상으로 하고 directory/metadata symlink를 거절한다. OS 계정 자체가 가진 파일 쓰기 권한까지 격리하는 sandbox는 아니다.
+- `OperationHistory`는 journal에서 최근 50개 agent 요청의 요약만 만든다. UI는 2초마다 조회하며 query 중 중복 요청을 만들지 않는다. polling은 연결 권한 편집 상태를 초기화하지 않는다. 이 규모에서는 단순 polling을 택했으며 큰 journal의 탐색 비용·장기 retention은 별도 검토가 필요하다.
+- 로컬 결과 화면은 권한 철회 후 요청 발생·상태만 유지한다. 완료 PDF를 열거나 저장할 때는 현재 권한과 만료를 다시 확인한다. 파일 경로는 main의 검증된 artifact 또는 사용자가 연 저장 대화상자에서만 얻는다.

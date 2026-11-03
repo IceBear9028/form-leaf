@@ -1,12 +1,12 @@
 # 실행 흐름 — As-Is와 To-Be 시퀀스
 
-2026-11-02 · As-Is: `6821494` 소스 확인 · **To-Be: 구현할 계약, 실행 검증 전**.
+2026-11-03 · As-Is: 변경 전 `6821494` · **To-Be: 구현한 책임 흐름, 검증 범위는 handoff 참조**.
 
 [구조·상태 소유권](design.md) · [정확한 도구 계약](tool-contracts.md) · [구현·검증 순서](plan.md)
 
 ## 읽는 방법
 
-AS는 현재 코드 경로, TB는 제안 경로다. 화살표는 메시지·데이터 전달, 점선 응답은 결과 전달이다. `alt`는 조건 분기이며 실패한 경로가 아래 성공 경로까지 계속된다는 의미가 아니다. IPC의 prepare/apply/release는 내부 책임을 설명하는 제안 이름이다.
+AS는 변경 전 코드 경로, TB는 이번 작업에서 구현한 책임 흐름이다. 화살표는 메시지·데이터 전달, 점선 응답은 결과 전달이다. `alt`는 조건 분기이며 실패한 경로가 아래 성공 경로까지 계속된다는 의미가 아니다. IPC의 prepare/apply/release는 책임 이름이며 실제 `EditorCoordinator`/`documentSessionProtocol`의 acquire/apply/release에 대응한다.
 
 | 시퀀스 | 설명 | 연결 기능·검증 |
 |---|---|---|

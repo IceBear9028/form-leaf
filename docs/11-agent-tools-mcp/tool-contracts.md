@@ -1,13 +1,13 @@
 # MCP 도구와 변경 명령 계약 v1
 
-2026-11-02 — [기능 명세](README.md)의 구현 기준안. 아래 이름과 형식은 **새로 구현할 계약**이며 현재 실행 가능한 API가 아니다. `?`는 생략 가능한 필드다. 이 문서의 형식은 구현 시 runtime schema와 테스트 fixture로 옮긴다.
+2026-11-03 — [기능 명세](README.md)의 구현 계약. 아래 이름은 실행 중인 앱의 MCP 서버가 제공한다. `?`는 생략 가능한 필드다. 입력·출력 runtime schema는 `client/src/foundation/documentCommandSchemas.ts`와 `documentToolResults.ts`이며 실제 검증 범위는 [handoff](handoff.md)를 따른다.
 
 ## 현재 인터페이스에서 무엇이 바뀌는가
 
 | 경계 | As-Is | To-Be | 호환성 처리 |
 |---|---|---|---|
 | 앱 저장 IPC | saveDocument(id, DocumentData), DocumentSummary 응답 | 같은 UI 저장 의도에 expectedRevision·충돌 결과 추가, 공통 service 경유 | renderer/preload/main을 같은 변경에서 전환; public MCP에 전체 문서 저장 API를 노출하지 않음 |
-| 외부 에이전트 | MCP 계약 없음 | 아래 T01–T12와 Operation 18개 | 신규 apiVersion 1, 현재 실행 가능하다는 안내 금지 |
+| 외부 에이전트 | MCP 계약 없음 | 아래 T01–T12와 Operation 18개 | 신규 apiVersion 1, 기본 비활성·사용자 grant 이후 호출 가능 |
 | 문서 데이터 | schemaVersion 4 / canonical Markdown 문자열 | 같은 본문 모델을 참조하는 typed target·명령 | 이번 연결을 위해 ProseMirror JSON으로 저장 형식 변경하지 않음 |
 | PDF | 현재 창 출력, 사용자 경로 선택 | MCP는 저장 revision job·artifact URI | 기존 수동 출력 경로와 구분, arbitrary path 입력 없음 |
 
@@ -459,3 +459,13 @@ artifact는 생성 후 24시간 유지하고 앱 시작 시/주기적으로 만�
 | renderer MCP 설정/결과 화면 | 연결·문서 grant·작업 상태·PDF 저장 UX | 사용자 스스로 연결·폐기·결과 확인 |
 
 파일명은 새 책임의 제안 배치다. 기존 foundation operation과 renderer는 재사용하며 실제 구현 시 저장소 관례에 맞춰 분리할 수 있다. 기능 이름·동작 계약을 바꿀 경우에는 이 명세도 먼저 갱신한다.
+
+## 앱의 결과 확인과 연결 예시
+
+최근 작업은 접수 시각 순 최대 50건을 보여 준다. UI 내부 저장은 제외하고 이름·상태·requestId와 현재 허용 문서의 revision만 요약한다. 요청 본문·staged snapshot·token은 이 DTO에 포함하지 않는다. 접수 전 입력 검증 실패는 해당 호출의 오류로 반환하며 journal 목록에 새 작업을 만들지 않는다.
+
+연결 폐기/권한 철회 후 로컬 작성자는 요청의 발생·상태만 볼 수 있다. 문서 이름·revision·출력 metadata는 숨긴다. PDF 열기/저장은 연결 활성·소유 credential·문서/render grant·완료·만료를 다시 검사한다. 저장 대화상자 이후에도 재검사하며 에이전트가 저장 경로를 지정할 수 없다. 저장한 외부 PDF는 artifact 정리 대상이 아니다.
+
+설정 화면의 Codex `config.toml` 예시는 `url`과 `bearer_token_env_var = "FORMLEAF_MCP_TOKEN"`, Claude Code `.mcp.json` 예시는 `type: "http"`, `url`, `Authorization: "Bearer ${FORMLEAF_MCP_TOKEN}"`를 사용한다. 실제 token은 예시에 넣지 않고 외부 클라이언트 실행 환경에서 설정한다. 기존 설정을 자동 덮어쓰거나 계정 로그인을 대행하지 않는다.
+
+설정 형식은 2026-11-03 [OpenAI 공식 MCP 문서](https://developers.openai.com/codex/mcp)와 [Claude Code 공식 MCP 문서](https://code.claude.com/docs/en/mcp)의 HTTP/환경 변수 항목으로 확인했다. 두 제품의 실제 로그인 세션에서 실행한 검증 결과는 아니다.

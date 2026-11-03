@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-2026-11-03 — 1–4단계 및 F01–F06 구현·검증·커밋 완료. 5단계 진행 중: F07 출력 검증 완료, F08 결과 UI를 이어서 구현한다. 6단계 외부 클라이언트 검증은 대기.
+2026-11-03 — 1–4단계 및 F01–F06 구현·검증·커밋 완료. 5단계 F07/F08 구현·로컬 검증 완료. 6단계 로컬 회귀 통과, 실제 로그인된 외부 Codex/Claude 검증은 미수행.
 
 이번 작업의 구현 기준은 [README](README.md)의 범위와 기능 상세, [tool-contracts](tool-contracts.md)다. AI 로그인·내부 채팅·관리되는 에이전트 실행 환경은 후속이다. 문서 작성과 코드 구현의 완료를 구분한다.
 
@@ -66,12 +66,12 @@ flowchart TD
 | F04 문서 구성 | 완료, `68bace1` | structure 3개 / 생성 grant·journal 복구 / hidden 목록 갱신 |
 | F05 재사용 | 완료, `fdc9051` | components 2개 / library 조회·remap·revision·원본 불변 / 전체 test·build |
 | F06 스타일 | 완료, `baaac77` | style 3개 / 전체 test·build / F07에서 실제 출력 비교 |
-| F07 출력 | 구현·검증 완료 | output 3개 / hidden PNG·PDF·IME E2E / 4쪽 PDF 의미·시각 검사 |
-| F08 복구·결과 UI | 대기 | journal 기반 준비, 최근 작업·PDF 저장 UI 남음 |
+| F07 출력 | 완료, `d564ca4` | output 3개 / hidden PNG·PDF·IME E2E / 4쪽 PDF 의미·시각 검사 |
+| F08 복구·결과 UI | 구현·로컬 검증 완료 | history 2개 / hidden 결과·PDF 저장·재시작 E2E 1개 |
 
 ## 기능과 검증 단계의 대응
 
-P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래는 **실행 예정인 검증**이다. 실제 결과·환경·실패 수정 근거를 남기기 전에는 완료로 표시하지 않는다. 상세 인수 조건은 링크한 기능 문서가 기준이다.
+P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래는 검증 기준과 대응이다. 로컬 실행 결과·환경·제한은 handoff에 기록하며 외부 에이전트 판단/사용성 시험을 자동 테스트로 대신했다고 표시하지 않는다. 상세 인수 조건은 링크한 기능 문서가 기준이다.
 
 | 기능 | 구현 단계 | 핵심 인수 조건 | 확인 방법 |
 |---|---|---|---|
@@ -155,7 +155,7 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 
 완료 기준: README와 기능 상세의 문장 수정·항목 추가·빈 문서 작성·컴포넌트 재사용 예시를 도구 호출로 수행한다.
 
-## 5. 결과 확인과 출력 — 진행 중
+## 5. 결과 확인과 출력 — 완료
 
 대상: T10–T11, T12의 출력 job, artifact resource와 앱 결과 화면.
 
@@ -164,21 +164,21 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] preview_document 페이지 PNG와 warning 반환.
 - [x] export_pdf 비동기 job·get_operation 완료 조회.
 - [x] artifact URI·소유 credential·현재 grant·24시간 만료·저장 예산 구현.
-- [ ] 앱에서 최근 작업 상태와 PDF 열기/다른 위치에 저장 제공.
+- [x] 앱에서 최근 작업 상태와 PDF 열기/다른 위치에 저장 제공.
 - [x] 문서 선택·포커스·활성 editor root 불변 검증.
 
 완료 기준: 요청한 revision의 페이지 이미지와 PDF를 얻고, 권한 폐기 뒤 artifact를 읽지 못한다. artifact 정리가 사용자 문서·backup에 영향을 주지 않는다.
 
-## 6. 외부 에이전트 연결과 제품 회귀
+## 6. 외부 에이전트 연결과 제품 회귀 — 진행 중
 
-- [ ] 앱에서 외부 클라이언트 설정 예시 복사 제공.
+- [x] 앱에서 외부 클라이언트 설정 예시 복사 제공.
 - [ ] 이미 로그인된 외부 Codex와 Claude Code 각각에서 조회→변경→preview→PDF 전체 흐름 확인.
 - [ ] instructions와 schema만으로 에이전트가 ID·revision·target을 올바르게 사용하는지 확인.
-- [ ] 동시 요청·연결 단절·클라이언트 취소 신호·재연결·인증 실패·출력 만료 검증. 취소 신호가 이미 저장된 변경의 rollback을 의미하지 않음을 확인하며 별도 취소 도구는 만들지 않는다.
-- [ ] 임시 workspace와 hidden Electron으로 빠른 한글, composition 중 rerender/publish, 자동 저장 경쟁 확인.
-- [ ] node/component prop/repeater item prop 모두 저장·재열기·PDF 의미 보존 확인.
-- [ ] npm test, npm run typecheck, npm run build, git diff --check 실행.
-- [ ] 구현 결과·실제 지원 이름·검증 근거·남은 제한을 명세와 handoff에 반영.
+- [x] 동시 요청·연결 단절·클라이언트 취소 신호·재연결·인증 실패·출력 만료 검증. 취소 신호가 이미 저장된 변경의 rollback을 의미하지 않음을 확인하며 별도 취소 도구는 만들지 않는다.
+- [x] 임시 workspace와 hidden Electron으로 빠른 한글, composition 중 rerender/publish, 자동 저장 경쟁 확인.
+- [x] node/component prop/repeater item prop 모두 저장·재열기·PDF 의미 보존 확인.
+- [x] npm test, npm run typecheck, npm run build, git diff --check 실행.
+- [x] 구현 결과·실제 지원 이름·검증 근거·남은 제한을 명세와 handoff에 반영.
 
 완료 기준: 사용자가 허용한 문서에 대해 기능 예시를 끝까지 수행한다. 테스트에는 실제 사용자 데이터나 backup을 사용하지 않는다.
 

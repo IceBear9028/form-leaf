@@ -2,160 +2,108 @@
 
 ## 현재 상태
 
-- 갱신일: 2026-11-03
-- 작업 번호: 11 / 브랜치: `feat/11-agent-tools-mcp` (기준 `main@6821494`)
-- 문서·공통 템플릿 커밋: `b65fc85`.
-- 사용자 요청에 따라 구현과 기능별 검증 후 커밋을 진행한다. AI 로그인/채팅은 후속 범위다.
-- 1단계 계약 완료, 2단계 공통 저장 기반 구현·검증 완료(명령 adapter 통합은 남음), 3단계 조회 연결 진행 중, 4–6단계 대기. F01/F02 연결과 읽기 도구 8개, schema/document resource 구현. 외부 쓰기·render는 아직 공개하지 않는다.
-- 실제 사용자 데이터·backup은 변경하지 않았다.
+- 갱신일: 2026-11-03. 작업 11, 브랜치 `feat/11-agent-tools-mcp`, 기준 `main@6821494`.
+- 문서 양식·공통 템플릿을 먼저 커밋한 뒤 공통 기반과 F01→F08을 순서대로 구현했다. 기능별 검증 후 커밋하는 사용자 요청을 따른다.
+- 12개 MCP 도구, 18개 변경 명령, 연결·권한 설정, 최근 작업 결과·PDF 저장 UI를 구현했다. 로컬 자동 시험은 통과했다. **실제 로그인된 Codex와 Claude Code 각각의 전체 사용 여정은 미검증**이므로 제품 인수 전체 완료로 표시하지 않는다.
+- 이번 범위는 도구 정의+MCP 구현이다. AI 로그인·내부 채팅·대화 재개·관리되는 에이전트 실행과 OS sandbox는 후속이다.
+- 실제 사용자 문서·backup·외부 클라이언트 설정은 수정하지 않았다. 테스트는 임시 workspace와 hidden Electron을 사용했다. 키보드·마우스를 가져오거나 PDF 뷰어를 실제로 열지 않았다. 이번 요청에 따라 로컬 커밋하며 push/PR은 수행하지 않는다.
 
-## 구현 증거 — 계약 기반
+## 구현 단위와 커밋
 
-- `documentCommandSchemas.ts` / `documentCommands.ts`: 12개 도구 입력, 18개 명령, typed target, 닫힌 중첩 schema, 길이/크기/enum/값 범위와 결과·오류 타입.
-- `documentToolResults.ts` / `main/mcp/protocol.ts`: 도구별 출력 schema와 JSON/text 동일 응답. 큰 일반 JSON 응답 거절.
-- `documentRevision.ts`: 안정적인 JSON hash와 requestId를 제외한 정규화 요청 hash.
-- SDK `1.32.2`, Zod `4.6.7` 정확 버전 고정. 실제 SDK client/server 간 structuredContent·오류·image·resource 계약 시험.
-- `test/agent-contracts.test.mjs`: 6개 통과, `npm test` 전체 통과, `npm run build` (typecheck 포함) 통과. `git diff --check` 통과.
-- 아직 문서 참조·권한·설치 font·실제 HTTP·hidden render 검증은 아니다. feature 전체 완료로 표시하지 않는다.
+| 단위 | 커밋 | 구현과 핵심 검증 |
+|---|---|---|
+| 문서·공통 양식 | `b65fc85` | README에 전체 기획 통합, 중복 features.md 제거, 공통 workflow/템플릿 개편 |
+| 계약 기반 | `d587142` | 닫힌 입력·출력 schema, 12개 도구/18개 명령, revision/request hash, SDK fixture |
+| 저장 기반 | `6368045` | UI/MCP 공통 writer, CAS, journal, editor coordinator, 재시작 복구 |
+| F01 연결·권한 | `39cfdd9` | 기본 비활성 loopback HTTP, token hash·grant, 연결 UI |
+| F02 문맥·대상 | `ec4c6f3` | 허용 문서/세 target/library 조회, resource, signed cursor |
+| F03 내용 수정 | `9272786` | Markdown 원문·text·rich-text, batch/dryRun, busy/CAS/ack |
+| F04 문서 구성 | `68bace1` | 생성 grant, node 구조·보관/복원·ID, 목록 갱신 |
+| F05 재사용 | `fdc9051` | library revision/import remap, instance prop·repeater item |
+| F06 스타일 | `baaac77` | 공유 사본 분리, style patch·font·color 검증 |
+| F07 출력 | `d564ca4` | 고정 snapshot hidden PNG/PDF, artifact·만료·예산·복구 |
+| F08 작업 결과 | 이번 기능 커밋 | 최근 50건, 상태·저장/화면 구분, PDF 열기/저장, 재연결·권한 철회 |
 
-## 구현 증거 — 공통 저장 기반
+기능 상세와 계약의 목록은 유지하고 현재 구현 근거를 연결했다. 기능 번호와 구현 커밋을 대응하며 기능마다 별도 기획 문서를 새로 만들지 않았다.
 
-- 모든 제품 document/library IPC writer를 `DocumentService` 직렬화 구간으로 전환. UI load/save에 저장 revision을 전달하고 stale save를 거절해 draft를 유지한다. workspace는 Electron single-instance lock으로 중복 프로세스 writer를 막는다.
-- canonical snapshot과 index 저장 전에 별도 staged snapshot·journal을 기록한다. 재시작 시 previous/next hash와 비교해 문서/index/생성 grant를 재조정하며, 판정 불명 문서는 새 writer를 차단한다. 기존 backup은 repository 정책으로 유지한다.
-- renderer acquire→apply→release handshake를 추가했다. focus/IME/dirty/saving/component draft가 있으면 거절한다. idle일 때만 잠시 앱 root를 inert로 예약하고 상태를 표시한 뒤 snapshot 렌더를 flushSync하여 ack한다. 늦은 apply가 새 draft를 덮지 않도록 재검사한다.
-- 외부 snapshot 뒤 문서 수준 undo/redo를 비운다. 활성 Tiptap session은 acquire 자체가 거절되므로 root/caret/composition을 바꾸지 않는다.
-- `test/agent-document-service.test.mjs` 10개 통과: CAS 경쟁, dryRun·부분 실패 무변경, request 재전송, 4개 저장 경계 장애/재시작, 손상 staged snapshot 차단, ack 실패, 실행 시 권한 재검사.
-- hidden Electron: 기존 ownership/user-flow 2개 통과. `e2e/agent-editor-coordination.spec.ts` 1개 통과: 실제 inert 예약·snapshot ack·stale save·IME 중 거절/root/focus 보존. 첫 실행의 잘못된 문서 버튼 exact selector를 실제 접근성 이름에 맞게 수정했다.
-- `npm test`, build(typecheck 포함), diff check 통과. 모든 저장 시험은 임시 workspace에서 수행했다.
-- **남은 gate:** 18개 operation adapter와 전체 graph/prop 검증, 실제 HTTP 권한 연결, 각 feature 전체 AC. 공통 저장 기반만으로 F03/F08 완료를 선언하지 않는다.
+## 기술 구현과 데이터 흐름
 
-## 구현 증거 — F01 연결·권한
+### 권한과 계약
 
-- 문서 목록의 “에이전트 연결” 화면: 서버 켜기/끄기, endpoint 복사, 이름별 token 발급/폐기, 읽기 문서 선택과 capability 저장. create 선택 시 write도 선택하며 write 해제 시 create를 해제한다.
-- `127.0.0.1:32516/mcp` Streamable HTTP, 기본 비활성. Host를 정확히 검사하고 Origin이 있으면 같은 loopback origin만 허용한다. Origin이 없는 CLI도 Bearer 인증을 거쳐야 한다. JSON body 2MiB 한도. 포트 충돌은 활성화 실패로 표시한다.
-- token은 256-bit 난수이며 최초 발급 응답에서만 원문 제공. permission 0600 파일에 hash·영속 credentialId·grant만 저장한다. 요청별 최신 권한을 확인하며 connection session에 권한을 고정하지 않는다.
-- 현재 `get_context`만 실제 공개했다. F02 이후 구현한 도구를 추가하고, 각 도구/resource의 정보 노출 경계를 그때 재검증한다. MCP는 외부 CLI의 별도 OS 파일 권한을 제한하지 않는다.
-- `test/agent-access.test.mjs` 2개 통과: 기본 거절/영속 hash/폐기/create-write, 실제 HTTP SDK client·인증·Host/Origin·body 한도·권한 변경.
-- hidden `e2e/agent-connection.spec.ts` 1개 통과: UI에서 발급→연결→문서 허용→쓰기/생성 연동→폐기→서버 끄기. 실제 사용자 clipboard나 키보드/마우스를 사용하지 않았다.
+`main/mcp`는 SDK 1.32.2/Zod 4.6.7을 고정해 사용한다. Streamable HTTP는 `127.0.0.1:32516/mcp`에서 기본 비활성이다. Host/Origin·Bearer·JSON 크기와 각 도구/resource의 현재 권한을 검사한다. 접속 session 대신 영속 credentialId/requestId로 작업을 식별한다.
 
-## 구현 증거 — F02 문맥·대상
+`AccessPolicy`는 256-bit 난수 token의 hash만 mode 0600 관리 파일에 저장한다. 원문은 발급 시 한 번 표시한다. 문서별 읽기와 write/create/libraryRead/render는 앱에서 설정하며 create는 write에 의존한다. 이 권한은 MCP 경계이며 외부 에이전트의 별도 shell/파일 접근을 제한하지 않는다.
 
-- `get_context/list_documents/get_document/list_edit_targets/get_edit_value/list_components/get_component/get_operation` 조회와 schema/document resources를 연결했다. 실제 공개 도구는 tools/list를 기준으로 한다.
-- canonical DTO는 asset metadata만 반환한다. 문서 outline은 component 내부를 직접 노출하지 않고 문서 active/archived tree를 표시한다. typed target은 active text/Markdown/rich-text 값만 포함하고 기본값/override·숨김을 표시한다.
-- HMAC cursor는 credential·query·snapshot/revision에 묶고 10분 만료를 검사한다. resource 목록도 100개씩 나눈다.
-- 문서/컴포넌트 조회 전후 및 resource 경로에서 현재 권한을 확인한다. 비허용/미존재 문서는 같은 오류로 처리한다. 지원하지 않는 Markdown은 compatibility 정보와 원문을 그대로 반환한다.
-- `test/agent-reads.test.mjs` 4개 통과: 비허용 정보/resource/context 차단, 세 target과 상속/보관/숨김, 원문/asset metadata, revision/credential/query/만료/변조 cursor. 전체 `npm test`와 build(typecheck 포함) 통과.
-- 다음 기능 F03에서 내용 변경 adapter를 연결한다. F05에서 library import·prop/item 쓰기, F07에서 실제 render, F08에서 작업 결과 UI를 검증한다.
+읽기는 저장본 기준이다. 세 DocumentEditTarget은 whole Markdown value를 가리키며 block·DOM·caret을 identity로 만들지 않는다. 권한 없는 문서의 이름·집계·resource를 노출하지 않는다. target/list cursor는 credential·query·snapshot에 묶고 10분 후 만료한다. asset은 metadata만 제공한다.
 
-## 이번에 바꾼 것 — 2026-11-03
+### 저장과 editor ownership
 
-### F07 출력 구현
+모든 제품 문서 저장/관리와 library 변경 IPC가 `DocumentService`의 queue를 거친다. UI 자신의 dirty 저장은 CAS로 처리하며 외부 쓰기의 busy 규칙과 구분한다. canonical schemaVersion 4와 Markdown 문자열을 유지한다.
 
-- revision에 고정한 별도 hidden renderer와 최소 preload를 연결했다. 현재 편집기·조합·선택은 건드리지 않고 저장 snapshot으로 pagination/font/image 준비 후 PNG와 PDF를 만든다. 외부 resource는 차단하고 warning을 반환한다.
-- PDF는 journal pending→artifact commit→completed 순서로 처리한다. 재시작 시 완료 표식과 미완료 출력을 구분하며 재출력하지 않는다. 현재 권한·소유 credential·24시간 만료·100MiB 예산·출력 크기 한도를 검사한다. 정리는 새 artifact 영역의 정해진 파일만 지운다.
-- output unit 3개와 hidden `agent-output.spec.ts` 통과: 2개 페이지 PNG, 범위 오류, PDF 비동기/재조회, 외부 resource 차단, 활성 IME/root/focus 불변, 권한 철회 확인. F06의 18pt/#123456와 세 target 저장 내용을 4쪽 PDF에서 검사했다. PyMuPDF 텍스트/크기/픽셀 검사와 렌더 이미지 검수 통과. 실제 사용자 문서나 키보드·마우스를 사용하지 않았다.
-- 다음은 F08 최근 작업 결과와 PDF 열기/저장 UI다. 실제 로그인된 Codex/Claude Code 연결 시험은 아직 하지 않았다.
+외부 쓰기는 권한→queue에서 재검사→renderer acquire→revision→사본 batch/graph 검증→stage/journal→canonical/index→생성 grant→completed 순서다. UI apply/ack가 유실되면 persisted=true/uiSynced=false를 기록한다. busy인 활성 editor를 flush하거나 selection을 복원하지 않는다. idle 예약 때만 root를 inert로 만들고 lease/busy를 재검사해 적용하며 timeout·오류 후 release한다. 예약 중 프로그램적 draft 변경도 버리지 않는다.
 
-### F06 스타일 구현
+재시작은 previous/next snapshot hash와 staged snapshot으로 저장 결과를 조정한다. 결과가 불명이거나 stage가 손상되면 affected document writer를 차단하고 recovery_required를 유지한다. journal은 자동 삭제하지 않는다. 앱 workspace single-instance lock도 사용한다.
 
-- update_node_style을 연결해 18개 변경 명령이 모두 구현됐다. 공유 style은 사본을 분리하고 기존 공유 node/정의의 style은 유지한다. 동일 patch는 새 ID를 만들지 않는다.
-- 그룹 깊이 병합, 배열 교체, leaf null 삭제, ColorValue/WidthValue 교체를 구현했다. finite·범위·닫힌 필드·hex를 검증하고 정의되지 않은 document color token을 거절한다.
-- font family는 앱의 기본 stack/generic family와 설치 목록을 확인한다. 명령은 OS별 고정 인자로만 호출하고 사용자 입력을 shell로 보내지 않는다. macOS 설치 목록 조회를 확인했으며 이 환경에서 약 27초가 걸려 결과를 process 내 cache한다. 조회는 renderer lease 확보 전에 진행한다. Windows/Linux 실제 OS 검증은 하지 않았으며 조회 실패 시 알려진 fallback만 허용한다.
-- `test/agent-style.test.mjs` 3개와 전체 test/build(typecheck 포함) 통과. 공유 사본/삭제/배열/width 변환/무변경/오류/print CSS 값을 검사했다. 실제 PNG/PDF 비교는 다음 F07에서 통합한다.
+### 명령과 출력
 
-### F05 재사용 구현
+내용·구조·컴포넌트·스타일 명령은 동일 adapter/service를 사용한다. library import는 writer 구간에서 revision을 확인하고 모든 entity/prop/asset 참조를 재매핑하며 library 원본은 바꾸지 않는다. import idMap은 종류별 key를 사용한다. number/boolean은 union에 있으나 v4 모델에 없는 prop binding을 새로 만들지 않는다.
 
-- 9개 component/prop/item/import 명령을 연결했다. active 문서 target·prop binding·값 유형과 제거 후 index 범위를 검증한다. 다른 instance와 공유 정의를 수정하지 않는다.
-- import는 writer 구간 안에서 library snapshot을 읽고 expectedLibraryRevision을 검사한다. document write와 libraryRead 권한을 실행 전/commit 전에 확인하며 모든 entity ID와 asset/prop 참조를 재매핑한다. 라이브러리는 변경하지 않는다.
-- import idMap의 종류별 key를 tool-contracts에 명시했다. v4에서 아직 binding이 없는 number/boolean prop을 새로 만들지는 않는다.
-- `test/agent-components.test.mjs` 2개 통과: prop 기본값 복귀·item lifecycle·archived/유형/index 거절, 실제 SDK library 조회→revision→충돌 remap→instance 생성·asset 참조·원본 불변. 전체 test/build(typecheck 포함) 통과.
-- 다음 기능은 F06 per-node style이다.
+style은 공유 사본을 분리하고 그룹 깊이 병합·배열 교체·leaf null 삭제를 지원한다. ColorValue/WidthValue는 구별값 객체 전체를 교체한다. 현재 CSS에 정의되지 않은 document color token은 거절한다. 설치 font 조회는 OS별 고정 명령만 사용하며 renderer lease 전에 수행하고 process 내 cache한다.
 
-### F04 문서 구성 구현
+`RenderService`는 전용 sandbox hidden 창/preload로 저장 revision만 출력한다. font/image 준비 후 pagination을 다시 측정하고 외부 resource를 차단해 warning을 반환한다. preview 30초/PDF 60초, PNG 4MiB/2048px, PDF 20MiB를 적용한다. job은 직렬 처리한다.
 
-- create_document를 생성 grant/index/journal 복구와 연결했다. 새 문서를 자동으로 열지 않고 목록을 갱신한다. UI 저장·관리도 commit 알림으로 목록을 최신화한다.
-- add/move/duplicate/visibility/archive/restore node를 연결했다. root 변경 금지, cycle·활성 문서 container·제거 후 index 범위·기존 asset/component 참조를 검증한다. 보관된 부모로 복원하지 않는다.
-- `test/agent-structure.test.mjs` 3개 통과: 생성·구조·ID·보관/복원·root/cycle/index/asset 거절과 실제 SDK 생성/grant/재전송. 공통 service의 생성 장애 4경계 복구 테스트도 유지한다.
-- hidden HTTP 작성 E2E에 생성 후 목록 자동 갱신·편집기 자동 진입 없음 검증을 추가해 통과했다. 전체 test/build(typecheck 포함) 통과.
-- 다음 기능은 F05 컴포넌트 import/prop/item이다.
+`OutputService`는 journal에 출력 snapshot을 stage하고 pending을 반환한다. artifact 완료 표식 이후 completed가 된다. 완료 응답 유실/재시작은 같은 artifact를 반환하며 재출력하지 않는다. 미완료 출력은 실패로 기록한다. artifact는 24시간/100MiB 예산, pending당 20MiB 예약이며 정리는 새 관리 영역의 고정 payload만 대상으로 한다. 소유 credential·현재 문서/render grant·만료와 파일 유형을 재검사한다.
 
-### F03 내용 수정 구현
+### 결과 UI와 외부 연결 안내
 
-- node/component prop/repeater item prop의 set_edit_value와 replace_text를 공통 service/CAS/idle/journal에 연결했다. canonical Markdown을 codec 왕복 없이 변경하며 rich-text는 runs 전체 교체만 허용한다.
-- 겹치는 일치까지 두 번 이상이면 AMBIGUOUS_TEXT, 0회는 TEXT_NOT_FOUND. 선언 유형/target/최종 graph를 검증하며 하나라도 실패하면 batch를 저장하지 않는다. dryRun은 journal/영속 ID/revision 예약을 만들지 않는다.
-- `test/agent-content.test.mjs` 3개 통과: 세 target 저장·재열기·원문/기본값 불변, dryRun/batch/권한/CAS/requestId, 겹치는 문자열/rich-text.
-- hidden `agent-content.spec.ts`에서 실제 HTTP 쓰기→화면 ack→IME 중 거절→자동 저장을 확인했다. 연결/coordinator 회귀와 함께 3개 통과.
-- 이 E2E가 main 시작 실패를 발견했다. renderer parser의 ESM-only remark/unified를 CJS main에서 외부 require하던 문제로, electron-vite main bundle에 해당 의존성을 포함하여 해결했다. F02의 unit/build 통과만으로 Electron 부팅을 검증한 것은 아니었다.
-- 다음은 F04 생성과 구조 변경이다. 현재 공개된 쓰기 명령은 내용 set/replace이며 구조·재사용·style·출력·결과 UI는 남아 있다.
+연결 설정 화면은 최근 50개 agent 작업을 2초마다 조회한다. 본문·staged result·token은 요약 DTO에서 제외한다. pending/completed/failed/recovery_required와 저장 성공/화면 ack 미확인을 구분하고 자동 재시도 버튼은 제공하지 않는다. 권한 철회 뒤 로컬 작성자는 요청 발생·상태만 보고 문서명·revision·artifact는 보지 못한다.
 
-| 영역 | 실제 변경과 이유 |
+PDF 열기/다른 위치에 저장은 main의 검증된 artifact ID에서 시작한다. 임의 파일 경로를 받는 MCP 도구는 없다. 저장 대화상자가 닫힌 후에도 권한·만료를 재확인하며 사용자 선택 위치에 임시 파일을 쓴 뒤 교체한다. 별도 저장한 PDF는 artifact 정리 대상이 아니다.
+
+Codex/Claude Code 설정 예시 복사를 제공한다. 실제 token 대신 FORMLEAF_MCP_TOKEN 환경 변수를 참조한다. 설정 형식만 [OpenAI 공식 문서](https://developers.openai.com/codex/mcp)와 [Claude Code 공식 문서](https://code.claude.com/docs/en/mcp)로 확인했다. 계정/외부 설정 파일을 읽거나 바꾸지 않았다.
+
+## 검증 근거 — 2026-11-03
+
+| 검사 | 실제 결과 |
 |---|---|
-| README | 전체 문제·사용자·목표·성공 기준·기능 목록·범위를 통합. 별도 features.md 제거 |
-| tool-contracts | 12개 도구 목록을 이동. 18개 명령은 기존 상세 계약을 기준으로 유지해 중복 목록 제거 |
-| design/runtime/plan/기능 상세 | README와 공통 작성 규칙으로 링크 갱신. As-Is/To-Be·데이터 소유권·관계·시퀀스·전환 gate 유지 |
-| handoff | 현재 상태·실제 변경·검증·미결정·다음 행동을 먼저 배치하고 과거 기록 분리 |
-| 공통 workflow assets | 기존 기본 템플릿 4개 개편, 선택 템플릿 3개 추가. 작은 작업은 불필요한 파일 생성하지 않도록 변경 |
-| 공통 workflow 규칙 | Formleaf 명칭·문서 작업 적용, 전체 기획은 README, 구현 전 단계는 대기, 문서 검증과 제품 시험 구분 |
-| docs/templates/README | 공통 원본으로 연결하는 저장소 안내 추가. 실제 원본은 .codex skill의 assets 한 곳에서 관리 |
-| 11번의 templates 디렉터리 | 작성 규칙·출처를 공통 workflow references로 이동하고 작업별 사본 제거 |
+| `npm test` | 25개 test script, 총 145개 테스트 통과 |
+| `npm run typecheck` | 통과 |
+| `npm run build` | 통과, main·일반 preload·출력 전용 preload·renderer 생성 |
+| `npx playwright test` | hidden Electron 7개 통과(52.0초), 실제 원본 경로 opt-in 시험 1개 skip |
+| PDF 의미/시각 검사 | 임시 출력 4쪽의 node/component/item·마지막 문단 보존, 미저장 IME 제외, 18pt/#123456 확인. PyMuPDF 추출/픽셀 검사 및 페이지 이미지 검수 |
+| 결과 UI | 작업 카드 screenshot 검수. PDF OS 열기는 mock, 저장 대화상자는 임시 목적지를 반환하는 mock으로 검증 |
 
-사용자는 문서 전반과 템플릿을 함께 바꾸도록 요청했다. 이번 작업은 기존 11번 문서의 정리이며 새 작업 번호나 제품 기능 추가가 아니다. 8개 기능·12개 도구·18개 명령·45개 상세 요구·47개 인수 조건은 유지한다.
+테스트 파일은 `client/test/agent-*.test.mjs`와 `client/e2e/agent-*.spec.ts`, 기존 Markdown ownership/user-flow E2E다. 빠른 한글·반복 Space·Enter·Tab/Shift+Tab, 부모 publish/rerender, 세 target 저장/재열기/PDF와 외부 쓰기 busy 보호를 포함한다.
 
-## 검증 근거 — 이번 변경
+F08의 HTTP 시험은 문서 저장 직전 응답 연결을 끊고 취소 통지를 보낸 뒤 writer 완료·service 재초기화·새 client 조회를 수행했다. 같은 requestId/입력을 재전송해도 item 하나와 같은 생성 ID/revision을 유지한다. PDF E2E는 실제 앱 재시작 후 artifact ID가 같은지 확인한다. 생성은 prepare/canonical-index/grant/completed 네 경계 장애를 주입해 복구한다. stage 손상은 자동 성공 처리하지 않는다.
 
-| 검사 | 결과·한계 |
-|---|---|
-| 현재 문서·공통 안내·workflow 18개 | 상대 링크 146개, JSON 예시 7개, fence·개행·공백 검사 통과 |
-| 기능·계약 대응 | 기능 8개, 도구 12개·명령 18개, 요구 45개·AC 47개와 plan 대응 확인 |
-| 공통 템플릿 7개 | 기본 4문서/선택 포함 7문서로 임시 생성해 상대 링크와 placeholder 치환 확인. 자연어 기획 품질 자동 검증은 아님 |
-| skill-creator quick_validate.py | `Skill is valid!` — 임시 경로에 PyYAML을 준비해 실행. 제품 의존성 변경 없음 |
-| Mermaid | 기존 도식 13개 유지. 이번에는 도식 내용을 변경하지 않아 2026-11-02 렌더 결과를 참고하며 새 렌더 실행으로 기록하지 않음 |
-| git diff --check | 통과. untracked 문서는 별도 공백 검사 |
+F08 테스트 중 정리 경쟁을 발견했다. 최초 writer의 UI ack 기록이 끝나기 전에 테스트 workspace를 지우던 문제로, writer queue를 drain하고 client/server를 닫은 뒤 정리하도록 수정했다. 제품 재시작 시험과 단순 객체 재초기화 시험을 구분한다.
 
-이번 링크·내용 검사는 저장소 파일을 직접 읽어 수행했다. 앞선 임시 백업/가상환경은 이후 호출에서 남아 있지 않아 그 백업에 대한 byte 비교 결과는 주장하지 않는다.
+F03 E2E에서는 main 부팅 시 ESM-only remark/unified의 CJS require 실패를 발견했다. main bundle에 포함해 해결했다. unit/build 통과만으로 실제 Electron 부팅을 확인했다고 간주하지 않는다.
 
-제품 코드를 변경하지 않아 npm test/typecheck/build 및 외부 에이전트 실행 시험은 이번 문서 정리에서 수행하지 않았다. 문서 검사 통과를 MCP 구현 완료로 표시하지 않는다.
+모든 산출물은 ignored `client/test-results` 또는 `/tmp`에 있으며 영구 보관을 보장하지 않는다. 검증용 PyMuPDF는 임시 venv에만 설치했고 제품 의존성으로 추가하지 않았다. OS 입력·실제 사용자 데이터로 시험하지 않았다.
 
-## 남은 작업과 주의할 경계
+## 남은 검증과 한계
 
-- 구현은 [plan](plan.md)의 2단계 공통 service를 진행한다. 기능·호출 계약·허용 범위를 추가 후보로 임의 확대하지 않는다.
-- [design](design.md)의 O02(다중 파일 복구), O03(idle 이후 입력 경쟁), O06(저장 우회 경로)을 외부 쓰기 공개 전에 검증해야 한다. 나머지 SDK·token 저장·출력·용량 과제도 O01–O07과 plan gate를 따른다.
-- UI 저장은 자기 draft를 저장하며, 외부 MCP 쓰기의 busy 규칙과 구분한다. 10번의 DOM/IME 소유권과 canonical Markdown을 보존한다.
-- 사용자 승인 범위는 도구 정의+MCP 구현이다. AI 로그인·내부 채팅·대화 재개·관리되는 에이전트 프로세스와 OS sandbox는 후속이다. MCP가 외부 에이전트의 별도 shell 권한을 통제한다고 설명하지 않는다.
-- 현재 작성한 세부 설계안은 모든 선택이 사용자 승인됐거나 구현 검증됐다는 뜻이 아니다. 기준 변경 시 관련 기능·설계·계약·plan을 함께 갱신한다.
+1. 이미 로그인된 외부 Codex와 Claude Code 각각에서 instructions/schema만으로 대상 발견→변경→preview→PDF를 수행하는 검증이 남아 있다. SDK client 시험을 실제 에이전트의 판단·사용성 검증으로 표현하지 않는다.
+2. macOS/Electron 44 환경을 확인했다. Windows/Linux 설치 font 조회·PDF·패키지 배포는 미검증이다. macOS font scan은 약 27초 걸려 cache하며 실패 시 알려진 fallback만 허용한다.
+3. O07 장기 연속 출력·최악 문서의 peak memory/처리량 측정은 남아 있다. 한도·artifact 예산·직렬 worker·권한/만료 테스트 통과와 구분한다.
+4. journal/staged snapshot과 artifact metadata tombstone은 자동 pruning하지 않는다. 100MiB 예산은 PDF payload/예약 기준이며 장기 journal 보관 정책은 후속 설계가 필요하다.
+5. 원본 사용자 문서 opt-in E2E는 경로를 받지 않아 skip했다. 임시 fixture와 기존 Markdown 회귀만 확인했다. 외부 이미지 차단 fixture는 warning과 미로드 상태를 의도적으로 검사한다.
 
-## 다음 세션의 첫 작업
+## 다음 작업
 
-1. 최신 git status와 [README](README.md)·해당 기능 상세를 읽는다. 중복 전체 기획 문서를 다시 생성하지 않는다.
-2. [design](design.md)→[runtime-flows](runtime-flows.md)→[tool-contracts](tool-contracts.md)→[plan](plan.md)으로 구조·순서·계약·gate를 확인한다.
-3. 문서 수정에는 [공통 템플릿 안내](../templates/README.md)를 사용한다. 현재 브랜치에서 공통 service/CAS/renderer handshake부터 계속한다.
-4. 실제 검증 결과를 얻은 후에만 plan의 단계와 제품 상태를 갱신한다. 사용자가 기능별 완료 후 커밋을 요청했으므로 검증한 단위로 커밋한다.
+- [plan](plan.md) 6단계의 실제 외부 클라이언트 및 플랫폼 확인을 수행하고 결과를 보강한다. 실패하면 기능·계약·설계를 함께 수정한다.
+- 현재 구현에 로그인/채팅·대화 재개·OS sandbox를 섞지 않는다. 다음 번호 작업에서 공식 runtime 연결·구독 조건·프로세스/파일 권한을 검토한다.
+- 작업 재개 시 git status와 이 handoff를 읽는다. 사용자 데이터·backup·미커밋 변경을 보존하고 테스트 workspace만 사용한다.
 
-## 설계·양식 이력
+## 문서 양식 변경과 과거 검증
 
-- 2026-11-01: 현재 모델·편집·저장·PDF와 Obsidian 구현을 조사하고 11번 작업 문서를 작성. 도구 계약과 사용자 기능 상세 8개, D01–D07과 6단계 계획을 정리했다. 처음에는 전체 기능을 features.md로 별도 관리했다.
-- 2026-11-01: BMAD PRD·OpenSpec·Spec Kit를 조합해 목표·사용자·흐름·예외·트레이드오프·인수 조건을 보강했다. 당시 양식은 11번 templates에 두었다.
-- 2026-11-02: 중복 설명을 줄였으나 기술 설계 양식 개선이 부족하다는 사용자 지적을 반영해 A01–A07, As-Is/To-Be 구조·데이터 소유권·기능 관계, AS01/AS02/TB01–TB05와 O01–O07을 추가했다. UI 저장·현재 창 PDF 경로는 소스로 확인했다.
-- 2026-11-02: arc42/C4·Senior Architect·BMAD architecture·OpenSpec·Spec Kit plan을 참고했다. 공개 skill이나 script 전체를 설치·실행하지 않았다. 참고 출처와 채택한 관점은 현재 공통 workflow의 작성 규칙에 보존했다.
-- 2026-11-03: README와 전체 기능 문서의 역할 중복을 해소하고, 실제 문서 생성 workflow와 assets도 함께 개편했다. 과거 작업 문서·사전 계정 정책 조사·Obsidian 분석은 당시 기록으로 유지했다.
+- 전체 기획을 README로 통합하고 별도 features.md를 제거했다. 정확한 도구 목록은 tool-contracts, 기능의 목적·사용자·실패 행동·트레이드오프·AC는 features, 단계는 plan이 소유한다.
+- 기존 workflow 기본 템플릿 4개를 개편하고 선택 템플릿 3개를 추가했다. 공통 원본은 `.codex/skills/resume-studio-task-workflow/assets`, 저장소 안내는 `docs/templates/README.md`다. 11번의 작성 규칙/출처 사본은 공통 references로 이동했다.
+- BMAD 사용자/목표/여정, OpenSpec 대안/트레이드오프, Spec Kit 인수 조건, arc42/C4 기술 경계를 조합했다. 공개 skill/script 전체를 설치하지 않았고 출처는 공통 작성 규칙에 보존했다.
+- 문서 정리 시 18개 문서의 상대 링크 146개, JSON 예시 7개, 기능 8개/도구 12개/명령 18개/요구 45개/AC 47개 대응을 확인했다. 템플릿 7개 임시 생성과 skill-creator frontmatter 검증도 통과했다. 이는 제품 실행 증거와 별개다.
+- 2026-11-02 Mermaid 11.12.1로 13개 도식의 parse/SVG 렌더를 통과하고 구조/TB02 이미지를 검수했다. 이번 구현에서는 기존 As-Is 도식을 변경 전 기준으로 유지하고 To-Be를 실제 모듈에 연결했다. 이번에 도식을 새로 렌더했다고 기록하지 않는다.
+- 사전 계정 정책·Obsidian 분석과 완료된 과거 task 문서는 당시 기록으로 유지한다. 현재 기준은 이 작업의 README/design/contracts/plan이다.
 
-## 이전 검증 기록 — 2026-11-01–02
-
-- 2026-11-02 기술 양식 개편 후: 문서 17개, 상대 링크 137개, JSON 예시 7개, 도구 12개·명령 18개, 요구 45개·AC 47개의 고유 ID와 plan 대응을 확인했다. 코드 근거 A01–A07·결정 D01–D07·미결정 O01–O07·시퀀스 AS01/AS02/TB01–TB05도 확인했다.
-- Mermaid 11.12.1로 그림 13개 전체의 parse와 SVG 렌더를 통과했다. Playwright가 사용할 bundled Chromium이 없어 설치된 Google Chrome을 headless·임시 profile로 실행했다. 실제 사용자 창·키보드·마우스를 사용하지 않았다. 목표 구조도와 TB02 이미지를 육안 확인했고 가로로 길던 현재 구조·전환 그림은 세로 배치로 조정했다.
-- Mermaid 검증 의존성과 산출물은 `/tmp/formleaf-doc-diagrams-hKNOFJ`에만 두었다. `verify.cjs`가 재현 script, `results.json`이 13개 결과이며 SVG/PNG도 같은 임시 경로에 있다. 임시 파일은 영구 보관을 보장하지 않는다. repository package/lockfile 변경은 없다. Markdown 소비 도구의 Mermaid 버전별 표시까지 검증한 것은 아니다.
-- 최신 문서의 fence·개행·공백과 `git diff --check`를 통과했다. 제품 코드를 바꾸지 않아 npm test/typecheck/build와 실제 외부 에이전트 실행은 이번 문서 작업에서 수행하지 않았다.
-- 2026-11-02 중복 정리 후 문서 15개의 상대 링크 96개·JSON 예시 7개·도구 12개·명령 18개 대응, fence·개행·공백 및 `git diff --check`를 다시 검사해 통과했다. JSON 예시 감소는 design의 중복 예시 제거에 따른 것이다.
-- 2026-11-01 양식 개편 당시 작업 문서 15개에서 상대 링크 94개, JSON 예시 8개, 도구 12개·명령 18개의 목록/계약 대응을 검사했다. 모두 통과했다.
-- 기능 상세 8개의 공통 9개 절, 요구사항 ID 45개·인수 조건 ID 47개, D01–D07 결정 기록, plan의 AC 범위 대응을 검사했다. 모두 통과했다. 이는 문서 구조·참조 검사이며 해당 기능의 실행 검증 통과가 아니다.
-- 코드 fence·마지막 개행·공백 검사와 `git diff --check`를 통과했다. 11번 문서가 untracked이므로 git 검사와 별도로 해당 Markdown 파일 전체의 공백도 검사했다.
-- 코드 변경이 없어 제품 테스트는 이번 문서 정리에서 실행하지 않았다.
-- MCP 서버·도구 구현·외부 클라이언트 실행 검증은 아직 수행하지 않았다.
-
-## 참고
-
-- [전체 기획과 기능 목록](README.md)
-- [공통 작성 규칙과 양식 출처](../../.codex/skills/resume-studio-task-workflow/references/documentation.md)
-- [Obsidian MCP 참고 분석](../../references/obsidian-mcp/README.md)
-- [사전 기획·계정 조사](../backlog/formleaf-mcp.md)
-- [10번 handoff](../10-markdown-editor-ownership/handoff.md)
+[전체 기획](README.md) · [기술 설계](design.md) · [실행 시퀀스](runtime-flows.md) · [공통 양식과 출처](../../.codex/skills/resume-studio-task-workflow/references/documentation.md)

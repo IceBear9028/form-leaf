@@ -1,6 +1,9 @@
 export const IPC = {
   renderSnapshot: "agent-render:snapshot",
   renderReady: "agent-render:ready",
+  agentOperations: "agent:operations",
+  agentOpenArtifact: "agent:open-artifact",
+  agentSaveArtifact: "agent:save-artifact",
   agentSettings: "agent:settings",
   agentEnable: "agent:enable",
   agentCreateConnection: "agent:create-connection",

@@ -5,6 +5,9 @@ import type { ComponentLibraryPackageInput } from "../foundation/componentLibrar
 import type { DocumentApi } from "../foundation/documentLibrary";
 
 const api: DocumentApi = {
+  agentOperations: () => ipcRenderer.invoke(IPC.agentOperations),
+  agentOpenArtifact: (credentialId, requestId) => ipcRenderer.invoke(IPC.agentOpenArtifact, credentialId, requestId),
+  agentSaveArtifact: (credentialId, requestId) => ipcRenderer.invoke(IPC.agentSaveArtifact, credentialId, requestId),
   agentSettings: () => ipcRenderer.invoke(IPC.agentSettings),
   agentEnable: (enabled) => ipcRenderer.invoke(IPC.agentEnable, enabled),
   agentCreateConnection: (name) => ipcRenderer.invoke(IPC.agentCreateConnection, name),
