@@ -49,6 +49,14 @@
 
 ## 이번에 바꾼 것 — 2026-11-03
 
+### F05 재사용 구현
+
+- 9개 component/prop/item/import 명령을 연결했다. active 문서 target·prop binding·값 유형과 제거 후 index 범위를 검증한다. 다른 instance와 공유 정의를 수정하지 않는다.
+- import는 writer 구간 안에서 library snapshot을 읽고 expectedLibraryRevision을 검사한다. document write와 libraryRead 권한을 실행 전/commit 전에 확인하며 모든 entity ID와 asset/prop 참조를 재매핑한다. 라이브러리는 변경하지 않는다.
+- import idMap의 종류별 key를 tool-contracts에 명시했다. v4에서 아직 binding이 없는 number/boolean prop을 새로 만들지는 않는다.
+- `test/agent-components.test.mjs` 2개 통과: prop 기본값 복귀·item lifecycle·archived/유형/index 거절, 실제 SDK library 조회→revision→충돌 remap→instance 생성·asset 참조·원본 불변. 전체 test/build(typecheck 포함) 통과.
+- 다음 기능은 F06 per-node style이다.
+
 ### F04 문서 구성 구현
 
 - create_document를 생성 grant/index/journal 복구와 연결했다. 새 문서를 자동으로 열지 않고 목록을 갱신한다. UI 저장·관리도 commit 알림으로 목록을 최신화한다.

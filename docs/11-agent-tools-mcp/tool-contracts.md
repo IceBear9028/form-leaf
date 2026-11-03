@@ -290,6 +290,10 @@ stateDiagram-v2
 
 `archive_node`는 이미 보관 상태면 no-op이다. 나머지 일반 변경은 active 문서 트리만 허용한다. 실제 내용이 바뀌지 않은 batch는 기존 revision을 유지한다. 명령 결과와 requestId 완료 기록은 남긴다.
 
+`import_component`의 idMap key는 종류가 다른 동일 원본 ID를 구별하기 위해 `components:<id>`, `nodes:<id>`, `styles:<id>`, `assets:<id>`, `props:<componentId>:<propId>`, `items:<nodeId>:<itemId>`를 사용한다. 값은 새 ID다. `duplicate_node`의 idMap은 원본 nodeId→새 nodeId다. 새 component의 입력 항목은 T09/T04로 다시 조회할 수 있다.
+
+현재 schemaVersion 4의 binding은 text/rich-text/Markdown/image만 지원한다. 모델의 ComponentPropValue union에 number/boolean이 있어도 실제 active binding 없이 임의 숫자·boolean prop을 만들거나 텍스트 prop에 넣을 수는 없다. 이 작업은 새 binding 종류를 추가하지 않는다.
+
 ### NewNode
 
 ```typescript

@@ -1,23 +1,41 @@
+import type { ComponentLibraryItem } from "../../foundation/componentLibrary.ts";
+import { applyComponentOperation, COMPONENT_OPERATIONS } from "./componentOperations.ts";
 import { applyNodeOperation, NODE_OPERATIONS } from "./nodeOperations.ts";
 import type { DocumentData } from "../../foundation/documentModel.ts";
 import { updateDocumentEditValue, documentEditTargetKey } from "../../foundation/documentEditing.ts";
-import { readEditTarget } from "../../foundation/documentCommandTargets.ts";
+import { readEditTarget, requireProp } from "../../foundation/documentCommandTargets.ts";
 import { failure, CommandFailure, type Operation, type OperationResult } from "../../foundation/documentCommands.ts";
 import { assertDocumentData } from "../../foundation/documentValidation.ts";
 import type { Mutation } from "./documentService.ts";
 
-export const AVAILABLE_OPERATIONS: Operation["type"][] = ["set_edit_value", "replace_text", ...NODE_OPERATIONS];
-export function applyDocumentOperations(document: DocumentData, operations: Operation[]): Mutation {
+export const AVAILABLE_OPERATIONS: Operation["type"][] = ["set_edit_value", "replace_text", ...NODE_OPERATIONS, ...COMPONENT_OPERATIONS];
+export function applyDocumentOperations(document: DocumentData, operations: Operation[], libraries: ReadonlyMap<string, ComponentLibraryItem> = new Map()): Mutation {
   let next = structuredClone(document);
+  const removedItemIds = new Set<string>();
   const affectedNodeIds = new Set<string>();
   const affectedTargets = new Map<string, Extract<Operation, { type: "set_edit_value" }>["target"]>();
   const results: OperationResult[] = [];
   for (const [operationIndex, operation] of operations.entries()) {
     try {
-      const step = applyNodeOperation(next, operation);
+      const step = applyNodeOperation(next, operation) ?? applyComponentOperation(next, operation, libraries);
       if (step) {
         next = step.document;
+        step.removedItemIds?.forEach((id) => removedItemIds.add(id));
         step.nodeIds.forEach((id) => affectedNodeIds.add(id));
+        if (operation.type === "set_component_prop" || operation.type === "clear_component_prop") {
+          const owner = next.nodes[operation.instanceNodeId];
+          if (owner.type === "component-instance" && ["text", "markdown", "rich-text"].includes(requireProp(next, owner.componentId, operation.propId).valueType)) {
+            const target = { kind: "component-prop" as const, instanceNodeId: owner.id, propId: operation.propId };
+            affectedTargets.set(documentEditTargetKey(target), target);
+          }
+        }
+        if (operation.type === "set_item_prop") {
+          const owner = next.nodes[operation.repeaterNodeId];
+          if (owner.type === "repeater" && ["text", "markdown", "rich-text"].includes(requireProp(next, owner.itemComponentId, operation.propId).valueType)) {
+            const target = { kind: "repeater-item-prop" as const, repeaterNodeId: owner.id, itemId: operation.itemId, propId: operation.propId };
+            affectedTargets.set(documentEditTargetKey(target), target);
+          }
+        }
         results.push({ operationIndex, type: operation.type, ...(step.created ? { created: step.created } : {}), ...(step.idMap ? { idMap: step.idMap } : {}) });
         continue;
       }
@@ -47,5 +65,5 @@ export function applyDocumentOperations(document: DocumentData, operations: Oper
   }
   try { assertDocumentData(next); }
   catch { failure("VALIDATION_FAILED", "변경 후 문서 구조·값·참조가 올바르지 않습니다."); }
-  return { document: next, changes: { affectedNodeIds: [...affectedNodeIds], affectedTargets: [...affectedTargets.values()], removedItemIds: [], summary: `${operations.length}개 변경 명령 적용` }, results, warnings: [] };
+  return { document: next, changes: { affectedNodeIds: [...affectedNodeIds], affectedTargets: [...affectedTargets.values()], removedItemIds: [...removedItemIds], summary: `${operations.length}개 변경 명령 적용` }, results, warnings: [] };
 }

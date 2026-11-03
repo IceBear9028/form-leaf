@@ -5,7 +5,7 @@ import { CommandFailure, failure, type ApplyResult, type Changes, type CreateRes
 import type { SavedDocument, SaveDocumentResult } from "../../foundation/documentSessionProtocol.ts";
 import type { DocumentRepository } from "../document/documentRepository.ts";
 import type { ComponentLibraryRepository } from "../document/componentLibraryRepository.ts";
-import type { ComponentLibraryPackageInput } from "../../foundation/componentLibrary.ts";
+import type { ComponentLibraryPackageInput, ComponentLibraryItem } from "../../foundation/componentLibrary.ts";
 import { documentRevision, requestHash } from "./documentRevision.ts";
 import { EditorCoordinator } from "./editorCoordinator.ts";
 import { OperationJournal, type JournalEntry } from "./operationJournal.ts";
@@ -128,7 +128,7 @@ export class DocumentService {
   }
   async mutate(
     identity: MutationIdentity | undefined, input: { documentId: string; expectedRevision: string; dryRun: boolean },
-    authorize: Authorize, transform: (document: DocumentData) => Promise<Mutation> | Mutation,
+    authorize: Authorize, transform: (document: DocumentData, context: { loadComponent: (id: string) => Promise<ComponentLibraryItem> }) => Promise<Mutation> | Mutation,
   ): Promise<ApplyResult> {
     await authorize();
     if (identity) { const prior = await this.duplicate(identity); if (prior) return prior as ApplyResult; }
@@ -140,7 +140,7 @@ export class DocumentService {
       try {
         const current = await this.repository.load(input.documentId);
         this.assertRevision(current, input.expectedRevision);
-        const mutation = await transform(structuredClone(current));
+        const mutation = await transform(structuredClone(current), { loadComponent: (id) => this.components.load(id) });
         if (mutation.document.documentId !== current.documentId || !isDocumentData(mutation.document)) failure("VALIDATION_FAILED", "변경 후 문서 형식이 올바르지 않습니다.");
         mutation.document = this.normalizedSnapshot(current, mutation.document);
         await authorize();

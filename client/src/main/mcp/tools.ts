@@ -51,7 +51,18 @@ export function createAgentProtocol(policy: AccessPolicy, service: DocumentServi
         case "apply_operations": {
           const args = input(name);
           const identity = args.dryRun ? undefined : { credentialId, requestId: args.requestId, hash: requestHash(name, args) };
-          data = await service.mutate(identity, { documentId: args.documentId, expectedRevision: args.expectedRevision, dryRun: args.dryRun }, () => { policy.document(credentialId, args.documentId, "write"); }, (document) => applyDocumentOperations(document, args.operations));
+          data = await service.mutate(identity, { documentId: args.documentId, expectedRevision: args.expectedRevision, dryRun: args.dryRun }, () => {
+            policy.document(credentialId, args.documentId, "write");
+            if (args.operations.some((operation) => operation.type === "import_component")) policy.capability(credentialId, "libraryRead");
+          }, async (document, context) => {
+            const libraries = new Map();
+            for (const operation of args.operations) {
+              if (operation.type !== "import_component" || libraries.has(operation.libraryItemId)) continue;
+              try { libraries.set(operation.libraryItemId, await context.loadComponent(operation.libraryItemId)); }
+              catch { throw new CommandFailure("NOT_FOUND_OR_DENIED", "라이브러리 항목에 접근할 수 없습니다."); }
+            }
+            return applyDocumentOperations(document, args.operations, libraries);
+          });
           break;
         }
         case "get_context": data = await reads.context(); break;
