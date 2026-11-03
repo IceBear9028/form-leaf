@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-2026-11-03 — 1–4단계 및 F01–F06 구현·검증·커밋 완료. 5단계 F07/F08 구현·로컬 검증 완료. 6단계 로컬 회귀 통과, 실제 로그인된 외부 Codex/Claude 검증은 미수행.
+2026-11-03 — 1–4단계 및 F01–F06 구현·검증·커밋 완료. 5단계 F07/F08 구현·로컬 검증 완료. 6단계 Codex 실사용과 10만 자/37쪽/40회 연속 출력·timeout 복구 통과. Claude Code MCP 연결·폐기는 통과했으나 모델 로그인 상태가 없어 Claude 전체 여정은 남았다. Windows/Linux 실행 환경도 확보되지 않았다.
 
 이번 작업의 구현 기준은 [README](README.md)의 범위와 기능 상세, [tool-contracts](tool-contracts.md)다. AI 로그인·내부 채팅·관리되는 에이전트 실행 환경은 후속이다. 문서 작성과 코드 구현의 완료를 구분한다.
 
@@ -84,7 +84,7 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 | [F07 출력](features/07-preview-and-export.md) | 5, 6 | F07-AC01–07 | revision 고정·hidden renderer·만료·권한·PDF 의미 보존 |
 | [F08 결과·복구](features/08-recover-operation.md) | 2, 3, 5, 6 | F08-AC01–06 | 저장 경계 fault injection·재시작·requestId·UI ack |
 
-단계 1에서 API fixture와 AC ID를 연결하고, 단계 2–5에서는 해당 service/renderer 경계를 검증한다. 단계 6에서는 외부 에이전트가 전체 여정을 수행하는지 확인한다. 세부 동작을 unit test로 확인한 사실만으로 외부 사용자 흐름까지 완료했다고 처리하지 않는다.
+단계 1에서 API fixture와 AC ID를 연결하고, 단계 2–5에서는 해당 service/renderer 경계를 검증한다. 단계 6에서는 외부 에이전트가 전체 여정을 수행하는지 확인한다. Codex는 통과했고 Claude의 모델 세션은 미검증이다. 세부 동작을 unit test로 확인한 사실만으로 외부 사용자 흐름까지 완료했다고 처리하지 않는다.
 
 ## 1. 계약을 코드와 fixture로 옮기기
 
@@ -172,8 +172,12 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 ## 6. 외부 에이전트 연결과 제품 회귀 — 진행 중
 
 - [x] 앱에서 외부 클라이언트 설정 예시 복사 제공.
-- [ ] 이미 로그인된 외부 Codex와 Claude Code 각각에서 조회→변경→preview→PDF 전체 흐름 확인.
-- [ ] instructions와 schema만으로 에이전트가 ID·revision·target을 올바르게 사용하는지 확인.
+- [x] 이미 로그인된 Codex 0.165.0에서 조회→세 target 변경→항목 추가→preview→PDF 전체 흐름 확인.
+- [x] Codex가 instructions/schema만으로 ID·revision·target을 선택하는지 확인. 설명 보강 후 17회 호출, 오류 0회.
+- [x] Claude Code 2.1.317 CLI의 HTTP MCP 연결과 token 폐기 후 접근 거절 확인(임시 설정).
+- [ ] 로그인된 Claude Code 모델 세션의 전체 여정 및 instructions/schema 이해 검증. `auth status`: loggedIn=false, authMethod=none.
+- [x] O07 bounded stress: 100,000자·37쪽, 40회 연속 출력, 6개 동시 PDF 요청, 준비 신호 유실/30초 timeout 후 재출력. editor IME/root/focus 보존.
+- [ ] Windows/Linux 글꼴·PDF·패키지 실행 확인. 현재 호스트는 macOS이고 Docker daemon 연결 불가. 이 환경 결과를 타 OS 결과로 간주하지 않는다.
 - [x] 동시 요청·연결 단절·클라이언트 취소 신호·재연결·인증 실패·출력 만료 검증. 취소 신호가 이미 저장된 변경의 rollback을 의미하지 않음을 확인하며 별도 취소 도구는 만들지 않는다.
 - [x] 임시 workspace와 hidden Electron으로 빠른 한글, composition 중 rerender/publish, 자동 저장 경쟁 확인.
 - [x] node/component prop/repeater item prop 모두 저장·재열기·PDF 의미 보존 확인.

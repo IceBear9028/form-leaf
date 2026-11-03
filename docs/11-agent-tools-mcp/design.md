@@ -336,7 +336,7 @@ client/src/renderer/
 | O06 | writer 또는 grant 변경이 공통 경로 우회 | 모든 저장 IPC·문서 관리·library 변경 진입점 검색 | 허용 범위·CAS·복구를 깨는 독립 writer 없음 / 2–4 |
 | O07 | 큰 문서·연속 render job의 메모리 비용 | 기존 payload/artifact 한도 내 최악 fixture, worker 동시성 검토 | 한도 초과 명시적 실패·정리 후 editor 정상. 처리량 수치는 측정 후 결정 / 5–6 |
 
-O02/O03/O06은 공통 service fault injection과 hidden Electron으로 검증했다. O01의 실제 Codex/Claude 사용성, O05의 Windows/Linux 글꼴·출력, O07의 장기 부하·최악 문서 메모리 측정은 남아 있다. 자세한 증거와 제한은 handoff에 기록하며 도식으로 실행 증거를 대체하지 않는다.
+O02/O03/O06은 공통 service fault injection과 hidden Electron으로 검증했다. O01은 실제 Codex 사용 여정을 통과했고 Claude Code의 MCP 연결만 확인했다. O05의 Windows/Linux 글꼴·출력은 미검증이다. O07은 10만 자/37쪽/40회 연속 출력과 timeout 복구를 측정했다. canonical 문서의 총 크기는 무한히 커질 수 있어 이 fixture를 모든 문서의 최악 상한이라고 부르지 않는다. 자세한 증거와 제한은 handoff에 기록하며 도식으로 실행 증거를 대체하지 않는다.
 
 전환·롤백 범위와 단계별 gate는 [plan.md](plan.md)를 따른다. MCP를 끄는 것으로 이미 저장된 사용자 변경을 되돌리거나 journal을 지우지 않는다.
 
@@ -411,3 +411,11 @@ O04: token을 재조회할 필요가 없는 서버 인증이므로 복호화 가
 - artifact는 24시간/100MiB 예산으로 관리하고 pending PDF마다 최대 20MiB를 예약한다. 유효한 결과를 새 작업을 위해 지우지 않는다. 정리는 UUID artifact 하위의 고정 파일만 대상으로 하고 directory/metadata symlink를 거절한다. OS 계정 자체가 가진 파일 쓰기 권한까지 격리하는 sandbox는 아니다.
 - `OperationHistory`는 journal에서 최근 50개 agent 요청의 요약만 만든다. UI는 2초마다 조회하며 query 중 중복 요청을 만들지 않는다. polling은 연결 권한 편집 상태를 초기화하지 않는다. 이 규모에서는 단순 polling을 택했으며 큰 journal의 탐색 비용·장기 retention은 별도 검토가 필요하다.
 - 로컬 결과 화면은 권한 철회 후 요청 발생·상태만 유지한다. 완료 PDF를 열거나 저장할 때는 현재 권한과 만료를 다시 확인한다. 파일 경로는 main의 검증된 artifact 또는 사용자가 연 저장 대화상자에서만 얻는다.
+
+### 실제 클라이언트와 부하 검증에서 반영한 사항 — 2026-11-03
+
+- Codex 첫 실행은 21회 호출 중 add_item에 props/componentId를 추측해 넣은 두 호출이 거절됐고 schema resource 조회 후 복구했다. add_item은 기본값으로 생성한 뒤 반환 itemId/revision으로 set_item_prop을 호출해야 한다는 설명을 schema와 도구 설명에 추가했다. 같은 자연어 요청을 다시 실행해 17회 호출/오류 0회로 완료했다. 입력 권한이나 strict validation을 완화하지 않았다.
+- Codex는 임시 작업 디렉터리, read-only sandbox, shell/다중 agent/다른 app/plugin/hook 도구 비활성, ephemeral 세션으로 실행했다. Formleaf는 임시 workspace만 허용했다. 이것은 해당 시험의 실행 설정이며 MCP 자체가 임의 외부 에이전트를 sandbox한다는 뜻은 아니다.
+- 37쪽 출력 40회에서 샘플링한 Electron process working-set 합은 최대 720.2MiB, 종료 시 368.3MiB였다. 공유 메모리 중복 가능성이 있는 500ms 표본이며 native peak RSS 측정이 아니다. 출력 중 편집 창의 evaluate 왕복 지연 중앙값 2.2ms/최대 714.1ms, IME/root/focus는 보존됐다.
+- 준비 신호를 끊어 실제 30초 timeout/창 회수/다음 출력 성공을 확인했다. 6개 PDF 동시 요청 중 4개는 완료하고 2개는 예산 부족으로 명시적으로 거절했다. 이미 완료된 파일을 새 요청 때문에 지우지 않았다.
+- 총 문서 크기/누적 journal에 상한이 없으므로 수 시간 부하·임의 크기 입력의 안전성을 이 결과로 일반화하지 않는다. 현재 한도 정책을 바꿀 필요가 생기면 입력/문서/보관 상한을 별도 결정한다.

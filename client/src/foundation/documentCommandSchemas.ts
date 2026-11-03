@@ -93,7 +93,7 @@ export const operationSchema = z.discriminatedUnion("type", [
   object({ type: z.literal("update_node_style"), nodeId: id, patch: stylePatchSchema }),
   object({ type: z.literal("set_component_prop"), instanceNodeId: id, propId: id, value: componentPropValueSchema }),
   object({ type: z.literal("clear_component_prop"), instanceNodeId: id, propId: id }),
-  object({ type: z.literal("add_item"), repeaterNodeId: id, index: index.optional() }),
+  object({ type: z.literal("add_item"), repeaterNodeId: id, index: index.optional() }).describe("Create an item using the repeater's component defaults. No props or componentId input. Use the returned created.itemId in a subsequent apply_operations call with set_item_prop to fill its values."),
   object({ type: z.literal("move_item"), repeaterNodeId: id, itemId: id, index }),
   object({ type: z.literal("duplicate_item"), repeaterNodeId: id, itemId: id }),
   object({ type: z.literal("remove_item"), repeaterNodeId: id, itemId: id }),

@@ -40,7 +40,10 @@
     "test:agent-components": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-components.test.mjs",
     "test:agent-style": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-style.test.mjs",
     "test:agent-output": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-output.test.mjs",
-    "test:agent-history": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-history.test.mjs"
+    "test:agent-history": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-history.test.mjs",
+    "test:agent-codex": "npm run build && playwright test e2e/agent-external-client.spec.ts",
+    "test:agent-load": "npm run build && playwright test e2e/agent-load.spec.ts",
+    "test:agent-claude-discovery": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-client-discovery.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

@@ -37,7 +37,7 @@
 | 08 | Preview와 Component 선택 경계 분리 | 완료 | [08-preview-component-selection-boundary](08-preview-component-selection-boundary/README.md) |
 | 09 | Preview Markdown 작성 사용성 | 자동 검증 완료·사용자 실제 앱 확인 대기 | [09-preview-markdown-authoring](09-preview-markdown-authoring/README.md) |
 | 10 | Markdown 편집 DOM 단일 소유권 | 제품 통합·자동 검증 완료 | [10-markdown-editor-ownership](10-markdown-editor-ownership/README.md) |
-| 11 | 에이전트 도구 명세 및 MCP 구현 | F01–F08 구현·로컬 검증, 외부 클라이언트 확인 남음 | [11-agent-tools-mcp](11-agent-tools-mcp/README.md) |
+| 11 | 에이전트 도구 명세 및 MCP 구현 | F01–F08·Codex 실사용·부하 검증, Claude 로그인/타 OS 확인 남음 | [11-agent-tools-mcp](11-agent-tools-mcp/README.md) |
 
 ## References
 
