@@ -12,6 +12,16 @@
 6. 제품 전체의 미래 방향을 추측해 문서화하지 않는다.
 7. 확장성은 사용하지 않는 기능을 미리 구현하는 방식이 아니라 데이터 구조와 코드 경계로 확보한다.
 
+## 공통 문서 양식
+
+[docs 템플릿 안내](templates/README.md)를 기준으로 새 작업과 진행 중 문서를 작성한다. 기본 문서는 README·design·plan·handoff 네 개다.
+
+- README가 전체 문제·사용자·목표·성공 기준·범위·기능 목록을 맡는다. 별도 features.md를 기본 생성하지 않는다.
+- 기능 상세·실행 흐름·외부 호출 계약은 필요한 경우에만 별도 문서로 분리한다.
+- 설계에는 코드 근거가 있는 As-Is, 제안/구현 상태를 표시한 To-Be, 데이터 소유권·기능 관계와 정상/실패 시퀀스를 설명한다. Mermaid는 관계·순서를 이해하는 데 필요한 곳에 사용한다.
+- plan은 전환·검증·진행 상태, handoff는 실제 수행과 증거를 관리한다. 같은 목록이나 상태를 여러 파일에서 독립 관리하지 않는다.
+- 템플릿 원본은 저장소 workflow의 assets에서 관리하며 작업 폴더에 사본을 두지 않는다. 완료된 과거 문서는 새 양식 때문에 소급 수정하지 않는다.
+
 ## 현재 작업
 
 | ID | 작업 | 상태 | 문서 |
@@ -27,6 +37,7 @@
 | 08 | Preview와 Component 선택 경계 분리 | 완료 | [08-preview-component-selection-boundary](08-preview-component-selection-boundary/README.md) |
 | 09 | Preview Markdown 작성 사용성 | 자동 검증 완료·사용자 실제 앱 확인 대기 | [09-preview-markdown-authoring](09-preview-markdown-authoring/README.md) |
 | 10 | Markdown 편집 DOM 단일 소유권 | 제품 통합·자동 검증 완료 | [10-markdown-editor-ownership](10-markdown-editor-ownership/README.md) |
+| 11 | 에이전트 도구 명세 및 MCP 구현 | 명세·설계 진행 중 | [11-agent-tools-mcp](11-agent-tools-mcp/README.md) |
 
 ## References
 
@@ -50,3 +61,5 @@
 `09`는 Jira 분석 문서를 기준으로 Preview Markdown의 자동 서식, 연속 목록 작성, 단축키와 빠른 삽입 경험을 구현한다.
 
 `10`은 React와 IME가 같은 editable DOM을 수정하는 구조를 제거하고, 활성 Markdown editor가 DOM·selection·composition을 단독 소유하도록 편집 경계를 교체한다.
+
+`11`은 외부 AI 에이전트가 Formleaf 기능을 조회·조작하도록 도구 계약과 MCP 서버를 만든다. AI 로그인과 앱 내부 채팅 UX는 다음 작업으로 분리한다.

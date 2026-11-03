@@ -1,0 +1,57 @@
+# {{FEATURE_ID}}. {{USER_TASK_TITLE}}
+
+상태: {{FEATURE_STATUS}} · 우선순위: {{PRIORITY}} · 여정: {{JOURNEY_ID}}
+
+[전체 목표와 기능 목록](../README.md) · [기술 설계](../design.md)
+
+## 1. 문제와 배경
+
+{{USER_SITUATION_PAIN_AND_REASON}}
+
+## 2. 사용자와 역할
+
+{{ACTORS_RESPONSIBILITIES_AND_PREREQUISITES}}
+
+## 3. 목표와 성공 기준
+
+{{OBSERVABLE_OUTCOMES_AND_VALIDATION_METHOD}}
+
+<!-- 사용자 조사 사실·가정·검증 예정 기준을 구별한다. 근거 없는 개선율을 만들지 않는다. -->
+
+## 4. 사용 시나리오 — {{JOURNEY_ID}}
+
+- 전제: {{DOCUMENT_PERMISSION_AND_APP_STATE}}
+- 시작 요청: {{USER_REQUEST}}
+
+1. {{USER_OR_AGENT_ACTION}}
+2. {{PRODUCT_BEHAVIOR_AND_OBSERVABLE_RESULT}}
+3. {{REVIEW_OR_NEXT_ACTION}}
+
+종료 상태: {{FINAL_STATE}}
+
+## 5. 상세 요구와 예외
+
+- **{{REQUIREMENT_ID}} — {{REQUIREMENT_NAME}}:** {{BEHAVIOR_TARGET_AND_EFFECT}}
+- 실패 시 남는 데이터·상태와 다음 행동: {{FAILURE_AND_RECOVERY}}
+
+## 6. 대안과 트레이드오프
+
+| 대안 | 이점 | 비용·한계 | 선택과 이유 |
+|---|---|---|---|
+| {{OPTION}} | {{BENEFIT}} | {{COST}} | {{DECISION}} |
+
+## 7. 범위와 의존성
+
+{{INCLUDED_EXCLUDED_AND_DEPENDENCIES}}
+
+## 8. 인수 조건
+
+| ID | Given — 전제 | When — 행동 | Then — 관찰 결과 |
+|---|---|---|---|
+| {{AC_ID}} | {{FIXTURE}} | {{ACTION}} | {{OBSERVABLE_RESULT_AND_PRESERVED_DATA}} |
+
+## 9. 기술 연결과 남은 확인
+
+{{CONTRACT_OPERATION_SEQUENCE_AND_PLAN_LINKS}}
+
+{{OPEN_QUESTION_VALIDATION_AND_TIMING}}

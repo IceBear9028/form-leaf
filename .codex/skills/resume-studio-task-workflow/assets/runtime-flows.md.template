@@ -1,0 +1,36 @@
+# {{TASK_TITLE}} 실행 흐름 — As-Is / To-Be
+
+{{DATE}} · 현재 코드: {{BASE_HEAD}} · 목표 상태: {{TARGET_STATUS}}
+
+[구조·데이터 소유권](design.md) · [구현·검증 순서](plan.md)
+
+## 시나리오 지도
+
+| ID | 현재/목표와 설명 | 관련 기능·인수 조건·결정 |
+|---|---|---|
+| {{SCENARIO_ID}} | {{SCENARIO_DESCRIPTION}} | {{TRACE_IDS}} |
+
+## AS01. {{CURRENT_SCENARIO}}
+
+- 근거: {{CODE_EVIDENCE_LINKS}}
+- 전제: {{CURRENT_PRECONDITIONS}}
+
+{{AS_IS_SEQUENCE_MERMAID}}
+
+현재 보장과 한계: {{OBSERVED_GUARANTEES_AND_LIMITS}}
+
+## TB01. {{TARGET_SCENARIO}}
+
+- 상태: {{PROPOSED_OR_IMPLEMENTED}}
+- 전제·입력: {{PERMISSIONS_TARGETS_REVISIONS}}
+
+{{TO_BE_SEQUENCE_MERMAID}}
+
+- 검사·저장 순서: {{VALIDATION_AND_COMMIT_ORDER}}
+- 실패·재시도·부분 완료: {{ERROR_BRANCHES_AND_RETRY}}
+- 사후 조건: {{RESPONSE_AND_PRESERVED_STATE}}
+- 미검증 경계·확인 단계: {{OPEN_IDS_AND_PLAN_GATE}}
+
+<!-- 필요한 대표 시나리오만 반복한다. alt/opt 등으로 정상과 예외를 표시한다.
+     UI 반영·영속 저장·응답 유실을 구별한다. 비동기 job의 pending과 완료 조회를 분리한다.
+     메시지가 거치는 경계를 표시하고 내부 저장소가 외부 호출자에 직접 응답하는 것처럼 그리지 않는다. -->
