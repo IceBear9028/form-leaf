@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createEmptyDocument, isDocumentData, type DocumentData } from "../../foundation/document.ts";
-import { normalizeDocumentName, type DocumentSummary } from "../../foundation/documentLibrary.ts";
+import { DEFAULT_DOCUMENT_NAME, normalizeDocumentName, type DocumentSummary } from "../../foundation/documentLibrary.ts";
 import { CommandFailure, failure, type ApplyResult, type Changes, type CreateResult, type OperationResult, type JournalResult } from "../../foundation/documentCommands.ts";
 import type { SavedDocument, SaveDocumentResult } from "../../foundation/documentSessionProtocol.ts";
 import type { DocumentRepository } from "../document/documentRepository.ts";
@@ -81,7 +81,7 @@ export class DocumentService {
   deleteComponent(id: string) { return this.serial(() => this.components.remove(id)); }
   create(): Promise<{ summary: DocumentSummary; document: DocumentData; revision: string }> {
     return this.serial(async () => {
-      const document = createEmptyDocument();
+      const document = createEmptyDocument({ name: DEFAULT_DOCUMENT_NAME });
       const identity = this.uiIdentity("create_document", { name: document.name });
       const result: CreateResult = { requestId: identity.requestId, status: "completed", documentId: document.documentId, rootNodeId: document.rootNodeId, revision: documentRevision(document), persisted: true };
       await this.commit(identity, document, null, result, true);

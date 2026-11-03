@@ -14,7 +14,7 @@
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:document-core && npm run test:style-presets && npm run test:legacy-import && npm run test:canonical-migration && npm run test:renderer && npm run test:render-pipeline && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:markdown-editor-session && npm run test:pagination && npm run test:migration && npm run test:storage && npm run test:library && npm run test:agent-contracts && npm run test:agent-service && npm run test:agent-access && npm run test:agent-reads",
+    "test": "npm run test:document-core && npm run test:style-presets && npm run test:legacy-import && npm run test:canonical-migration && npm run test:renderer && npm run test:render-pipeline && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:markdown-editor-session && npm run test:pagination && npm run test:migration && npm run test:storage && npm run test:library && npm run test:agent-contracts && npm run test:agent-service && npm run test:agent-access && npm run test:agent-reads && npm run test:agent-content",
     "test:document-core": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-core.test.mjs",
     "test:style-presets": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-style-presets.test.mjs",
     "test:legacy-import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/legacy-document-import.test.mjs",
@@ -34,7 +34,8 @@
     "test:agent-contracts": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-contracts.test.mjs",
     "test:agent-service": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-document-service.test.mjs",
     "test:agent-access": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-access.test.mjs",
-    "test:agent-reads": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-reads.test.mjs"
+    "test:agent-reads": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-reads.test.mjs",
+    "test:agent-content": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-content.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

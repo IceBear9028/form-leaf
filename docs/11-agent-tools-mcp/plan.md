@@ -61,8 +61,9 @@ flowchart TD
 | 계약 기반 | 완료, `d587142` | 계약 6개 / 전체 test / build |
 | 공통 저장 기반 | 완료, `6368045` | service 10개 / hidden coordinator 1개 / 기존 Markdown E2E 2개 |
 | F01 연결·권한 | 완료, `39cfdd9` | access 2개 / hidden UI 1개. 추가 도구/resource 권한은 도구 연결 시 재검증 |
-| F02 문맥·대상 | 조회 도구·cursor·resource 구현/검증 완료 | reads 4개 / HTTP access 회귀 / 전체 test·build |
-| F03–F08 | 대기 | 기능별 adapter/출력/결과 UI와 전체 흐름 |
+| F02 문맥·대상 | 완료, `ec4c6f3` | reads 4개 / HTTP access 회귀 / 전체 test·build |
+| F03 내용 수정 | 구현·검증 완료 | content 3개 / 실제 MCP hidden E2E 1개 / 연결·coordinator 회귀 |
+| F04–F08 | 대기 | 기능별 adapter/출력/결과 UI와 전체 흐름 |
 
 ## 기능과 검증 단계의 대응
 
@@ -101,9 +102,9 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 
 - [ ] 기존 foundation operation과 repository를 documentService로 연결.
 - [x] UI IPC도 같은 service와 expectedRevision 사용.
-- [ ] node·component prop·repeater item prop의 동일한 읽기·쓰기 검증.
+- [x] node·component prop·repeater item prop의 동일한 읽기·쓰기 검증.
 - [x] dirty·saving·IME·component draft 확인, idle 적용 handshake와 snapshot acknowledgement.
-- [ ] batch 사본 적용·graph 검증·단일 snapshot 저장; 부분 변경 방지.
+- [x] batch 사본 적용·graph 검증·단일 snapshot 저장; 부분 변경 방지.
 - [x] request journal·staged snapshot·index 갱신 순서·재시작 복구 구현.
 - [x] 같은 requestId 재전송, 다른 입력 재사용, 저장 후 UI 동기화 실패 검증.
 

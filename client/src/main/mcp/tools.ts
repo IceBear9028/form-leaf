@@ -1,3 +1,5 @@
+import { applyDocumentOperations } from "../application/documentOperationAdapter.ts";
+import { requestHash } from "../application/documentRevision.ts";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSchema, ListResourceTemplatesRequestSchema, ReadResourceRequestSchema, McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { AGENT_LIMITS, toolInputSchemas } from "../../foundation/documentCommandSchemas.ts";
@@ -10,6 +12,7 @@ import { AgentReads } from "./readTools.ts";
 
 const resourcePager = new CursorPager();
 const descriptions: Partial<Record<ToolName, string>> = {
+  apply_operations: "Apply one atomic batch to a permitted saved document. Requires write and expectedRevision. Editing/dirty documents return DOCUMENT_BUSY without flushing. dryRun validates without persisting IDs or a reservation. Real writes require a unique UUID requestId; retry the same normalized input under that ID or query get_operation.",
   get_context: "Read current connection capabilities and the permitted saved document context. Unsaved drafts are never returned.",
   list_documents: "Find permitted documents by name. Get a saved revision with get_document before editing.",
   get_document: "Read a saved outline (default) or canonical read-only DTO. Image asset bytes are excluded. Archived nodes are marked; component internals are read with get_component.",
@@ -39,6 +42,12 @@ export function createAgentProtocol(policy: AccessPolicy, service: DocumentServi
       const input = <N extends ToolName>(_name: N) => parsed.data as ToolInput<N>;
       let data: unknown;
       switch (name) {
+        case "apply_operations": {
+          const args = input(name);
+          const identity = args.dryRun ? undefined : { credentialId, requestId: args.requestId, hash: requestHash(name, args) };
+          data = await service.mutate(identity, { documentId: args.documentId, expectedRevision: args.expectedRevision, dryRun: args.dryRun }, () => { policy.document(credentialId, args.documentId, "write"); }, (document) => applyDocumentOperations(document, args.operations));
+          break;
+        }
         case "get_context": data = await reads.context(); break;
         case "list_documents": data = await reads.documents(input(name)); break;
         case "get_document": data = await reads.document(input(name)); break;

@@ -1,3 +1,4 @@
+import { AVAILABLE_OPERATIONS } from "../application/documentOperationAdapter.ts";
 import type { DocumentData } from "../../foundation/documentModel.ts";
 import { documentTree, listEditTargets, readEditTarget } from "../../foundation/documentCommandTargets.ts";
 import { AGENT_LIMITS, operationSchema } from "../../foundation/documentCommandSchemas.ts";
@@ -44,7 +45,7 @@ export class AgentReads {
     }
     const capabilities = this.policy.current(this.credentialId);
     if (activeDocument && !capabilities.documentIds.includes(activeDocument.documentId)) { activeDocument = null; selection = null; }
-    return { apiVersion: "1", appVersion: this.appVersion, schemaVersion: 4, workspaceId: this.policy.settings().workspaceId, capabilities, activeDocument, selection, supportedOperations: [], limits: AGENT_LIMITS };
+    return { apiVersion: "1", appVersion: this.appVersion, schemaVersion: 4, workspaceId: this.policy.settings().workspaceId, capabilities, activeDocument, selection, supportedOperations: AVAILABLE_OPERATIONS, limits: AGENT_LIMITS };
   }
   async documents(input: ToolInput<"list_documents">) {
     const documents = await this.service.list();
@@ -127,9 +128,11 @@ export class AgentReads {
   async operation(input: ToolInput<"get_operation">) {
     const entry = await this.service.operation(this.credentialId, input.requestId);
     if (!entry) failure("NOT_FOUND_OR_DENIED", "작업을 찾을 수 없거나 접근할 수 없습니다.");
-    if (entry.created && entry.response.status === "pending") this.policy.capability(this.credentialId, "create");
+    if (entry.created && entry.response.status !== "completed" && !this.policy.current(this.credentialId).documentIds.includes(entry.documentId)) this.policy.capability(this.credentialId, "create");
     else this.policy.document(this.credentialId, entry.documentId);
-    return entry.response;
+    if (entry.response.status === "completed") return entry.response;
+    const { result: _stagedResult, ...response } = entry.response;
+    return response;
   }
   schema() { return { apiVersion: "1", schemaVersion: 4, operations: z.toJSONSchema(operationSchema), instructions: "Read document/targets, then read the current value and saved revision. Targets refer to a whole Markdown value, never a DOM block or caret. Tools are exposed incrementally; tools/list is authoritative." }; }
 }

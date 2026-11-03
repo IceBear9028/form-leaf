@@ -49,6 +49,15 @@
 
 ## 이번에 바꾼 것 — 2026-11-03
 
+### F03 내용 수정 구현
+
+- node/component prop/repeater item prop의 set_edit_value와 replace_text를 공통 service/CAS/idle/journal에 연결했다. canonical Markdown을 codec 왕복 없이 변경하며 rich-text는 runs 전체 교체만 허용한다.
+- 겹치는 일치까지 두 번 이상이면 AMBIGUOUS_TEXT, 0회는 TEXT_NOT_FOUND. 선언 유형/target/최종 graph를 검증하며 하나라도 실패하면 batch를 저장하지 않는다. dryRun은 journal/영속 ID/revision 예약을 만들지 않는다.
+- `test/agent-content.test.mjs` 3개 통과: 세 target 저장·재열기·원문/기본값 불변, dryRun/batch/권한/CAS/requestId, 겹치는 문자열/rich-text.
+- hidden `agent-content.spec.ts`에서 실제 HTTP 쓰기→화면 ack→IME 중 거절→자동 저장을 확인했다. 연결/coordinator 회귀와 함께 3개 통과.
+- 이 E2E가 main 시작 실패를 발견했다. renderer parser의 ESM-only remark/unified를 CJS main에서 외부 require하던 문제로, electron-vite main bundle에 해당 의존성을 포함하여 해결했다. F02의 unit/build 통과만으로 Electron 부팅을 검증한 것은 아니었다.
+- 다음은 F04 생성과 구조 변경이다. 현재 공개된 쓰기 명령은 내용 set/replace이며 구조·재사용·style·출력·결과 UI는 남아 있다.
+
 | 영역 | 실제 변경과 이유 |
 |---|---|
 | README | 전체 문제·사용자·목표·성공 기준·기능 목록·범위를 통합. 별도 features.md 제거 |
