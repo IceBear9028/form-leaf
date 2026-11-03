@@ -1,3 +1,4 @@
+import { applyStyleOperation } from "./styleOperations.ts";
 import type { ComponentLibraryItem } from "../../foundation/componentLibrary.ts";
 import { applyComponentOperation, COMPONENT_OPERATIONS } from "./componentOperations.ts";
 import { applyNodeOperation, NODE_OPERATIONS } from "./nodeOperations.ts";
@@ -8,8 +9,8 @@ import { failure, CommandFailure, type Operation, type OperationResult } from ".
 import { assertDocumentData } from "../../foundation/documentValidation.ts";
 import type { Mutation } from "./documentService.ts";
 
-export const AVAILABLE_OPERATIONS: Operation["type"][] = ["set_edit_value", "replace_text", ...NODE_OPERATIONS, ...COMPONENT_OPERATIONS];
-export function applyDocumentOperations(document: DocumentData, operations: Operation[], libraries: ReadonlyMap<string, ComponentLibraryItem> = new Map()): Mutation {
+export const AVAILABLE_OPERATIONS: Operation["type"][] = ["set_edit_value", "replace_text", ...NODE_OPERATIONS, ...COMPONENT_OPERATIONS, "update_node_style"];
+export function applyDocumentOperations(document: DocumentData, operations: Operation[], libraries: ReadonlyMap<string, ComponentLibraryItem> = new Map(), fonts: ReadonlySet<string> = new Set()): Mutation {
   let next = structuredClone(document);
   const removedItemIds = new Set<string>();
   const affectedNodeIds = new Set<string>();
@@ -17,7 +18,7 @@ export function applyDocumentOperations(document: DocumentData, operations: Oper
   const results: OperationResult[] = [];
   for (const [operationIndex, operation] of operations.entries()) {
     try {
-      const step = applyNodeOperation(next, operation) ?? applyComponentOperation(next, operation, libraries);
+      const step = applyNodeOperation(next, operation) ?? applyComponentOperation(next, operation, libraries) ?? applyStyleOperation(next, operation, fonts);
       if (step) {
         next = step.document;
         step.removedItemIds?.forEach((id) => removedItemIds.add(id));

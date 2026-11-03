@@ -313,6 +313,8 @@ visible은 true, container childIds와 repeater items는 빈 배열, style은 �
 
 `StyleDefinition`의 `layout`, `typography`, `markdown`, `decoration`, `pagination`만 허용한다. id/name은 수정하지 않는다. 객체는 깊이 병합, 배열은 전체 교체, leaf의 null은 해당 속성 제거로 정의한다. 그룹 전체 null은 허용하지 않는다.
 
+ColorValue/WidthValue는 discriminator가 있는 하나의 typed 값으로 교체한다. 예를 들어 fixed→fill로 바꾸면 과거 valuePt를 남기지 않는다. 현재 출력 CSS에는 `--document-color-*` token 정의가 없으므로 MCP에서는 token 색을 거절하고 #RRGGBB를 사용한다. font는 설치 목록 또는 앱의 기본 fallback family만 허용한다. 설치 목록 조회 실패 시 임의 font를 허용하지 않는다.
+
 - typography: fontFamily, fontSizePt, lineHeight, fontWeight, color.
 - layout: direction, gapPt, paddingPt, align, justify, width, heightPt, grow, position, topPt/rightPt/bottomPt/leftPt.
 - markdown: 현재 모델의 listItemGapPt만.

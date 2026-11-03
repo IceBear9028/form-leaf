@@ -64,8 +64,9 @@ flowchart TD
 | F02 문맥·대상 | 완료, `ec4c6f3` | reads 4개 / HTTP access 회귀 / 전체 test·build |
 | F03 내용 수정 | 완료, `9272786` | content 3개 / 실제 MCP hidden E2E 1개 / 연결·coordinator 회귀 |
 | F04 문서 구성 | 완료, `68bace1` | structure 3개 / 생성 grant·journal 복구 / hidden 목록 갱신 |
-| F05 재사용 | 구현·검증 완료 | components 2개 / library 조회·remap·revision·원본 불변 / 전체 test·build |
-| F06–F08 | 대기 | style/출력/결과 UI와 전체 흐름 |
+| F05 재사용 | 완료, `fdc9051` | components 2개 / library 조회·remap·revision·원본 불변 / 전체 test·build |
+| F06 스타일 | 구현·검증 진행 | 공유 style·patch·CSS·font 검증, 출력 비교는 F07에서 통합 |
+| F07–F08 | 대기 | 출력/결과 UI와 전체 흐름 |
 
 ## 기능과 검증 단계의 대응
 
@@ -145,7 +146,7 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 
 - [x] 4-1 연결 및 세 가지 target 유형 검증.
 - [x] 4-2 연결 및 root/cycle/보관 배치/생성 ID 검증.
-- [ ] 4-3 연결 및 다른 node의 공유 스타일 불변 검증.
+- [x] 4-3 연결 및 다른 node의 공유 스타일 불변 검증.
 - [x] 4-4 연결 및 default/override, active prop 유형, 제거 영향 검증.
 - [x] 4-5 연결 및 library revision·ID 재매핑·기본값·asset 참조 검증.
 - [ ] dryRun 무변경, 전체 batch 실패 무변경, unsupported Markdown 원문 보존 검증.

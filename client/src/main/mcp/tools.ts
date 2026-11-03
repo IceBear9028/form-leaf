@@ -1,3 +1,4 @@
+import { FontCatalog } from "../application/fontCatalog.ts";
 import { applyDocumentOperations } from "../application/documentOperationAdapter.ts";
 import { requestHash } from "../application/documentRevision.ts";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -10,6 +11,7 @@ import { toolDefinition, encodeToolResult } from "./protocol.ts";
 import { CursorPager } from "./cursors.ts";
 import { AgentReads } from "./readTools.ts";
 
+const fontCatalog = new FontCatalog();
 const resourcePager = new CursorPager();
 const descriptions: Partial<Record<ToolName, string>> = {
   create_document: "Create an empty document with the default root/style. Requires create and write. The new document is granted to this connection without changing UI selection. Use a UUID requestId and reuse the same input/ID after disconnects.",
@@ -50,6 +52,9 @@ export function createAgentProtocol(policy: AccessPolicy, service: DocumentServi
         }
         case "apply_operations": {
           const args = input(name);
+          policy.document(credentialId, args.documentId, "write");
+          const fonts = args.operations.some((operation) => operation.type === "update_node_style" && operation.patch.typography?.fontFamily)
+            ? await fontCatalog.families() : new Set<string>();
           const identity = args.dryRun ? undefined : { credentialId, requestId: args.requestId, hash: requestHash(name, args) };
           data = await service.mutate(identity, { documentId: args.documentId, expectedRevision: args.expectedRevision, dryRun: args.dryRun }, () => {
             policy.document(credentialId, args.documentId, "write");
@@ -61,7 +66,7 @@ export function createAgentProtocol(policy: AccessPolicy, service: DocumentServi
               try { libraries.set(operation.libraryItemId, await context.loadComponent(operation.libraryItemId)); }
               catch { throw new CommandFailure("NOT_FOUND_OR_DENIED", "라이브러리 항목에 접근할 수 없습니다."); }
             }
-            return applyDocumentOperations(document, args.operations, libraries);
+            return applyDocumentOperations(document, args.operations, libraries, fonts);
           });
           break;
         }

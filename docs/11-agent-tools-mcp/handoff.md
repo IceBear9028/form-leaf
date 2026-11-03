@@ -49,6 +49,13 @@
 
 ## 이번에 바꾼 것 — 2026-11-03
 
+### F06 스타일 구현
+
+- update_node_style을 연결해 18개 변경 명령이 모두 구현됐다. 공유 style은 사본을 분리하고 기존 공유 node/정의의 style은 유지한다. 동일 patch는 새 ID를 만들지 않는다.
+- 그룹 깊이 병합, 배열 교체, leaf null 삭제, ColorValue/WidthValue 교체를 구현했다. finite·범위·닫힌 필드·hex를 검증하고 정의되지 않은 document color token을 거절한다.
+- font family는 앱의 기본 stack/generic family와 설치 목록을 확인한다. 명령은 OS별 고정 인자로만 호출하고 사용자 입력을 shell로 보내지 않는다. macOS 설치 목록 조회를 확인했으며 이 환경에서 약 27초가 걸려 결과를 process 내 cache한다. 조회는 renderer lease 확보 전에 진행한다. Windows/Linux 실제 OS 검증은 하지 않았으며 조회 실패 시 알려진 fallback만 허용한다.
+- `test/agent-style.test.mjs` 3개와 전체 test/build(typecheck 포함) 통과. 공유 사본/삭제/배열/width 변환/무변경/오류/print CSS 값을 검사했다. 실제 PNG/PDF 비교는 다음 F07에서 통합한다.
+
 ### F05 재사용 구현
 
 - 9개 component/prop/item/import 명령을 연결했다. active 문서 target·prop binding·값 유형과 제거 후 index 범위를 검증한다. 다른 instance와 공유 정의를 수정하지 않는다.
