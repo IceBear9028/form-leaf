@@ -3,11 +3,20 @@
 ## 현재 상태
 
 - 갱신일: 2026-11-03
-- 작업 번호: 11
-- 기준 HEAD·브랜치: `main@6821494` — `Merge pull request #1 from IceBear9028/feat/10-markdown-editor-ownership`
-- 상태: 문서 구조·공통 템플릿 개편, 제품 구현 미착수. plan의 구현 1–6단계는 모두 대기.
-- 작업 트리: 미커밋. 기존 docs 인덱스·backlog·references 변경을 보존했다.
-- 변경 범위: docs와 저장소의 문서 workflow/템플릿. 제품 코드·제품 의존성·실제 사용자 데이터 변경 없음.
+- 작업 번호: 11 / 브랜치: `feat/11-agent-tools-mcp` (기준 `main@6821494`)
+- 문서·공통 템플릿 커밋: `b65fc85`.
+- 사용자 요청에 따라 구현과 기능별 검증 후 커밋을 진행한다. AI 로그인/채팅은 후속 범위다.
+- 1단계 계약 기반 완료, 2단계 공통 저장 service 진행 중, 3–6단계 대기. 아직 MCP 서버를 제품에서 실행할 수 없다.
+- 실제 사용자 데이터·backup은 변경하지 않았다.
+
+## 구현 증거 — 계약 기반
+
+- `documentCommandSchemas.ts` / `documentCommands.ts`: 12개 도구 입력, 18개 명령, typed target, 닫힌 중첩 schema, 길이/크기/enum/값 범위와 결과·오류 타입.
+- `documentToolResults.ts` / `main/mcp/protocol.ts`: 도구별 출력 schema와 JSON/text 동일 응답. 큰 일반 JSON 응답 거절.
+- `documentRevision.ts`: 안정적인 JSON hash와 requestId를 제외한 정규화 요청 hash.
+- SDK `1.32.2`, Zod `4.6.7` 정확 버전 고정. 실제 SDK client/server 간 structuredContent·오류·image·resource 계약 시험.
+- `test/agent-contracts.test.mjs`: 6개 통과, `npm test` 전체 통과, `npm run build` (typecheck 포함) 통과. `git diff --check` 통과.
+- 아직 문서 참조·권한·설치 font·실제 HTTP·hidden render 검증은 아니다. feature 전체 완료로 표시하지 않는다.
 
 ## 이번에 바꾼 것 — 2026-11-03
 
@@ -41,7 +50,7 @@
 
 ## 남은 작업과 주의할 경계
 
-- 구현은 [plan](plan.md)의 1단계 계약 fixture부터 시작한다. 기능·호출 계약·허용 범위를 추가 후보로 임의 확대하지 않는다.
+- 구현은 [plan](plan.md)의 2단계 공통 service를 진행한다. 기능·호출 계약·허용 범위를 추가 후보로 임의 확대하지 않는다.
 - [design](design.md)의 O02(다중 파일 복구), O03(idle 이후 입력 경쟁), O06(저장 우회 경로)을 외부 쓰기 공개 전에 검증해야 한다. 나머지 SDK·token 저장·출력·용량 과제도 O01–O07과 plan gate를 따른다.
 - UI 저장은 자기 draft를 저장하며, 외부 MCP 쓰기의 busy 규칙과 구분한다. 10번의 DOM/IME 소유권과 canonical Markdown을 보존한다.
 - 사용자 승인 범위는 도구 정의+MCP 구현이다. AI 로그인·내부 채팅·대화 재개·관리되는 에이전트 프로세스와 OS sandbox는 후속이다. MCP가 외부 에이전트의 별도 shell 권한을 통제한다고 설명하지 않는다.
@@ -51,8 +60,8 @@
 
 1. 최신 git status와 [README](README.md)·해당 기능 상세를 읽는다. 중복 전체 기획 문서를 다시 생성하지 않는다.
 2. [design](design.md)→[runtime-flows](runtime-flows.md)→[tool-contracts](tool-contracts.md)→[plan](plan.md)으로 구조·순서·계약·gate를 확인한다.
-3. 문서 수정에는 [공통 템플릿 안내](../templates/README.md)를 사용한다. 코드 구현 요청이 있을 때 작업 브랜치를 준비하고 계약/schema fixture부터 진행한다.
-4. 실제 검증 결과를 얻은 후에만 plan의 단계와 제품 상태를 갱신한다. 사용자 요청 없이 커밋하지 않는다.
+3. 문서 수정에는 [공통 템플릿 안내](../templates/README.md)를 사용한다. 현재 브랜치에서 공통 service/CAS/renderer handshake부터 계속한다.
+4. 실제 검증 결과를 얻은 후에만 plan의 단계와 제품 상태를 갱신한다. 사용자가 기능별 완료 후 커밋을 요청했으므로 검증한 단위로 커밋한다.
 
 ## 설계·양식 이력
 

@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-2026-11-03 — 기능·기술 설계·As-Is/To-Be 실행 흐름과 전환 계획 작성, 구현 미착수. 현재 구현 1–6단계는 모두 대기이며, 문서 정리는 구현 단계의 진행 중 표시로 처리하지 않는다.
+2026-11-03 — 문서 커밋 `b65fc85` 이후 구현 시작. 1단계 계약 기반 완료, 2단계 공통 저장 service 진행 중, 3–6단계 대기. 기능별 제품 완료는 별도 검증 후 기록한다.
 
 이번 작업의 구현 기준은 [README](README.md)의 범위와 기능 상세, [tool-contracts](tool-contracts.md)다. AI 로그인·내부 채팅·관리되는 에이전트 실행 환경은 후속이다. 문서 작성과 코드 구현의 완료를 구분한다.
 
@@ -24,7 +24,7 @@
 
 ## As-Is에서 To-Be로 전환하는 순서
 
-현재 UI→repository 직접 저장에서 UI/MCP→공통 service로 전환한다. diagram은 구현 의존성이며 전체 상태는 미착수다. 단계 번호는 아래 체크리스트와 같다.
+현재 UI→repository 직접 저장에서 UI/MCP→공통 service로 전환한다. diagram은 구현 의존성을 나타낸다. 단계 번호는 아래 체크리스트와 같다.
 
 ```mermaid
 flowchart TD
@@ -73,15 +73,17 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 
 대상: T01–T12, Operation 18개 전체.
 
-- [ ] documentCommands 및 runtime schema에 도구/명령/error/result union 구현.
-- [ ] 기존 DocumentEditTarget과 model schemaVersion 4 연결.
-- [ ] enum·허용 키·문자열/크기 한도·index·prop 유형 검증.
-- [ ] 정상 입력, 비허용 target, 예상 오류, 결과 schema fixture 작성.
-- [ ] SDK stable version 고정과 structured output/image/resource 동작 확인.
+- [x] documentCommands 및 runtime schema에 도구/명령/error/result union 구현.
+- [x] 기존 DocumentEditTarget과 model schemaVersion 4 연결.
+- [x] enum·허용 키·문자열/크기 한도·index·prop 유형 검증.
+- [x] 정상 입력, 비허용 target, 예상 오류, 결과 schema fixture 작성.
+- [x] SDK stable version 고정과 structured output/image/resource 동작 확인.
 
 완료 기준: 명세의 이름·인자·응답과 schema가 일치하고 잘못된 요청이 실행 전에 거절된다.
 
-## 2. 공통 service와 저장 충돌 방지
+증거: `client/test/agent-contracts.test.mjs` 6개 테스트 통과. SDK 1.32.2 / Zod 4.6.7을 정확한 버전으로 고정하고 in-memory MCP client로 structuredContent·오류·image·resource 전달을 확인했다. 실제 HTTP 인증·render 결과·문서 참조/설치 font 검사는 후속 단계다.
+
+## 2. 공통 service와 저장 충돌 방지 — 진행 중
 
 대상: 모든 조회·쓰기의 기반. MCP 서버를 붙이기 전에 진행한다.
 
