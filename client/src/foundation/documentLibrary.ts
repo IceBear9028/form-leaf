@@ -1,4 +1,4 @@
-import type { AgentSettings, AgentConnection, AgentGrants, AgentOperationSummary } from "./agentConnection.ts";
+import type { AgentSettings, AgentGrants, AgentOperationSummary, AgentConnectionOptions, AgentTokenLifetime, IssuedAgentConnection } from "./agentConnection.ts";
 import type { SavedDocument, SaveDocumentResult, EditorContext, EditorRequest, EditorReply } from "./documentSessionProtocol.ts";
 import type { PdfExportResult } from "./document.ts";
 import type { DocumentData } from "./documentModel.ts";
@@ -34,7 +34,8 @@ export type DocumentApi = {
   agentSaveArtifact: (credentialId: string, requestId: string) => Promise<PdfExportResult>;
   agentSettings: () => Promise<AgentSettings>;
   agentEnable: (enabled: boolean) => Promise<AgentSettings>;
-  agentCreateConnection: (name: string) => Promise<{ connection: AgentConnection; token: string }>;
+  agentCreateConnection: (name: string, options?: AgentConnectionOptions) => Promise<IssuedAgentConnection>;
+  agentRotateToken: (id: string, expiresInDays: AgentTokenLifetime) => Promise<IssuedAgentConnection>;
   agentSetGrants: (id: string, grants: AgentGrants) => Promise<void>;
   agentRevoke: (id: string) => Promise<void>;
   onBeforeClose: (handler: () => Promise<boolean>) => () => void;

@@ -468,6 +468,18 @@ artifact는 생성 후 24시간 유지하고 앱 시작 시/주기적으로 만�
 
 설정 화면의 Codex `config.toml` 예시는 `url`과 `bearer_token_env_var = "FORMLEAF_MCP_TOKEN"`, Claude Code `.mcp.json` 예시는 `type: "http"`, `url`, `Authorization: "Bearer ${FORMLEAF_MCP_TOKEN}"`를 사용한다. 실제 token은 예시에 넣지 않고 외부 클라이언트 실행 환경에서 설정한다. 기존 설정을 자동 덮어쓰거나 계정 로그인을 대행하지 않는다.
 
+### 연결 관리 IPC 보강 — 2026-11-04
+
+다음은 신뢰된 앱 UI의 설정 계약이며 MCP tool 목록에 추가하지 않는다.
+
+| API | 입력/결과와 경계 |
+|---|---|
+| `agentCreateConnection(name, options?)` | options: `{clientType: "codex" / "claude-code" / "other", expiresInDays: 7 / 30 / 90, grants}`. UI는 명시적으로 전달한다. grant의 문서 존재를 확인한 뒤 연결/hash/grant/만료를 한 번에 저장한다. options 없는 기존 내부 호출은 빈 권한·무기한을 유지한다. 결과는 `{connection, token}`이며 원문은 이 응답에만 포함한다. |
+| `agentRotateToken(id, expiresInDays)` | 폐기하지 않은 기존 연결의 hash/tokenCreatedAt/expiresAt만 교체한다. 만료 연결은 갱신 가능. credential ID·grant·작업 소유권은 보존한다. 결과는 `{connection, token}`. 구 token의 이후 요청은 거절한다. |
+| `agentSettings()` | 기존 summary에 optional clientType/tokenCreatedAt/expiresAt/lastUsedAt. lastUsedAt은 현재 실행·현재 token으로 관측한 인증 요청 시각이며 영속 필드가 아니다. hash/원문은 반환하지 않는다. |
+
+새 UI token의 기본 유효기간은 30일이며 만료 시각과 같은 순간부터 인증/current grant를 거절한다. 기존 만료일 없는 token은 자동 만료시키지 않는다. 결과 UI는 token 만료 시 문서명·revision·artifact를 숨기되 요청 발생·상태는 남긴다. token 교체·폐기는 이미 저장된 문서를 되돌리지 않는다. 선택한 clientType은 안내용 label이며 해당 프로그램만 token을 쓸 수 있게 제한하는 인증 수단이 아니다.
+
 설정 형식은 2026-11-03 [OpenAI 공식 MCP 문서](https://developers.openai.com/codex/mcp)와 [Claude Code 공식 MCP 문서](https://code.claude.com/docs/en/mcp)의 HTTP/환경 변수 항목으로 확인했다. 설정 형식 확인과 실제 실행 결과를 구분한다. 이후 Codex 로그인 세션과 Claude Code CLI 연결 검증을 수행했으며 Claude 모델 로그인 세션은 미검증이다.
 
 기존 저장값의 조회에는 입력 문자열 100,000자 제한을 재적용하지 않는다. `get_edit_value`/component 기본값은 원문을 보존하고 전체 응답 2MiB 한도를 넘으면 `RESULT_TOO_LARGE`로 거절한다. 일부를 조용히 잘라 반환하지 않는다.

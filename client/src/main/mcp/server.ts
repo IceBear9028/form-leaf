@@ -40,7 +40,8 @@ export class AgentServer {
       if (request.headers.host !== authority || (request.headers.origin !== undefined && request.headers.origin !== `http://${authority}`)) return reject(403, "Forbidden origin or host");
       if (request.url !== "/mcp") return reject(404, "Not found");
       const bearer = request.headers.authorization;
-      const credentialId = this.policy.authenticate(bearer?.startsWith("Bearer ") ? bearer.slice(7) : undefined);
+      const token = bearer?.startsWith("Bearer ") ? bearer.slice(7) : undefined;
+      const credentialId = this.policy.authenticate(token);
       if (!credentialId) return reject(401, "Authentication required");
       if (request.method !== "POST") return reject(405, "Use POST");
       if (!request.headers["content-type"]?.startsWith("application/json")) return reject(415, "JSON required");
@@ -53,12 +54,14 @@ export class AgentServer {
       }
       let body: unknown;
       try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { return reject(400, "Invalid JSON"); }
-      this.policy.current(credentialId); // May have been revoked while receiving the body.
+      // Rotation, expiry or revocation may occur while receiving the body.
+      if (this.policy.authenticate(token) !== credentialId) return reject(401, "Authentication required");
       const protocol = this.createProtocol(credentialId);
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       response.on("close", () => { void protocol.close(); });
       await protocol.connect(transport);
       await transport.handleRequest(request, response, body);
+      if (response.statusCode >= 200 && response.statusCode < 300 && token) this.policy.recordAccess(credentialId, token);
     } catch {
       // Never expose exception text, host paths, document names or payloads over HTTP.
       if (!response.writableEnded) reject(500, "Request failed");

@@ -1,79 +1,95 @@
-import { useEffect, useState } from "react";
-import type { AgentConnection, AgentGrants, AgentSettings } from "../../../../foundation/agentConnection.ts";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeftIcon, CheckIcon, CopyIcon, PlusIcon, PlugIcon, ShieldCheckIcon } from "lucide-react";
+import type { AgentConnection, AgentSettings, AgentTokenLifetime } from "../../../../foundation/agentConnection.ts";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
 import { Button } from "@/shared/ui/button";
-import { AgentOperations } from "./AgentOperations.tsx";
-import { AgentClientExamples } from "./AgentClientExamples.tsx";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/ui/alert-dialog";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { Spinner } from "@/shared/ui/spinner";
+import { toast } from "@/shared/ui/toast";
+import { AgentConnectionDetail } from "./AgentConnectionDetail.tsx";
+import { AgentConnectionWizard, TokenLifetime } from "./AgentConnectionWizard.tsx";
+import { AgentIcon, agentClients, ConnectionStatus, copyAgentText, formatAgentDate } from "./agentConnectionUi.tsx";
 
+type Confirmation = { kind: "rotate" | "revoke"; connection: AgentConnection } | { kind: "discard"; proceed: () => void };
 export function AgentSettingsPage({ onBack }: { onBack: () => void }) {
   const [settings, setSettings] = useState<AgentSettings>();
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
-  const [name, setName] = useState("");
-  const [issued, setIssued] = useState<{ connection: AgentConnection; token: string }>();
+  const [selectedId, setSelectedId] = useState<string>();
+  const [detailVersion, setDetailVersion] = useState(0);
+  const [wizard, setWizard] = useState<{ initial?: { connection: AgentConnection; token?: string } }>();
+  const [confirmation, setConfirmation] = useState<Confirmation>();
+  const [days, setDays] = useState<AgentTokenLifetime>(30);
   const [error, setError] = useState<string>();
+  const [confirmationError, setConfirmationError] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const refresh = async () => {
-    const [settings, documents] = await Promise.all([window.documents.agentSettings(), window.documents.listDocuments()]);
-    setSettings(settings); setDocuments(documents);
-  };
-  useEffect(() => { void refresh().catch((error) => setError(String(error))); }, []);
-  const run = async (action: () => Promise<unknown>) => {
+  const dirty = useRef(false);
+  const refreshSequence = useRef(0);
+  const active = useRef(true);
+  const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
+    try {
+      const [next, listed] = await Promise.all([window.documents.agentSettings(), window.documents.listDocuments()]);
+      if (active.current && sequence === refreshSequence.current) { setSettings(next); setDocuments(listed); }
+    } catch { if (active.current && sequence === refreshSequence.current) setError("연결 정보를 읽지 못했습니다. 잠시 후 다시 시도하세요."); }
+  }, []);
+  useEffect(() => {
+    active.current = true;
+    let pending = false;
+    const poll = async () => { if (pending) return; pending = true; try { await refresh(); } finally { pending = false; } };
+    void poll(); const interval = setInterval(() => void poll(), 2000);
+    return () => { active.current = false; ++refreshSequence.current; clearInterval(interval); };
+  }, [refresh]);
+  const selected = settings?.connections.find((connection) => connection.id === selectedId) ?? settings?.connections[0];
+  const onDirtyChange = useCallback((value: boolean) => { dirty.current = value; }, []);
+  const navigate = (proceed: () => void) => { if (dirty.current) setConfirmation({ kind: "discard", proceed }); else proceed(); };
+  const run = async (action: () => Promise<unknown>, title?: string) => {
     setBusy(true); setError(undefined);
-    try { await action(); await refresh(); }
-    catch (error) { setError(error instanceof Error ? error.message : String(error)); }
+    try { await action(); await refresh(); if (title) toast.add({ type: "success", title }); return true; }
+    catch { setError("설정을 저장하지 못했습니다. 다시 시도하세요."); return false; }
     finally { setBusy(false); }
   };
-  return <main className="h-full overflow-auto bg-muted/20 p-8">
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex items-center gap-4"><Button variant="outline" onClick={onBack}>문서 목록</Button><h1 className="text-2xl font-semibold">에이전트 연결</h1></div>
-      <p className="text-sm text-muted-foreground">이미 사용 중인 외부 AI 에이전트가 허용한 Formleaf 문서를 읽고 수정하도록 연결합니다. AI 로그인과 채팅은 외부 클라이언트에서 진행합니다.</p>
-      {(error || settings?.error) && <p role="alert" className="rounded border border-destructive p-3 text-sm text-destructive">{error ?? settings?.error}</p>}
-      <section className="space-y-3 rounded-xl border bg-background p-5" aria-label="MCP 서버">
-        <div className="flex items-center justify-between"><div><h2 className="font-semibold">이 컴퓨터에서 MCP 연결 허용</h2><p className="text-sm text-muted-foreground">{settings?.running ? "연결 대기 중" : "연결 꺼짐"} · Formleaf가 실행되는 동안 사용합니다.</p></div>
-          <Button disabled={busy || !settings} variant={settings?.enabled ? "outline" : "default"} onClick={() => void run(() => window.documents.agentEnable(!settings?.enabled))}>{settings?.enabled ? "연결 끄기" : "연결 켜기"}</Button></div>
-        {settings && <div className="flex items-center gap-2"><code className="flex-1 rounded bg-muted p-2 text-sm">{settings.endpoint}</code><Button variant="outline" onClick={() => void run(() => navigator.clipboard.writeText(settings.endpoint))}>주소 복사</Button></div>}
-      </section>
-      <section className="space-y-3 rounded-xl border bg-background p-5" aria-label="새 연결">
-        <h2 className="font-semibold">새 에이전트 연결</h2>
-        <p className="text-sm text-muted-foreground">연결마다 별도 토큰과 문서 권한을 부여합니다. 새 연결은 읽을 수 있는 문서가 없습니다.</p>
-        <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); void run(async () => { setIssued(await window.documents.agentCreateConnection(name)); setName(""); }); }}>
-          <input aria-label="연결 이름" className="min-w-0 flex-1 rounded border bg-background px-3 py-2 text-sm" maxLength={200} placeholder="예: 개인 에이전트" value={name} onChange={(event) => setName(event.target.value)} />
-          <Button type="submit" disabled={busy || !name.trim()}>토큰 발급</Button>
-        </form>
-        {issued && <div className="space-y-2 rounded-lg border p-3" aria-label="발급된 토큰">
-          <p className="text-sm">{issued.connection.name} 토큰입니다. 이 화면을 닫으면 다시 표시되지 않습니다.</p>
-          <input aria-label="연결 토큰" className="w-full rounded bg-muted p-2 font-mono text-xs" readOnly value={issued.token} />
-          <div className="flex gap-2"><Button variant="outline" onClick={() => void run(() => navigator.clipboard.writeText(issued.token))}>토큰 복사</Button><Button variant="outline" onClick={() => setIssued(undefined)}>토큰 숨기기</Button></div>
-          <p className="text-xs text-muted-foreground">외부 클라이언트의 Streamable HTTP MCP 설정에 주소를 등록하고, Authorization 헤더에 Bearer 토큰을 지정하세요.</p>
+  const issued = (connection: AgentConnection) => {
+    ++refreshSequence.current;
+    setSettings((previous) => previous ? { ...previous, connections: previous.connections.some((item) => item.id === connection.id) ? previous.connections.map((item) => item.id === connection.id ? connection : item) : [...previous.connections, connection] } : previous);
+    setSelectedId(connection.id); dirty.current = false; void refresh();
+  };
+  const confirm = async () => {
+    if (!confirmation || busy) return;
+    if (confirmation.kind === "discard") { dirty.current = false; setDetailVersion((value) => value + 1); setConfirmation(undefined); confirmation.proceed(); return; }
+    setBusy(true); setConfirmationError(undefined);
+    try {
+      if (confirmation.kind === "rotate") {
+        const result = await window.documents.agentRotateToken(confirmation.connection.id, days);
+        issued(result.connection); setConfirmation(undefined); setWizard({ initial: result });
+      } else {
+        await window.documents.agentRevoke(confirmation.connection.id);
+        dirty.current = false; setConfirmation(undefined); await refresh(); toast.add({ type: "success", title: "이 연결의 접근을 해제했습니다." });
+      }
+    } catch { setConfirmationError("처리하지 못했습니다. 연결 상태를 확인하고 다시 시도하세요."); }
+    finally { setBusy(false); }
+  };
+  const confirmConnection = (kind: "rotate" | "revoke", connection: AgentConnection) => navigate(() => { setDays(30); setConfirmationError(undefined); setConfirmation({ kind, connection }); });
+  return <div className="flex h-full min-h-0 flex-col bg-muted/30 text-foreground">
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border bg-background px-5 [-webkit-app-region:drag]"><Button variant="outline" disabled={busy} className="[-webkit-app-region:no-drag]" onClick={() => navigate(onBack)}><ArrowLeftIcon aria-hidden="true" />문서 목록</Button><strong className="text-sm font-medium">에이전트 연결</strong></header>
+    <main className="min-h-0 flex-1 overflow-y-auto px-8 py-9 max-sm:px-5"><div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="m-0 text-2xl font-semibold tracking-tight">함께 쓰는 에이전트</h1><p className="m-0 mt-2 text-sm text-muted-foreground">익숙한 AI 도구에 필요한 문서만 열어주세요.</p></div><Button disabled={!settings || busy} onClick={() => navigate(() => setWizard({}))}><PlusIcon aria-hidden="true" />에이전트 연결</Button></div>
+      {(error || settings?.error) && <Alert variant="destructive"><AlertTitle>연결 설정을 확인해 주세요</AlertTitle><AlertDescription>{error ?? settings?.error}</AlertDescription><Button variant="outline" size="sm" className="mt-2 w-fit" onClick={() => { setError(undefined); void refresh(); }}>다시 확인</Button></Alert>}
+      {!settings ? <div className="flex items-center justify-center gap-2 py-20 text-muted-foreground"><Spinner />연결 정보를 불러오는 중입니다.</div> : <>
+        <Card size="sm"><CardContent className="flex-row flex-wrap items-center justify-between gap-4"><div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-lg bg-muted"><PlugIcon className="size-5" aria-hidden="true" /></span><div><h2 className="m-0 text-sm font-medium">{settings.running ? "이 컴퓨터에서 연결을 받고 있어요" : "에이전트 연결이 꺼져 있어요"}</h2><p className="m-0 mt-1 text-xs text-muted-foreground">{settings.running ? "허용한 토큰과 문서 권한을 확인한 뒤 요청을 처리합니다." : "연결을 켜면 허용한 에이전트가 접근할 수 있습니다."}</p></div></div><Button variant="outline" disabled={busy} onClick={() => void run(() => window.documents.agentEnable(!settings.enabled))}>{busy && <Spinner />}{settings.enabled ? "연결 일시 중지" : "연결 켜기"}</Button></CardContent></Card>
+        {!settings.connections.length ? <Empty className="min-h-80 border bg-background"><EmptyHeader><EmptyMedia variant="icon"><PlugIcon /></EmptyMedia><EmptyTitle>첫 에이전트를 연결해 보세요</EmptyTitle><EmptyDescription>Codex나 Claude Code가 사용할 문서와 작업 범위를 정할 수 있습니다.</EmptyDescription></EmptyHeader><EmptyContent><Button onClick={() => setWizard({})}><PlusIcon />첫 연결 만들기</Button></EmptyContent></Empty> : <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.3fr)]">
+          <section className="min-w-0 space-y-3" aria-label="내 연결"><div className="mb-4 flex items-center justify-between"><h2 className="m-0 text-sm font-medium">내 연결 <span className="ml-1 text-muted-foreground">{settings.connections.length}</span></h2><span className="text-xs text-muted-foreground">연결별 접근 관리</span></div>
+            {settings.connections.map((connection) => <Card key={connection.id} size="sm" className={`py-0 ${selected?.id === connection.id ? "ring-2 ring-primary" : ""}`}><Button variant="ghost" className="h-auto w-full bg-card flex-col items-stretch gap-4 whitespace-normal rounded-xl p-4 text-left" aria-pressed={selected?.id === connection.id} disabled={busy} onClick={() => { if (selected?.id !== connection.id) navigate(() => setSelectedId(connection.id)); }}><span className="flex items-center gap-3"><AgentIcon type={connection.clientType} /><span className="min-w-0 flex-1"><span className="block break-words font-medium">{connection.name}</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{agentClients[connection.clientType ?? "other"].name}</span></span><ConnectionStatus connection={connection} settings={settings} /></span><span className="text-xs font-normal">문서 {connection.grants.documentIds.length}개 · {connection.grants.write ? "읽기·수정" : "읽기 전용"}{connection.grants.render ? " · PDF 출력" : ""}</span><span className="border-t border-border pt-3 text-xs font-normal text-muted-foreground">최근 인증 요청 {formatAgentDate(connection.lastUsedAt)}</span></Button></Card>)}
+            <div className="flex gap-2 px-1 pt-4 text-xs leading-relaxed text-muted-foreground"><ShieldCheckIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><p className="m-0">AI 계정 로그인은 외부 도구에서 진행합니다. 이곳에서는 Formleaf 문서 접근 권한을 관리합니다.</p></div>
+          </section>
+          {selected && <AgentConnectionDetail key={`${selected.id}:${detailVersion}`} connection={selected} settings={settings} documents={documents} busy={busy} onDirtyChange={onDirtyChange} onSave={(grants) => run(() => window.documents.agentSetGrants(selected.id, grants), "권한을 저장했습니다.")} onSetup={() => navigate(() => setWizard({ initial: { connection: selected } }))} onRotate={() => confirmConnection("rotate", selected)} onRevoke={() => confirmConnection("revoke", selected)} />}
         </div>}
-      </section>
-      {settings && <AgentClientExamples endpoint={settings.endpoint} />}
-      <section className="space-y-4" aria-label="연결별 권한">
-        <h2 className="font-semibold">연결별 허용 범위</h2>
-        {settings?.connections.length === 0 && <p className="text-sm text-muted-foreground">아직 발급한 연결이 없습니다.</p>}
-        {settings?.connections.map((connection) => <ConnectionCard key={JSON.stringify(connection)} connection={connection} documents={documents} disabled={busy} onSave={(grants) => run(() => window.documents.agentSetGrants(connection.id, grants))} onRevoke={() => run(async () => { await window.documents.agentRevoke(connection.id); if (issued?.connection.id === connection.id) setIssued(undefined); })} />)}
-      </section>
-      <AgentOperations />
-      <p className="text-sm text-muted-foreground">이 권한은 Formleaf 도구 호출에 적용됩니다. 외부 에이전트가 별도로 가진 터미널·파일 접근 권한은 외부 클라이언트의 설정으로 관리해야 합니다.</p>
-    </div>
-  </main>;
-}
-function ConnectionCard({ connection, documents, disabled, onSave, onRevoke }: {
-  connection: AgentConnection; documents: DocumentSummary[]; disabled: boolean;
-  onSave: (grants: AgentGrants) => Promise<void>; onRevoke: () => Promise<void>;
-}) {
-  const [grants, setGrants] = useState(connection.grants);
-  if (connection.revoked) return <div className="rounded-xl border p-4 text-sm text-muted-foreground">{connection.name} · 폐기됨</div>;
-  const toggle = (key: "write" | "create" | "libraryRead" | "render", checked: boolean) => setGrants((current) => ({ ...current, [key]: checked, ...(key === "create" && checked ? { write: true } : {}), ...(key === "write" && !checked ? { create: false } : {}) }));
-  return <article className="space-y-4 rounded-xl border bg-background p-5">
-    <div className="flex items-center justify-between"><h3 className="font-medium">{connection.name}</h3><Button variant="outline" disabled={disabled} onClick={() => void onRevoke()}>토큰 폐기</Button></div>
-    <fieldset disabled={disabled} className="space-y-2"><legend className="mb-2 text-sm font-medium">읽기를 허용할 문서</legend>
-      {documents.length === 0 && <p className="text-sm text-muted-foreground">먼저 문서를 만들면 여기서 선택할 수 있습니다.</p>}
-      {documents.map((document) => <label key={document.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={grants.documentIds.includes(document.id)} onChange={(event) => setGrants((current) => ({ ...current, documentIds: event.target.checked ? [...current.documentIds, document.id] : current.documentIds.filter((id) => id !== document.id) }))} />{document.name}</label>)}
-    </fieldset>
-    <fieldset disabled={disabled} className="grid grid-cols-2 gap-2"><legend className="mb-2 text-sm font-medium">추가 허용</legend>
-      {([ ["write", "허용 문서 수정"], ["create", "새 문서 생성"], ["libraryRead", "개인 컴포넌트 라이브러리 읽기"], ["render", "미리보기와 PDF 출력"] ] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={grants[key]} onChange={(event) => toggle(key, event.target.checked)} />{label}</label>)}
-    </fieldset>
-    <Button disabled={disabled} onClick={() => void onSave(grants)}>권한 저장</Button>
-  </article>;
+        <details className="rounded-lg border border-border bg-background px-4 py-3 text-xs text-muted-foreground"><summary className="cursor-pointer">연결 주소와 접근 범위 안내</summary><div className="mt-3 space-y-3"><div className="flex flex-wrap items-center gap-2"><code className="break-all">{settings.endpoint}</code><Button variant="ghost" size="sm" onClick={() => void copyAgentText(settings.endpoint, "연결 주소를 복사했습니다.")}><CopyIcon />주소 복사</Button></div><p className="m-0">Formleaf를 실행해 둔 동안 이 컴퓨터에서 사용할 수 있습니다. 이 권한은 Formleaf 도구 호출에 적용되며 외부 에이전트의 별도 터미널·파일 접근 권한은 해당 클라이언트에서 관리해야 합니다.</p></div></details>
+      </>}
+    </div></main>
+    {wizard && settings && <AgentConnectionWizard settings={settings} documents={documents} initial={wizard.initial} onIssued={issued} onClose={() => setWizard(undefined)} />}
+    <AlertDialog open={!!confirmation} onOpenChange={(open) => { if (!open && !busy) { setConfirmation(undefined); setConfirmationError(undefined); } }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle className="m-0">{confirmation?.kind === "discard" ? "저장하지 않은 변경을 버릴까요?" : confirmation?.kind === "rotate" ? "연결 토큰을 교체할까요?" : "이 연결의 접근을 해제할까요?"}</AlertDialogTitle><AlertDialogDescription className="m-0">{confirmation?.kind === "discard" ? "편집 중인 권한 설정은 저장되지 않습니다." : confirmation?.kind === "rotate" ? "기존 토큰은 즉시 사용할 수 없게 됩니다. 문서 권한과 작업 기록은 유지되며 CLI에 새 토큰을 설정해야 합니다." : "기존 토큰으로 더 이상 문서를 읽거나 수정할 수 없습니다. 이미 저장된 문서 변경과 작업 기록은 유지됩니다."}</AlertDialogDescription></AlertDialogHeader>{confirmation?.kind === "rotate" && <TokenLifetime value={days} onChange={setDays} disabled={busy} />}{confirmationError && <Alert variant="destructive"><AlertDescription>{confirmationError}</AlertDescription></Alert>}<AlertDialogFooter><AlertDialogCancel disabled={busy}>취소</AlertDialogCancel><AlertDialogAction variant={confirmation?.kind === "revoke" ? "destructive" : "default"} disabled={busy} onClick={() => void confirm()}>{busy ? <Spinner /> : <CheckIcon />}{confirmation?.kind === "discard" ? "변경 버리기" : confirmation?.kind === "rotate" ? "새 토큰으로 교체" : "접근 해제"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  </div>;
 }

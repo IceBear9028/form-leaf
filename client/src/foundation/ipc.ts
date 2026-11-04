@@ -7,6 +7,7 @@ export const IPC = {
   agentSettings: "agent:settings",
   agentEnable: "agent:enable",
   agentCreateConnection: "agent:create-connection",
+  agentRotateToken: "agent:rotate-token",
   agentSetGrants: "agent:set-grants",
   agentRevoke: "agent:revoke",
   editorRequest: "agent:editor-request",

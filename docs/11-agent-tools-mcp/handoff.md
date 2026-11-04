@@ -2,11 +2,41 @@
 
 ## 현재 상태
 
-- 갱신일: 2026-11-03. 작업 11, 브랜치 `feat/11-agent-tools-mcp`, 기준 `main@6821494`.
+- 갱신일: 2026-11-04. 작업 11, 브랜치 `feat/11-agent-tools-mcp`, 기준 `main@6821494`.
 - 문서 양식·공통 템플릿을 먼저 커밋한 뒤 공통 기반과 F01→F08을 순서대로 구현했다. 기능별 검증 후 커밋하는 사용자 요청을 따른다.
 - 12개 MCP 도구, 18개 변경 명령, 연결·권한 설정, 최근 작업 결과·PDF 저장 UI를 구현했다. 로컬 자동 시험은 통과했다. **Codex의 실제 로그인 세션 여정은 통과했고 Claude 모델 로그인 세션은 미검증**이다. Claude CLI 연결·폐기와 10만 자 문서 부하 시험은 추가로 통과했다. 두 외부 모델 여정을 모두 통과한 상태로 표시하지 않는다.
 - 이번 범위는 도구 정의+MCP 구현이다. AI 로그인·내부 채팅·대화 재개·관리되는 에이전트 실행과 OS sandbox는 후속이다.
 - 실제 사용자 문서·backup·외부 클라이언트 설정은 수정하지 않았다. 테스트는 임시 workspace와 hidden Electron을 사용했다. 키보드·마우스를 가져오거나 PDF 뷰어를 실제로 열지 않았다. 이번 요청에 따라 로컬 커밋하며 push/PR은 수행하지 않는다.
+
+## 최신 변경 — F01 연결 관리 화면 개선 (2026-11-04)
+
+사용자가 확인한 독립 HTML 프로토타입의 **화면 구성**을 실제 앱에 반영했다. 스타일은 기존 shared/ui의 Card·Dialog·AlertDialog·Field·Input·Switch·Badge·Toast·Select와 Formleaf theme token을 사용한다. Base UI 기반 공통 Tabs를 추가했고 문서 보관함과 같은 header/배경/폭을 사용한다. 별도 서체·색상·가짜 sidebar 메뉴를 이식하지 않았으며 문서 렌더러 CSS와 전역 reset도 바꾸지 않았다.
+
+- `AgentSettingsPage`: 서버 on/off, 연결 목록, 선택 상세, 미저장 권한 이탈 확인. 2초 polling은 이전 응답의 역전 적용을 막는다.
+- `AgentConnectionWizard`: 도구 선택→문서/권한/유효기간→일회성 token과 CLI별 안내→실제 인증 요청 확인. UI가 CLI나 AI 로그인을 실행하지 않는다.
+- `AgentConnectionDetail` / `AgentGrantFields`: 문서와 권한·연결/보안·작업 기록 탭. 초안은 polling/탭 이동에 유지되고 서버 grant 변경 시 최신값 재조회 전 저장을 막는다. 라이브러리 읽기는 개인 라이브러리 전체 범위임을 표시한다.
+- 선택 권한과 token을 함께 저장하며 잘못된 문서면 연결을 남기지 않는다. 새 UI token은 7/30/90일(기본 30일), 기존 무기한 token은 유지한다. 교체는 credential ID·grant·journal 소유권을 보존하고 hash/만료일만 바꾼다. 폐기한 연결은 교체할 수 없다.
+- 인증/current grant/결과 UI에 만료를 적용한다. body 수신 중 교체·만료·폐기된 token도 protocol dispatch 전에 다시 거절한다. 이미 저장된 문서를 되돌리지는 않는다.
+- `lastUsedAt`은 이번 앱 실행에서 **현재 token으로 인증된 요청**을 관측한 시각이다. 메모리에만 저장하며 재시작·교체 뒤 초기화한다. AI 계정 로그인·프로세스 실행 여부·모든 도구의 성공을 뜻하지 않는다.
+- 선택한 연결의 작업 기록은 기존 전체 최근 50건을 필터링한다. PDF 열기·다른 위치에 저장과 현재 권한/만료 재검사는 유지한다. 일반 화면의 requestId/revision은 요청 상세로 접었다.
+
+### 이번 검증
+
+| 검사 | 실제 결과 |
+|---|---|
+| `npm test` | 25개 script, 148개 통과 |
+| `npm run typecheck`, `npm run build` | 통과. 마지막 build에도 typecheck 포함 |
+| 집중 hidden Electron | F01 연결/교체/폐기 및 F08 PDF 결과 2개 통과(35.6초) |
+| 전체 `npx playwright test` | 7개 통과(1.2분), 외부 Codex/부하/원본 opt-in 3개 제외 |
+| 정책 검사 | 발급 입력 거절·선택 grant·구 token 거절·ID/권한 보존·만료 경계·기존 무기한 token·재시작·원문 비저장 통과 |
+| 기록 검사 | 만료 시 문서명/revision 숨김·교체 후 같은 기록 접근 복구 통과 |
+| UI 상태 | 실제 SDK MCP 요청에 따른 상태 갱신, polling/탭 이동의 초안 유지, 서버 권한 충돌, 재조회, 이탈 취소, token 원문 비재표시, 폐기 후 재시작 통과 |
+| 화면 | 연결 목록·권한 설정 dialog·보안 탭 screenshot 검수, 800px viewport에서 가로 넘침 없음 |
+| 문서 | 작업 문서 상대 파일 링크 118개 확인, 신규 연결 시퀀스 Mermaid 11.12.1 parse/SVG 렌더 및 `git diff --check` 통과 |
+
+인증된 MCP SDK client로 검증했으며 이번 변경에 제공사 모델 계정의 사용량을 쓰지 않았다. 앞서 남긴 Claude 모델 로그인/Windows·Linux 미검증은 그대로다. 임시 설정만 생성했으며 실제 사용자 token·문서·backup·외부 CLI 설정을 수정하지 않았다. 초기 집중 실행에서 늦게 반영한 region 속성이 이전 bundle에 빠져 locator 검사가 실패했고, 최신 build로 F01/F08 및 전체 회귀를 다시 통과했다.
+
+산출물은 ignored `client/test-results/agent-connection-*`의 `connections-overview.png`, `connect-permissions.png`, `connection-security.png`와 `/tmp/formleaf-connection-ui-*.log`다. 다음 테스트가 test-results를 지울 수 있으므로 영구 자료로 간주하지 않는다. 동작 중 앱에서 새 UI를 보려면 `client`에서 `npm run app`으로 최신 build를 실행한다.
 
 ## 구현 단위와 커밋
 

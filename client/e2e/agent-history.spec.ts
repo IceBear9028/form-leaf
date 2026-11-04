@@ -26,10 +26,15 @@ test("F08: 최근 결과·PDF 열기/저장·dialog 중 권한 철회·재시작
   try {
     app = await launch(); let page = await app.firstWindow();
     await page.getByRole("button", { name: "에이전트 연결", exact: true }).click();
-    await page.getByText("외부 에이전트 연결 방법", { exact: true }).click();
+    await page.getByRole("tab", { name: "연결 · 보안", exact: true }).click();
+    await page.getByRole("button", { name: "연결 설정 보기", exact: true }).click();
+    await page.getByRole("combobox", { name: "연결할 클라이언트" }).click();
+    await page.getByRole("option", { name: "Codex", exact: true }).click();
     await expect(page.getByRole("button", { name: "Codex 설정 복사" })).toBeVisible();
     await expect(page.locator("pre").first()).toContainText("FORMLEAF_MCP_TOKEN");
     expect(await page.locator("pre").allTextContents()).not.toContain(token);
+    await page.getByRole("button", { name: "연결 설정 닫기", exact: true }).click();
+    await page.getByRole("tab", { name: "작업 기록", exact: true }).click();
     client = await connect();
     const saved = (await client.callTool({ name: "get_document", arguments: { documentId } })).structuredContent as any;
     const requestId = randomUUID(); const input = { documentId, expectedRevision: saved.data.revision, requestId };
@@ -60,6 +65,7 @@ test("F08: 최근 결과·PDF 열기/저장·dialog 중 권한 철회·재시작
     await page.evaluate(({ id, grants }) => window.documents.agentSetGrants(id, grants), { id: connection.id, grants });
     await client.close(); client = undefined; await app.close(); app = await launch(); page = await app.firstWindow();
     await page.getByRole("button", { name: "에이전트 연결", exact: true }).click();
+    await page.getByRole("tab", { name: "작업 기록", exact: true }).click();
     await expect(page.locator(`[data-agent-operation="${requestId}"]`).getByText("출력 완료", { exact: true })).toBeVisible();
     client = await connect();
     const retried = (await client.callTool({ name: "export_pdf", arguments: input })).structuredContent as any;

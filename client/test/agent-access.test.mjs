@@ -70,6 +70,7 @@ test("F01: 실제 Streamable HTTP 인증·Host/Origin·크기 제한·현재 권
   t.after(() => client.close());
   await client.connect(new StreamableHTTPClientTransport(url, { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
   const list = await client.listTools();
+  assert.ok(policy.settings().connections[0].lastUsedAt);
   assert.equal(list.tools.some((tool) => tool.name === "get_context"), true);
   const context = await client.callTool({ name: "get_context", arguments: {} });
   assert.deepEqual(context.structuredContent.data.capabilities.documentIds, []);
@@ -79,4 +80,55 @@ test("F01: 실제 Streamable HTTP 인증·Host/Origin·크기 제한·현재 권
   assert.deepEqual(changed.structuredContent.data.capabilities.documentIds, ["new-permission"]);
   await policy.revoke(connection.id);
   await assert.rejects(client.listTools());
+});
+
+test("F01: 선택 권한 원자 발급·교체 후 identity/권한 유지·구 토큰 거절·만료", async (t) => {
+  const { workspace, policy, port } = await fixture(t);
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const grants = { ...emptyGrants(), documentIds: ["allowed"], write: true, render: true };
+  await assert.rejects(policy.create("invalid", { clientType: "codex", expiresInDays: 0, grants }));
+  assert.equal(policy.settings().connections.length, 0);
+  const original = await policy.create("Codex", { clientType: "codex", expiresInDays: 7, grants });
+  assert.deepEqual(original.connection.grants, grants);
+  await policy.setEnabled(true);
+  policy.recordAccess(original.connection.id, "wrong");
+  assert.equal(policy.settings().connections[0].lastUsedAt, undefined);
+  policy.recordAccess(original.connection.id, original.token);
+  assert.ok(policy.settings().connections[0].lastUsedAt);
+  t.mock.timers.tick(1000);
+  const rotated = await policy.rotate(original.connection.id, 30);
+  assert.equal(rotated.connection.id, original.connection.id);
+  assert.deepEqual(rotated.connection.grants, grants);
+  assert.notEqual(rotated.token, original.token);
+  assert.equal(policy.authenticate(original.token), undefined);
+  assert.equal(policy.authenticate(rotated.token), original.connection.id);
+  policy.recordAccess(original.connection.id, original.token);
+  assert.equal(policy.settings().connections[0].lastUsedAt, undefined);
+  const stored = await readFile(join(workspace, "agent-settings.json"), "utf8");
+  assert.equal(stored.includes(original.token), false);
+  assert.equal(stored.includes(rotated.token), false);
+  assert.equal(stored.includes("lastUsedAt"), false);
+  const reopened = new AccessPolicy(workspace, port); await reopened.initialize();
+  assert.equal(reopened.authenticate(rotated.token), original.connection.id);
+  assert.equal(reopened.settings().connections[0].clientType, "codex");
+  assert.equal(reopened.settings().connections[0].lastUsedAt, undefined);
+  t.mock.timers.tick(30 * 86_400_000);
+  assert.equal(reopened.authenticate(rotated.token), undefined);
+  assert.throws(() => reopened.document(original.connection.id, "allowed", "render"), code("NOT_FOUND_OR_DENIED"));
+  const renewed = await reopened.rotate(original.connection.id, 7);
+  assert.equal(reopened.authenticate(renewed.token), original.connection.id);
+  await reopened.revoke(original.connection.id);
+  await assert.rejects(reopened.rotate(original.connection.id, 30), code("NOT_FOUND_OR_DENIED"));
+});
+
+test("F01: 기존 무기한 token은 재시작·새 설정 추가 후에도 유효", async (t) => {
+  const { policy, workspace, port } = await fixture(t);
+  const legacy = await policy.create("기존 연결");
+  await policy.setEnabled(true);
+  const reopened = new AccessPolicy(workspace, port); await reopened.initialize();
+  assert.equal(reopened.authenticate(legacy.token), legacy.connection.id);
+  assert.equal(reopened.settings().connections[0].expiresAt, undefined);
+  assert.equal(reopened.settings().connections[0].clientType, undefined);
+  await reopened.create("새 연결", { clientType: "claude-code", expiresInDays: 7, grants: emptyGrants() });
+  assert.equal(reopened.authenticate(legacy.token), legacy.connection.id);
 });

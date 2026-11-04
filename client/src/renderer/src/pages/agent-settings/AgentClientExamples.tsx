@@ -1,17 +1,38 @@
 import { useState } from "react";
+import { CopyIcon } from "lucide-react";
+import type { AgentClientType } from "../../../../foundation/agentConnection.ts";
 import { Button } from "@/shared/ui/button";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { agentClients, copyAgentText } from "./agentConnectionUi.tsx";
 
-export function AgentClientExamples({ endpoint }: { endpoint: string }) {
-  const [notice, setNotice] = useState<string>();
-  const examples = [
-    { name: "Codex", file: "config.toml", source: "https://developers.openai.com/codex/mcp", value: `[mcp_servers.formleaf]\nurl = ${JSON.stringify(endpoint)}\nbearer_token_env_var = "FORMLEAF_MCP_TOKEN"\n` },
-    { name: "Claude Code", file: ".mcp.json", source: "https://code.claude.com/docs/en/mcp", value: JSON.stringify({ mcpServers: { formleaf: { type: "http", url: endpoint, headers: { Authorization: "Bearer ${FORMLEAF_MCP_TOKEN}" } } } }, null, 2) },
-  ];
-  return <details className="space-y-3 rounded-xl border bg-background p-5">
-    <summary className="cursor-pointer font-semibold">외부 에이전트 연결 방법</summary>
-    <ol className="list-decimal space-y-2 pl-5 text-sm"><li>Formleaf에서 연결을 켜고 토큰과 허용 문서를 설정하세요.</li><li>외부 에이전트를 실행하는 환경에 FORMLEAF_MCP_TOKEN 값을 발급받은 Formleaf 토큰으로 설정하세요.</li><li>아래 예시를 기존 클라이언트 설정에 병합하고 연결 상태를 확인하세요. 같은 컴퓨터에서 Formleaf를 실행해 두세요.</li></ol>
-    <p className="text-sm text-muted-foreground">복사하는 예시에 실제 토큰은 포함되지 않습니다. AI 계정 로그인은 각 클라이언트에서 진행합니다.</p>
-    {notice && <p role="status" className="text-sm">{notice}</p>}
-    {examples.map((example) => <div key={example.name} className="space-y-2"><div className="flex items-center justify-between"><h3 className="text-sm font-medium">{example.name} · {example.file}</h3><Button variant="outline" onClick={() => void navigator.clipboard.writeText(example.value).then(() => setNotice(`${example.name} 설정 예시를 복사했습니다.`), () => setNotice("클립보드에 복사하지 못했습니다. 예시를 직접 선택해 복사하세요."))}>{example.name} 설정 복사</Button></div><pre className="overflow-auto rounded bg-muted p-3 text-xs">{example.value}</pre><a className="text-xs underline" href={example.source} target="_blank" rel="noreferrer">공식 연결 문서</a></div>)}
-  </details>;
+export function AgentClientExamples({ endpoint, clientType = "other" }: { endpoint: string; clientType?: AgentClientType }) {
+  const [type, setType] = useState<AgentClientType>(clientType);
+  const config = type === "codex"
+    ? `[mcp_servers.formleaf]\nurl = ${JSON.stringify(endpoint)}\nbearer_token_env_var = "FORMLEAF_MCP_TOKEN"\n`
+    : type === "claude-code" ? JSON.stringify({ mcpServers: { formleaf: { type: "http", url: endpoint, headers: { Authorization: "Bearer ${FORMLEAF_MCP_TOKEN}" } } } }, null, 2)
+    : `URL: ${endpoint}\nAuthorization: Bearer <Formleaf에서 발급받은 토큰>`;
+  return <div className="space-y-5">
+    <Select value={type} onValueChange={(value) => { if (value) setType(value as AgentClientType); }} items={Object.entries(agentClients).map(([value, item]) => ({ value, label: item.name }))}>
+      <SelectTrigger className="w-full" aria-label="연결할 클라이언트"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(agentClients).map(([value, item]) => <SelectItem key={value} value={value}>{item.name}</SelectItem>)}</SelectContent>
+    </Select>
+    <section className="space-y-2"><h3 className="m-0 text-sm font-medium">1. CLI를 실행할 터미널에 토큰 설정</h3>
+      <p className="m-0 text-xs text-muted-foreground">macOS의 zsh 기준입니다. 아래 명령을 실행한 뒤, 발급받은 토큰을 붙여넣고 Enter를 누르세요. 입력한 토큰은 화면에 표시되지 않습니다.</p>
+      <CodeBlock text={'read -rs "FORMLEAF_MCP_TOKEN?Formleaf 토큰: "\necho\nexport FORMLEAF_MCP_TOKEN'} label="토큰 입력 명령 복사" />
+      <p className="m-0 text-xs text-muted-foreground">새 터미널에서는 다시 설정해야 합니다. Windows 등 다른 환경에서는 동일한 환경 변수를 해당 셸의 방식으로 설정하세요.</p>
+    </section>
+    <section className="space-y-2"><h3 className="m-0 text-sm font-medium">2. {agentClients[type].name}에 연결 등록</h3>
+      <p className="m-0 text-xs text-muted-foreground">{type === "codex" ? "Codex의 config.toml에 아래 설정을 병합하세요." : type === "claude-code" ? "작업할 폴더의 .mcp.json에 아래 설정을 병합하세요. 프로젝트 MCP 승인 안내가 나오면 확인하세요." : "클라이언트의 HTTP MCP 연결 설정에 주소와 인증 정보를 입력하세요."}</p>
+      <CodeBlock text={config} label={`${agentClients[type].name} 설정 복사`} />
+      {type !== "other" && <a className="text-xs text-muted-foreground underline underline-offset-4" href={type === "codex" ? "https://developers.openai.com/codex/mcp" : "https://code.claude.com/docs/en/mcp"} target="_blank" rel="noreferrer">공식 연결 문서</a>}
+    </section>
+    <section className="space-y-2"><h3 className="m-0 text-sm font-medium">3. 에이전트 실행 후 첫 요청</h3>
+      <p className="m-0 text-xs text-muted-foreground">{type === "other" ? "클라이언트를 실행하고 첫 요청을 보내세요." : `토큰을 설정한 같은 터미널에서 ${type === "codex" ? "codex" : "claude"}를 실행하세요. AI 계정 로그인 안내가 나오면 해당 도구에서 진행하세요.`}</p>
+      <CodeBlock text="Formleaf 도구로 접근 가능한 문서 목록을 보여줘." label="첫 요청 문장 복사" />
+    </section>
+    <Alert role="note"><AlertDescription>Formleaf를 계속 실행해 두세요. 이 안내는 문서 도구 연결용이며 AI 계정 로그인이나 CLI 실행을 대신하지 않습니다.</AlertDescription></Alert>
+  </div>;
+}
+function CodeBlock({ text, label }: { text: string; label: string }) {
+  return <div className="min-w-0 rounded-lg border border-border bg-muted/40"><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-relaxed">{text}</pre><div className="flex justify-end border-t border-border px-2 py-1"><Button variant="ghost" size="sm" onClick={() => void copyAgentText(text, "복사했습니다.")}><CopyIcon aria-hidden="true" />{label}</Button></div></div>;
 }

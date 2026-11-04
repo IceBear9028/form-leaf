@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { AgentOperationSummary } from "../../../../foundation/agentConnection.ts";
 import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
 
 const toolNames = { create_document: "문서 생성", apply_operations: "문서 수정", export_pdf: "PDF 출력" };
 function statusText(item: AgentOperationSummary): string {
@@ -10,7 +12,7 @@ function statusText(item: AgentOperationSummary): string {
   if (item.persisted && item.uiSynced === false) return "저장 완료 · 화면 반영 미확인";
   return item.tool === "export_pdf" ? "출력 완료" : "저장 완료";
 }
-export function AgentOperations() {
+export function AgentOperations({ credentialId, embedded = false }: { credentialId?: string; embedded?: boolean } = {}) {
   const [items, setItems] = useState<AgentOperationSummary[]>([]);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
@@ -34,17 +36,18 @@ export function AgentOperations() {
     } catch { setError("PDF를 열거나 저장하지 못했습니다. 연결 권한과 파일 만료 여부를 확인하세요."); }
     finally { setBusy(false); }
   };
-  return <section className="space-y-3 rounded-xl border bg-background p-5" aria-label="최근 에이전트 작업">
+  const visible = credentialId ? items.filter((item) => item.credentialId === credentialId) : items;
+  return <section className={embedded ? "space-y-4" : "space-y-3 rounded-xl border bg-background p-5"} aria-label="최근 에이전트 작업">
     <h2 className="font-semibold">최근 에이전트 작업</h2>
-    <p className="text-sm text-muted-foreground">최근 50건을 표시합니다. 연결이 끊겨도 이미 저장한 변경은 유지됩니다. 대화 기록과 문서의 실행 취소 이력은 포함하지 않습니다.</p>
-    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    <p className="text-xs leading-relaxed text-muted-foreground">{credentialId ? "전체 최근 50건 중 이 연결의 작업을 표시합니다." : "최근 50건을 표시합니다."} 연결이 끊겨도 이미 저장한 변경은 유지됩니다. 대화 기록과 문서의 실행 취소 이력은 포함하지 않습니다.</p>
+    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     {notice && <p role="status" className="break-all text-sm">{notice}</p>}
-    {items.length === 0 && <p className="text-sm text-muted-foreground">아직 접수된 작업이 없습니다.</p>}
-    {items.map((item) => <article key={`${item.credentialId}:${item.requestId}`} data-agent-operation={item.requestId} className="space-y-2 rounded-lg border p-4">
-      <div className="flex flex-wrap justify-between gap-2"><h3 className="font-medium">{toolNames[item.tool]} · {item.connectionName}</h3><span className="text-sm">{statusText(item)}</span></div>
+    {visible.length === 0 && <p className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">표시할 작업이 없습니다.</p>}
+    {visible.map((item) => <article key={`${item.credentialId}:${item.requestId}`} data-agent-operation={item.requestId} className="space-y-3 rounded-lg border p-4">
+      <div className="flex flex-wrap justify-between gap-2"><h3 className="text-sm font-medium">{toolNames[item.tool]}{!credentialId && ` · ${item.connectionName}`}</h3><Badge variant={item.status === "failed" || item.status === "recovery_required" ? "destructive" : "secondary"}>{statusText(item)}</Badge></div>
       <p className="text-sm">{item.accessible ? item.documentName : "문서 권한이 없거나 문서를 사용할 수 없습니다."}</p>
-      <p className="break-all text-xs text-muted-foreground">요청 ID: {item.requestId}{item.acceptedAt ? ` · ${new Date(item.acceptedAt).toLocaleString()}` : ""}</p>
-      {item.revision && <p className="break-all text-xs text-muted-foreground">저장 버전: {item.revision}</p>}
+      {item.acceptedAt && <p className="text-xs text-muted-foreground">{new Date(item.acceptedAt).toLocaleString()}</p>}
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">요청 상세</summary><p className="mt-2 break-all">요청 ID: {item.requestId}</p>{item.revision && <p className="mt-1 break-all">저장 버전: {item.revision}</p>}</details>
       {item.status === "recovery_required" && <p className="text-sm">같은 요청을 새 ID로 다시 실행하지 마세요. 입력 중인 내용을 보존하고 앱을 다시 열어 결과를 확인하세요. 계속 이 상태면 문서와 작업 기록을 보존한 채 점검이 필요합니다.</p>}
       {item.status === "pending" && <p className="text-sm text-muted-foreground">결과를 기다리는 중입니다. 같은 작업을 새 요청으로 반복하지 마세요.</p>}
       {item.status === "failed" && <p className="text-sm">{item.errorCode && <code>{item.errorCode} · </code>}변경이 반영되지 않았습니다. 원인을 해결한 뒤 새 요청으로 진행할 수 있습니다.</p>}

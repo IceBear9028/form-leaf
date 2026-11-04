@@ -342,6 +342,50 @@ O02/O03/O06은 공통 service fault injection과 hidden Electron으로 검증했
 
 ## 외부 구현 조사 반영
 
+### F01 연결 관리 개선 — 2026-11-04
+
+이번 변경의 As-Is는 `51701b5`다. 위 도구/service 아키텍처를 유지하면서 연결 관리 화면과 credential 수명을 확장한다.
+
+| 구분 | As-Is | To-Be |
+|---|---|---|
+| 연결 생성 | 이름→token 발급→별도 grant 저장 | 도구 선택→문서/권한/유효기간→원자적 발급→안내/확인 |
+| 화면 | 모든 연결의 권한과 전체 기록을 한 화면에 나열 | 연결 목록과 선택 상세 탭, 선택 연결의 기록 필터 |
+| 상태 | 서버 on/off, credential 폐기 | 서버 상태 + token 만료/폐기 + 현재 실행에서 관측한 인증 요청 |
+| token 분실 | 폐기하고 새 credential 생성 | 같은 credential ID의 token 교체, grant·journal 소유권 보존 |
+| 스타일 | 화면에서 직접 구성한 form | 기존 shared/ui·theme token과 공통 Tabs 컴포넌트 |
+
+`AgentSettingsPage`는 읽기 DTO·선택·dialog를 소유하고 2초마다 중복 없이 갱신한다. `AgentConnectionWizard`는 단계·선택 범위·일회성 token 원문을 소유한다. `AgentGrantFields`를 발급과 상세 편집에 공용으로 사용한다. 상세 편집은 저장 baseline과 draft를 구분하며 polling이 초안을 덮어쓰지 않는다. `AgentOperations`는 기존 최대 50건의 결과를 credentialId로 필터링한다. 문서/editor의 저장 경로는 바꾸지 않는다.
+
+```mermaid
+sequenceDiagram
+  actor U as 사용자
+  participant UI as 연결 설정 UI
+  participant IPC as main IPC
+  participant P as AccessPolicy
+  participant D as 관리 JSON
+  participant C as 외부 CLI
+  participant M as MCP HTTP
+  U->>UI: 도구·문서·권한·유효기간 선택
+  UI->>IPC: createConnection(name, options)
+  IPC->>IPC: 입력과 허용 문서 확인
+  IPC->>P: create(name, options)
+  P->>D: hash·grant·만료일을 함께 저장
+  P-->>UI: 연결 summary + 일회성 token
+  U->>C: token과 연결 설정 입력
+  C->>M: 인증된 MCP 요청
+  M->>P: token·현재 권한·만료 재검사
+  M->>P: 수락된 요청 시각 메모리 기록
+  UI->>IPC: settings polling
+  IPC-->>UI: summary + 현재 실행의 lastUsedAt
+  UI-->>U: 인증 요청 확인 / 관측 시각
+```
+
+기존 schemaVersion 1 설정의 optional 필드로 clientType/tokenCreatedAt/expiresAt을 추가하며 없는 필드는 무기한 기존 연결로 해석한다. 새 UI 발급·교체는 7/30/90일 중 선택한다. hash·유효기간·선택 grant는 기존 settings write queue와 atomic JSON 저장을 사용한다. 저장 성공 후에만 새 token을 반환하며 교체는 credential ID를 바꾸지 않는다. HTTP body 수신 중 교체·만료된 token도 protocol dispatch 전에 다시 검사한다. 이미 수락/저장한 작업을 token 교체로 rollback하지 않는다.
+
+요청 시각을 영속 저장하는 대안은 재시작 뒤에도 최근 사용을 보여줄 수 있지만 모든 요청의 디스크 쓰기 또는 batching/flush 복구가 추가된다. 이번에는 **현재 실행에서의 인증 요청 관측**으로 명명하고 메모리에만 보관한다. 재시작·token 교체 뒤 관측을 초기화하며 실제 CLI 실행·AI 로그인 확인으로 확대하지 않는다. token 만료는 서버 정책과 결과 projection에 함께 적용한다.
+
+참고한 공개 UI는 [Docker의 CLI 연결 안내](https://docs.docker.com/guides/genai-claude-code-mcp/), [Craft의 문서별 연결](https://support.craft.do/en/integrate/mcp), [Raycast의 상태 관리](https://manual.raycast.com/ai/model-context-protocol)다. 사용자에게 보여준 독립 프로토타입의 구성만 차용하고 제품은 기존 Formleaf theme를 따른다. 제공사 로그인·프로세스 실행은 후속 범위다.
+
 [Obsidian MCP 분석](../../references/obsidian-mcp/README.md)의 컨텍스트·도구 설명·앱 API 재사용 구조를 참고한다. blacklist의 출력 경로 누락, 단순 read-modify-write, idempotent hint와 실제 동작 불일치를 피하도록 문서별 grant·공통 service·journal을 설계했다. 이 참고 자료를 제품 기능 구현 완료의 근거로 사용하지 않는다.
 
 ## 후속 구조와의 연결 — 이번 구현 범위 밖

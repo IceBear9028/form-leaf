@@ -39,6 +39,15 @@ test("F08: 최근 작업은 본문·staged result를 노출하지 않고 저장/
   assert.equal(recent.length, 1); assert.equal(recent[0].persisted, true); assert.equal(recent[0].uiSynced, false);
   assert.ok(recent[0].acceptedAt); assert.equal(recent[0].revision, document.revision);
   assert.equal(JSON.stringify(recent).includes("SECRET BODY"), false); assert.equal(JSON.stringify(recent).includes(token), false);
+  // A credential's expiry also redacts the local history projection, without deleting the journal.
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  await policy.rotate(connection.id, 7);
+  t.mock.timers.tick(7 * 86_400_000);
+  const expired = (await history.recent())[0];
+  assert.equal(expired.accessible, false); assert.equal(expired.documentName, undefined); assert.equal(expired.revision, undefined);
+  assert.equal(expired.status, "completed");
+  await policy.rotate(connection.id, 30);
+  assert.equal((await history.recent())[0].accessible, true);
   const entry = await service.operation(connection.id, key.requestId);
   await service.journal.finish(entry, { ...entry.response, status: "recovery_required", outcome: "unknown" });
   recent = await history.recent(); assert.equal(recent[0].status, "recovery_required"); assert.equal(recent[0].persisted, undefined); assert.equal(recent[0].revision, undefined);

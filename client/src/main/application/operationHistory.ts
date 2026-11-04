@@ -30,7 +30,7 @@ export class OperationHistory {
       const connection = this.policy.settings().connections.find((item) => item.id === entry.credentialId);
       summary.connectionName = connection?.name ?? "삭제된 연결";
       const document = documents.find((item) => item.id === entry.documentId);
-      const allowed = connection && !connection.revoked && connection.grants.documentIds.includes(entry.documentId)
+      const allowed = connection && !connection.revoked && (!connection.expiresAt || Date.parse(connection.expiresAt) > Date.now()) && connection.grants.documentIds.includes(entry.documentId)
         && (response.tool !== "export_pdf" || connection.grants.render);
       if (allowed && document) {
         summary.accessible = true; summary.documentId = entry.documentId; summary.documentName = document.name;
