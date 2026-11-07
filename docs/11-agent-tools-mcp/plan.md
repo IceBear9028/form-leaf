@@ -2,9 +2,17 @@
 
 ## 현재 상태
 
-2026-11-07 — 사용자 요청으로 현재 구현 범위를 마감하고 PR로 제출한다. F01–F08 및 연결 관리 UI 개선은 구현·검증·커밋 완료다. Codex 실사용과 10만 자/37쪽/40회 연속 출력·timeout 복구는 통과했다. Claude 모델 로그인 여정과 Windows/Linux는 미검증으로 이관하며 체크박스를 완료로 바꾸지 않는다. 이번 마감은 최초 전체 환경 인수 기준의 통과 선언이 아니다.
+**F01–F08은 main에 병합되었고, 2026-11-08 문서 개정에서 단계별 기록을 보존했다.**
 
-이번 작업의 구현 기준은 [README](README.md)의 범위와 기능 상세, [tool-contracts](tool-contracts.md)다. AI 로그인·내부 채팅·관리되는 에이전트 실행 환경은 후속이다. 문서 작성과 코드 구현의 완료를 구분한다.
+- F01–F08 및 연결 관리 UI 개선은 구현·검증·커밋 완료다.
+- Codex 실사용과 10만 자/37쪽/40회 연속 출력·timeout 복구는 통과했다.
+- Claude 모델 로그인 여정과 Windows/Linux는 미검증으로 이관하며 체크박스를 완료로 바꾸지 않는다.
+- 이번 마감은 최초 전체 환경 인수 기준의 통과 선언이 아니다.
+
+**이번 작업의 구현 기준은 [README](features/README.md)의 범위와 기능 상세, [tool-contracts](implementation/tool-contracts.md)다.**
+
+- AI 로그인·내부 채팅·관리되는 에이전트 실행 환경은 후속이다.
+- 문서 작성과 코드 구현의 완료를 구분한다.
 
 ## 완료한 기획 산출물
 
@@ -18,13 +26,18 @@
 - [x] 재사용할 기능 정의 양식과 기능↔계약↔검증 단계 연결 작성.
 - [x] 현재 코드 A01–A07과 목표 컴포넌트·데이터 소유권·기능 관계, AS01–TB05 시퀀스 작성.
 - [x] 기능 외 문서의 양식, 단계별 전환·진입/종료 조건·롤백 범위와 미결정 O01–O07 연결.
-- [x] 전체 기획을 README로 통합하고 도구 목록·공통 템플릿을 각 기준 위치로 정리. 공통 workflow와 실제 assets 개편.
+- [x] 전체 기획을 features/README로 모으고 도구 목록·공통 템플릿을 각 기준 위치로 정리. 공통 workflow와 실제 assets 개편.
 
-이는 설계안 작성 완료다. 사용자가 세부 항목 모두를 이미 승인했거나 API가 구현됐다는 뜻은 아니다.
+**이는 설계안 작성 완료다.**
+
+- 사용자가 세부 항목 모두를 이미 승인했거나 API가 구현됐다는 뜻은 아니다.
 
 ## As-Is에서 To-Be로 전환하는 순서
 
-현재 UI→repository 직접 저장에서 UI/MCP→공통 service로 전환한다. diagram은 구현 의존성을 나타낸다. 단계 번호는 아래 체크리스트와 같다.
+**현재 UI→repository 직접 저장에서 UI/MCP→공통 service로 전환한다. diagram은 구현 의존성을 나타낸다.**
+
+- 단계 번호는 아래 체크리스트와 같다.
+
 
 ```mermaid
 flowchart TD
@@ -37,6 +50,7 @@ flowchart TD
   P5 --> P6["6 두 client 전체 여정 / 회귀"]
 ```
 
+
 | 단계 | 시작에 필요한 상태 | 단계가 끝난 To-Be 상태 | 공개 전 필요한 증거 | 실패 시 유지·복귀 범위 |
 |---|---|---|---|---|
 | 1 | A01–A07 코드·명세 확인 | typed 계약과 fixture만 추가 | 12 도구/18 명령의 정상·오류 schema, O01 | 제품 경로는 기존 상태 |
@@ -46,15 +60,41 @@ flowchart TD
 | 5 | 저장 revision과 job 조회 준비 | hidden renderer 출력과 artifact 제공 | AS02 대비 TB04, O05/O07·만료·권한 철회 | render 비활성, 기존 수동 PDF 경로 유지 |
 | 6 | 전 단계 증거 확보 | 두 외부 agent의 전체 흐름 검증 | F01–F08 AC, 회귀·빌드 결과 | 실패한 경계를 수정한 뒤 필요한 gate 재검증 |
 
-**데이터 전환:** schemaVersion 4와 Markdown 문자열은 유지한다. grant/journal/artifact는 별도 관리 영역에 추가한다. 기존 사용자 파일이나 backup을 직접 편집해 새 구조에 맞추지 않는다. 임시 workspace에서 기존 문서를 읽고 저장·재열기하는 호환성을 검증한다.
+**데이터 전환**
 
-**롤백의 의미:** 연결이나 capability를 끄는 것은 이후 호출을 중단하는 조치다. 이미 저장한 사용자 변경을 되돌리거나 journal을 지우는 조치가 아니다. 배포 버전의 downgrade는 새 metadata를 이전 버전이 어떻게 다룰지 검증하기 전에는 안전하다고 약속하지 않는다.
+- schemaVersion 4와 Markdown 문자열은 유지한다. grant/journal/artifact는 별도 관리 영역에 추가한다.
+- 기존 사용자 파일이나 backup을 직접 편집해 새 구조에 맞추지 않는다.
+- 임시 workspace에서 기존 문서를 읽고 저장·재열기하는 호환성을 검증한다.
 
-**구현 중 상태 기록:** 각 단계 완료 시 아래 인수 조건에 실제 테스트 경로·명령·결과·관련 커밋을 연결하고 handoff에 기록한다. 문서에 있는 시퀀스나 체크박스만으로 실행 증거를 대체하지 않는다.
+**롤백의 의미**
+
+- 연결이나 capability를 끄는 것은 이후 호출을 중단하는 조치다.
+- 이미 저장한 사용자 변경을 되돌리거나 journal을 지우는 조치가 아니다.
+- 배포 버전의 downgrade는 새 metadata를 이전 버전이 어떻게 다룰지 검증하기 전에는 안전하다고 약속하지 않는다.
+
+**구현 중 상태 기록**
+
+- 각 단계 완료 시 아래 인수 조건에 실제 테스트 경로·명령·결과·관련 커밋을 연결하고 handoff에 기록한다.
+- 문서에 있는 시퀀스나 체크박스만으로 실행 증거를 대체하지 않는다.
 
 ## 기능별 구현 커밋 진행
 
-사용자의 2026-11-03 요청에 따라 공통 기반 이후 F01→F08 순서로 검증하고 커밋한다. 단계 2의 operation adapter/세 target 검증은 F03–F06에서 연결한다. 서버는 기본 비활성이며 사용자가 허용한 범위에서 12개 도구와 18개 명령을 제공한다.
+**번호별 기능은 검증과 문서 갱신을 마치고 커밋한 뒤 다음 기능으로 진행한다.**
+
+1. 선행 기능과 해당 implementation 문서의 진입 조건을 확인한다.
+2. 기능을 구현하고 필요한 검증을 통과한다.
+3. implementation·plan·handoff를 갱신한다.
+4. 해당 기능의 코드·시험·문서를 커밋하고 해시를 기록한다.
+5. 검증이나 커밋이 실패하면 해당 기능에서 재개한다.
+
+- 새 구현의 커밋 메시지에는 기능 ID를 포함한다.
+- 아래 과거 커밋 메시지와 해시는 소급 변경하지 않는다.
+- 이번 문서 정리는 제품 기능의 재구현이나 완료 커밋 재작성에 해당하지 않는다.
+
+**사용자의 2026-11-03 요청에 따라 공통 기반 이후 F01→F08 순서로 검증하고 커밋한다.**
+
+- 단계 2의 operation adapter/세 target 검증은 F03–F06에서 연결한다.
+- 서버는 기본 비활성이며 사용자가 허용한 범위에서 12개 도구와 18개 명령을 제공한다.
 
 | 단위 | 현재 상태 | 검증 |
 |---|---|---|
@@ -71,7 +111,11 @@ flowchart TD
 
 ## 기능과 검증 단계의 대응
 
-P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래는 검증 기준과 대응이다. 로컬 실행 결과·환경·제한은 handoff에 기록하며 외부 에이전트 판단/사용성 시험을 자동 테스트로 대신했다고 표시하지 않는다. 상세 인수 조건은 링크한 기능 문서가 기준이다.
+**P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다.**
+
+- 아래는 검증 기준과 대응이다.
+- 로컬 실행 결과·환경·제한은 handoff에 기록하며 외부 에이전트 판단/사용성 시험을 자동 테스트로 대신했다고 표시하지 않는다.
+- 상세 인수 조건은 링크한 기능 문서가 기준이다.
 
 | 기능 | 구현 단계 | 핵심 인수 조건 | 확인 방법 |
 |---|---|---|---|
@@ -84,11 +128,15 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 | [F07 출력](features/07-preview-and-export.md) | 5, 6 | F07-AC01–07 | revision 고정·hidden renderer·만료·권한·PDF 의미 보존 |
 | [F08 결과·복구](features/08-recover-operation.md) | 2, 3, 5, 6 | F08-AC01–06 | 저장 경계 fault injection·재시작·requestId·UI ack |
 
-단계 1에서 API fixture와 AC ID를 연결하고, 단계 2–5에서는 해당 service/renderer 경계를 검증한다. 단계 6에서는 외부 에이전트가 전체 여정을 수행하는지 확인한다. Codex는 통과했고 Claude의 모델 세션은 미검증이다. 세부 동작을 unit test로 확인한 사실만으로 외부 사용자 흐름까지 완료했다고 처리하지 않는다.
+**단계 1에서 API fixture와 AC ID를 연결하고, 단계 2–5에서는 해당 service/renderer 경계를 검증한다.**
+
+- 단계 6에서는 외부 에이전트가 전체 여정을 수행하는지 확인한다.
+- Codex는 통과했고 Claude의 모델 세션은 미검증이다.
+- 세부 동작을 unit test로 확인한 사실만으로 외부 사용자 흐름까지 완료했다고 처리하지 않는다.
 
 ## 1. 계약을 코드와 fixture로 옮기기
 
-대상: T01–T12, Operation 18개 전체.
+- 대상: T01–T12, Operation 18개 전체.
 
 - [x] documentCommands 및 runtime schema에 도구/명령/error/result union 구현.
 - [x] 기존 DocumentEditTarget과 model schemaVersion 4 연결.
@@ -96,13 +144,18 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] 정상 입력, 비허용 target, 예상 오류, 결과 schema fixture 작성.
 - [x] SDK stable version 고정과 structured output/image/resource 동작 확인.
 
-완료 기준: 명세의 이름·인자·응답과 schema가 일치하고 잘못된 요청이 실행 전에 거절된다.
+- 완료 기준: 명세의 이름·인자·응답과 schema가 일치하고 잘못된 요청이 실행 전에 거절된다.
 
-증거: `client/test/agent-contracts.test.mjs` 6개 테스트 통과. SDK 1.32.2 / Zod 4.6.7을 정확한 버전으로 고정하고 in-memory MCP client로 structuredContent·오류·image·resource 전달을 확인했다. 실제 HTTP 인증·render 결과·문서 참조/설치 font 검사는 후속 단계다.
+**증거: `client/test/agent-contracts.test.mjs` 6개 테스트 통과.**
+
+- SDK 1.32.2 / Zod 4.6.7을 정확한 버전으로 고정하고 in-memory MCP client로 structuredContent·오류·image·resource 전달을 확인했다.
+- 실제 HTTP 인증·render 결과·문서 참조/설치 font 검사는 후속 단계다.
 
 ## 2. 공통 service와 저장 충돌 방지 — 완료
 
-대상: 모든 조회·쓰기의 기반. MCP 서버를 붙이기 전에 진행한다.
+**대상: 모든 조회·쓰기의 기반.**
+
+- MCP 서버를 붙이기 전에 진행한다.
 
 - [x] 기존 foundation operation과 repository를 documentService로 연결.
 - [x] UI IPC도 같은 service와 expectedRevision 사용.
@@ -112,13 +165,17 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] request journal·staged snapshot·index 갱신 순서·재시작 복구 구현.
 - [x] 같은 requestId 재전송, 다른 입력 재사용, 저장 후 UI 동기화 실패 검증.
 
-진행 증거: `agent-document-service.test.mjs` 10개, hidden `agent-editor-coordination.spec.ts` 1개와 기존 Markdown E2E 2개 통과. F03–F06에서 operation adapter와 세 target batch 검증을 연결했고 grant가 있는 외부 쓰기를 제공한다.
+**진행 증거: `agent-document-service.test.mjs` 10개, hidden `agent-editor-coordination.spec.ts` 1개와 기존 Markdown E2E 2개 통과.**
 
-완료 기준: stale UI 자동 저장과 두 외부 변경이 서로 덮어쓰지 않는다. 장애 후 중복 생성하지 않으며 결과 불명 상태를 명시한다.
+- F03–F06에서 operation adapter와 세 target batch 검증을 연결했고 grant가 있는 외부 쓰기를 제공한다.
+
+**완료 기준: stale UI 자동 저장과 두 외부 변경이 서로 덮어쓰지 않는다.**
+
+- 장애 후 중복 생성하지 않으며 결과 불명 상태를 명시한다.
 
 ## 3. 연결 설정과 조회 도구 — 완료
 
-대상: T01–T05, T08–T09, T12의 조회 경로.
+- 대상: T01–T05, T08–T09, T12의 조회 경로.
 
 - [x] 앱 설정에 MCP 활성화·endpoint·연결 이름·token 발급/폐기 UI 추가.
 - [x] 연결별 documentIds 및 write/create/libraryRead/render grant 설정·저장.
@@ -129,13 +186,15 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] 목록·instructions·resource·로그에도 문서 권한 적용; 비허용 이름·집계 노출 검사.
 - [x] 읽기 전용·권한 변경·폐기 token·만료 cursor·잘못된 origin 검증.
 
-완료 기준: 외부 MCP client가 도구를 발견하고 허용된 저장 문서·target만 조회할 수 있다.
+- 완료 기준: 외부 MCP client가 도구를 발견하고 허용된 저장 문서·target만 조회할 수 있다.
 
 ## 4. 문서 생성과 변경 도구 — 완료
 
-대상: T06–T07, T12의 생성/수정 결과.
+- 대상: T06–T07, T12의 생성/수정 결과.
 
-아래 순서로 기능을 연결한다. 각 묶음은 같은 documentService를 사용한다.
+**아래 순서로 기능을 연결한다.**
+
+- 각 묶음은 같은 documentService를 사용한다.
 
 | 순서 | 묶음 | 구현 명령 |
 |---|---|---|
@@ -153,11 +212,11 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] dryRun 무변경, 전체 batch 실패 무변경, unsupported Markdown 원문 보존 검증.
 - [x] 생성 문서 grant 추가와 journal 복구의 일관성 검증.
 
-완료 기준: README와 기능 상세의 문장 수정·항목 추가·빈 문서 작성·컴포넌트 재사용 예시를 도구 호출로 수행한다.
+- 완료 기준: README와 기능 상세의 문장 수정·항목 추가·빈 문서 작성·컴포넌트 재사용 예시를 도구 호출로 수행한다.
 
 ## 5. 결과 확인과 출력 — 완료
 
-대상: T10–T11, T12의 출력 job, artifact resource와 앱 결과 화면.
+- 대상: T10–T11, T12의 출력 job, artifact resource와 앱 결과 화면.
 
 - [x] revision에 고정한 hidden renderer job 구현.
 - [x] font/image/pagination 준비 신호와 timeout 처리.
@@ -167,7 +226,7 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] 앱에서 최근 작업 상태와 PDF 열기/다른 위치에 저장 제공.
 - [x] 문서 선택·포커스·활성 editor root 불변 검증.
 
-완료 기준: 요청한 revision의 페이지 이미지와 PDF를 얻고, 권한 폐기 뒤 artifact를 읽지 못한다. artifact 정리가 사용자 문서·backup에 영향을 주지 않는다.
+- 완료 기준: 요청한 revision의 페이지 이미지와 PDF를 얻고, 권한 폐기 뒤 artifact를 읽지 못한다. artifact 정리가 사용자 문서·backup에 영향을 주지 않는다.
 
 ## 6. 외부 에이전트 연결과 제품 회귀 — 검증 결과 확정·미검증 이관
 
@@ -184,23 +243,34 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - [x] npm test, npm run typecheck, npm run build, git diff --check 실행.
 - [x] 구현 결과·실제 지원 이름·검증 근거·남은 제한을 명세와 handoff에 반영.
 
-완료 기준: 사용자가 허용한 문서에 대해 기능 예시를 끝까지 수행한다. 테스트에는 실제 사용자 데이터나 backup을 사용하지 않는다.
+**완료 기준: 사용자가 허용한 문서에 대해 기능 예시를 끝까지 수행한다.**
+
+- 테스트에는 실제 사용자 데이터나 backup을 사용하지 않는다.
 
 ## F01 사용성 개선 — 2026-11-04 구현·검증 완료
 
-사용자 요청에 따라 별도 HTML 프로토타입의 구성만 참고하고 앱의 기존 디자인 컴포넌트와 Tailwind 색상 토큰을 사용한다. AI 로그인·CLI 자동 실행은 포함하지 않는다.
+**사용자 요청에 따라 별도 HTML 프로토타입의 구성만 참고하고 앱의 기존 디자인 컴포넌트와 Tailwind 색상 토큰을 사용한다.**
+
+- AI 로그인·CLI 자동 실행은 포함하지 않는다.
 
 - [x] 연결 목록/선택 상세(문서와 권한, 연결·보안, 작업 기록) 및 단계별 연결 안내.
 - [x] 클라이언트 종류, 선택한 권한의 원자적 발급, 만료·교체, 현재 토큰의 인증 요청 관측 구현. 기존 무기한 credential은 그대로 보존.
 - [x] draft·토큰 원문 수명·권한 충돌 복구와 기존 출력 UI 유지 검증.
 - [x] 정책/HTTP/hidden Electron 검사 및 npm test/typecheck/build, 문서 갱신.
 
-증거: npm test 25개 script/148개 통과. F01/F08 집중 E2E 2개 및 전체 기본 E2E 7개 통과/opt-in 3개 제외. token 만료 경계·기존 설정 호환·교체·기록 redaction은 임시 저장소 정책 검사, 화면은 실제 MCP SDK 요청과 hidden Electron으로 검증했다. 최신 정책 변경 후 access/history 검사도 각각 통과했다. 제공사 계정 모델 세션을 이번 UI 변경 검증에서 다시 사용하지 않았다.
+**증거: npm test 25개 script/148개 통과.**
+
+- F01/F08 집중 E2E 2개 및 전체 기본 E2E 7개 통과/opt-in 3개 제외. token 만료 경계·기존 설정 호환·교체·기록 redaction은 임시 저장소 정책 검사, 화면은 실제 MCP SDK 요청과 hidden Electron으로 검증했다.
+- 최신 정책 변경 후 access/history 검사도 각각 통과했다.
+- 제공사 계정 모델 세션을 이번 UI 변경 검증에서 다시 사용하지 않았다.
 
 ## 다음 작업으로 전달할 사항
 
-- 미검증: 로그인된 Claude Code 모델 세션의 전체 문서 여정, Windows/Linux 글꼴·PDF·패키지 실행. 환경이 확보된 후 별도 검증하며 현재 지원 보장으로 표현하지 않는다.
-- 추가 개선안: 버튼으로 CLI 실행·MCP 설정 자동 등록·token 자동 전달. 현재 수동 연결 안내를 유지하며 구현 시 token 수명·보관·폐기와 설정 충돌 처리를 함께 결정한다. OS 보안 저장소 보관과 앱 종료 후 백그라운드 MCP도 이번에 구현하지 않았다.
+- 미검증: 로그인된 Claude Code 모델 세션의 전체 문서 여정, Windows/Linux 글꼴·PDF·패키지 실행.
+- 환경이 확보된 후 별도 검증하며 현재 지원 보장으로 표현하지 않는다.
+- 추가 개선안: 버튼으로 CLI 실행·MCP 설정 자동 등록·token 자동 전달.
+- 현재 수동 연결 안내를 유지하며 구현 시 token 수명·보관·폐기와 설정 충돌 처리를 함께 결정한다.
+- OS 보안 저장소 보관과 앱 종료 후 백그라운드 MCP도 이번에 구현하지 않았다.
 
 - Formleaf가 공식 에이전트 프로세스를 실행·관리하는 내부 채팅 구조.
 - 제공사별 로그인·대화·중단 통신과 MCP 도구 호출의 분리.
@@ -208,4 +278,4 @@ P0/P1은 구현 의존성과 우선순위이며 모두 이번 범위다. 아래�
 - 문서별 대화 저장·재개, 과거 session 누락과 현재 revision 재조회.
 - 요청 당시 선택 대상 고정, 편집기 lifecycle 보존, AI 변경 결과/되돌리기 UX.
 
-이 항목들은 이번 구현 체크리스트에 포함하지 않는다.
+- 이 항목들은 이번 구현 체크리스트에 포함하지 않는다.

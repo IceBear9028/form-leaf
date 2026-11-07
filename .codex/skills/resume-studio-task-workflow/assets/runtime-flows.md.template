@@ -2,7 +2,17 @@
 
 {{DATE}} · 현재 코드: {{BASE_HEAD}} · 목표 상태: {{TARGET_STATUS}}
 
-[구조·데이터 소유권](design.md) · [구현·검증 순서](plan.md)
+[구현 설계 요약](README.md) · [구현·검증 순서](../plan.md)
+
+<!--
+- 선택 양식.
+- 기능별 흐름은 해당 구현 설계에 쓴다.
+- 여러 기능이 공유하는 긴 흐름만 implementation/ 안에 주제에 맞는 이름으로 분리한다.
+- 기본 생성하지 않는다.
+- 레이어 간 데이터 전달은 sequenceDiagram, 내부 로직·분기는 flowchart로 구분한다.
+- 클래스·함수 관계를 설명해야 하면 classDiagram을 사용하고 실제 소속 모듈을 표시한다.
+- 세 도식의 선택 기준은 references/documentation.md를 따른다.
+-->
 
 ## 시나리오 지도
 
@@ -12,14 +22,19 @@
 
 ## AS01. {{CURRENT_SCENARIO}}
 
+**{{CURRENT_FLOW_SENTENCE}}**
+
 - 근거: {{CODE_EVIDENCE_LINKS}}
 - 전제: {{CURRENT_PRECONDITIONS}}
 
 {{AS_IS_SEQUENCE_MERMAID}}
 
-현재 보장과 한계: {{OBSERVED_GUARANTEES_AND_LIMITS}}
+- 확인한 보장: {{OBSERVED_GUARANTEE}}
+- 남은 한계: {{OBSERVED_LIMIT}}
 
 ## TB01. {{TARGET_SCENARIO}}
+
+**{{TARGET_FLOW_SENTENCE}}**
 
 - 상태: {{PROPOSED_OR_IMPLEMENTED}}
 - 전제·입력: {{PERMISSIONS_TARGETS_REVISIONS}}
@@ -27,10 +42,16 @@
 {{TO_BE_SEQUENCE_MERMAID}}
 
 - 검사·저장 순서: {{VALIDATION_AND_COMMIT_ORDER}}
-- 실패·재시도·부분 완료: {{ERROR_BRANCHES_AND_RETRY}}
+- 실패 분기: {{ERROR_BRANCH}}
+- 재시도 조건: {{RETRY_CONDITION}}
+- 부분 완료 처리: {{PARTIAL_COMPLETION}}
 - 사후 조건: {{RESPONSE_AND_PRESERVED_STATE}}
 - 미검증 경계·확인 단계: {{OPEN_IDS_AND_PLAN_GATE}}
 
-<!-- 필요한 대표 시나리오만 반복한다. alt/opt 등으로 정상과 예외를 표시한다.
-     UI 반영·영속 저장·응답 유실을 구별한다. 비동기 job의 pending과 완료 조회를 분리한다.
-     메시지가 거치는 경계를 표시하고 내부 저장소가 외부 호출자에 직접 응답하는 것처럼 그리지 않는다. -->
+<!--
+- 필요한 대표 시나리오만 반복한다.
+- alt/opt 등으로 정상과 예외를 표시한다.
+- UI 반영·영속 저장·응답 유실을 구별한다.
+- 비동기 job의 pending과 완료 조회를 분리한다.
+- 메시지가 거치는 경계를 표시하고 내부 저장소가 외부 호출자에 직접 응답하는 것처럼 그리지 않는다.
+-->
