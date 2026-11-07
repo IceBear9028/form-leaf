@@ -38,5 +38,5 @@ PR 본문의 저장소 파일 링크는 branch/commit을 포함한 GitHub URL을
 
 ## 관련 문서·이슈
 
-<!-- 작업 README, 관련 feature 기획/구현 설계, 검증 근거(handoff), 실제 관련 이슈.
+<!-- 작업 README, features의 기획/implementation의 구현 설계, 기능별 완료 커밋(plan), 검증 근거(handoff), 실제 관련 이슈.
      위에서 이미 연결한 링크를 반복하거나 관계없는 문서를 나열하지 않는다. -->

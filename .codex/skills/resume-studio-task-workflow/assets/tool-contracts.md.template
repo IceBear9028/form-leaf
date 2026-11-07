@@ -2,7 +2,10 @@
 
 {{DATE}} · 계약 version: {{CONTRACT_VERSION}} · 구현 상태: {{IMPLEMENTATION_STATUS}}
 
-[전체 목표·범위](README.md) · [내부 구조](design.md)
+[전체 목표·범위](../features/README.md) · [구현 설계 요약](README.md)
+
+<!-- 선택 양식. 기능별 계약은 해당 구현 설계에 쓴다. 여러 기능의 공통 계약을
+     독립 관리할 때만 implementation/ 안에 주제별 이름으로 분리한다. 기본 생성하지 않는다. -->
 
 ## 현재 인터페이스 → 목표 계약
 
@@ -12,7 +15,7 @@
 
 ## 전체 호출 목록
 
-<!-- 정확한 이름은 이 문서에서만 목록으로 관리한다. README는 사용자 기능으로 설명한다. -->
+<!-- 정확한 이름은 이 문서에서만 목록으로 관리한다. features/README.md는 사용자 기능으로 설명한다. -->
 | ID | 이름 | 사용자 기능 | 주요 결과·부작용 |
 |---|---|---|---|
 | {{TOOL_ID}} | {{TOOL_NAME}} | {{FEATURE_LINK}} | {{RESULT_AND_EFFECT}} |

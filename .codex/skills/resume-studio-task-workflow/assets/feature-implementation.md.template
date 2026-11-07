@@ -3,11 +3,11 @@
 {{DATE}} · 설계 상태: {{PROPOSED_OR_DECIDED}} · 구현 상태: {{IMPLEMENTATION_STATUS}}
 As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_EVIDENCE}}
 
-[기능 기획](../features/{{FEATURE_STEM}}.md) · [공통 설계](../design.md) · [구현 계획](../plan.md)
+[기능 기획](../features/{{FEATURE_STEM}}.md) · [설계 요약](README.md) · [구현 계획](../plan.md)
 
-<!-- features/NN-name.md와 designs/NN-name.md의 번호·이름을 맞춘다.
+<!-- features/NN-name.md와 implementation/NN-name.md의 번호·이름을 맞춘다.
      기획을 복제하지 않고 관련 요구/AC를 참조한다. 이 설계는 코드 작업 전에 작성한다.
-     단일 기능이면 같은 내용을 task의 design.md에 통합하고 상대 링크를 조정한다.
+     단일 기능이면 같은 내용을 implementation/README.md에 통합하고 상대 링크를 조정한다.
      작은 변경은 필요한 절만 남긴다. 새 파일은 '신규 제안' 경로로 적고 링크하지 않는다. -->
 
 ## 1. 구현 목표와 범위
@@ -52,7 +52,15 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 <!-- 'service 수정', '컴포넌트 추가'만 쓰지 않는다. 어느 함수가 무엇을 받아 어떤 검사와
      분기를 수행하고 무엇을 반환하는지 쓴다. 전체 코드를 미리 작성할 필요는 없다.
      기존 로직의 재사용/이동/제거, 호출부 변경, 호환성이 필요한 타입·계약을 짚는다.
-     정확한 외부 schema는 tool-contracts에 한 번만 정의하고 여기서는 연결한다. -->
+     이 기능의 입출력 계약은 아래에 정의한다. 공통 계약을 분리한 경우 그 원본으로 연결한다. -->
+
+### 입출력과 오류 계약
+
+| 호출·경계 | 입력·타입·검증·권한 | 출력·오류·부작용·재시도 | 계약을 보장할 코드 |
+|---|---|---|---|
+| {{CALL_BOUNDARY}} | {{INPUT_TYPES_VALIDATION_PERMISSION}} | {{OUTPUT_ERRORS_EFFECTS_RETRY}} | {{ENFORCING_CODE}} |
+
+{{CONTRACT_EXAMPLE_OR_SHARED_CONTRACT_LINK}}
 
 ## 5. 변경 후 실행 흐름과 상태
 
@@ -70,7 +78,7 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 
 <!-- 저장 없는 변경이면 그 사실을 적고 불필요한 저장 절은 제거한다.
      비동기·프로세스·저장 경계가 핵심이면 정상/실패 sequenceDiagram을 사용한다.
-     긴 공통 흐름은 runtime-flows에 연결하고, 같은 그림을 복제하지 않는다. -->
+     여러 기능이 공유하는 긴 흐름만 implementation/ 내부의 주제별 문서로 분리하고 연결한다. -->
 
 ## 6. 선택 이유와 대안
 

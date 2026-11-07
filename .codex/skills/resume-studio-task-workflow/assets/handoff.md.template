@@ -6,6 +6,10 @@
 - 기준 HEAD·브랜치: {{HEAD_AND_BRANCH}}
 - 현재 단계·제품 구현 상태: {{CURRENT_PHASE_AND_IMPLEMENTATION}}
 - 작업 트리·커밋 여부: {{WORKTREE_AND_COMMIT_STATUS}}
+- 마지막 완료 기능·커밋 기록: {{LAST_COMPLETED_FEATURE_AND_PLAN_LINK}}
+
+<!-- 기능별 완료 커밋은 plan에서 관리한다. 완료 커밋 이후 미커밋 변경이 있으면
+     구현 변경인지 문서 기록 갱신인지 구분하고, 다음 시작점에서 미완료 기능부터 이어간다. -->
 
 ## 이번에 바꾼 것
 

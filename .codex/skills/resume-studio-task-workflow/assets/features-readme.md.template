@@ -1,0 +1,62 @@
+# {{TASK_TITLE}} 전체 기획
+
+<!-- 전체 배경·목표·범위·기능 목록의 기준 문서. 루트 README에는 소개와 링크만 둔다. -->
+## 상태와 읽는 순서
+
+- 갱신일: {{DATE}}
+- 기획 상태: {{PLANNING_STATUS}}
+- 코드 확인 기준: {{BASE_HEAD}}
+
+[작업 안내](../README.md) · [구현 설계](../implementation/README.md) · [구현 계획](../plan.md) · [인수인계](../handoff.md)
+
+{{OPTIONAL_DOCUMENT_LINKS}}
+
+## 1. 문제와 사용자
+
+{{PROBLEM_AND_CURRENT_PAIN}}
+
+| 사용자·행위자 | 하고 싶은 일 | 제품이 책임질 것 |
+|---|---|---|
+| {{ACTOR}} | {{USER_JOB}} | {{PRODUCT_RESPONSIBILITY}} |
+
+{{OBSERVED_FACTS_AND_ASSUMPTIONS}}
+
+| 사용자 상황 | As-Is — 현재 동작·불편 | To-Be — 기대하는 변화 |
+|---|---|---|
+| {{USER_SCENARIO}} | {{CURRENT_USER_BEHAVIOR}} | {{EXPECTED_USER_BEHAVIOR}} |
+
+## 2. 목표와 성공 기준
+
+| 목표 | 관찰할 완료 결과 | 확인 방법 |
+|---|---|---|
+| {{GOAL}} | {{OBSERVABLE_OUTCOME}} | {{VALIDATION_METHOD}} |
+
+## 3. 기능과 사용자 흐름
+
+<!-- 작은 작업은 이 절에 상세 흐름·예외·대안·인수 조건을 쓴다.
+     독립 기능이 많을 때만 같은 폴더의 번호별 문서로 연결한다. API 목록은 계약에 둔다. -->
+| 기능·우선순위 | 사용자 요청 → 종료 상태 | 기능 기획 | 구현 설계 |
+|---|---|---|---|
+| {{FEATURE_ID_AND_PRIORITY}} | {{USER_REQUEST_AND_RESULT}} | {{FEATURE_LINK_OR_INLINE_DESCRIPTION}} | {{FEATURE_DESIGN_LINK_OR_INLINE_SECTION}} |
+
+<!-- 기획은 무엇을/왜, 구현 설계는 어느 코드를/어떻게 바꿀지 설명한다.
+     별도 문서가 없으면 이 README나 implementation/README.md의 해당 절을 연결하고 없는 링크는 제거한다. -->
+
+{{KEY_USER_JOURNEY_AND_FAILURE_ACTIONS}}
+
+## 4. 포함·제외 범위
+
+- 포함: {{IN_SCOPE}}
+- 제외 및 이유: {{OUT_OF_SCOPE_AND_REASON}}
+- 지켜야 할 기존 동작: {{INVARIANTS}}
+- 공통 정책의 요약과 기준 문서: {{POLICY_SUMMARY_AND_OWNER}}
+
+## 5. 완료 판단
+
+{{TASK_COMPLETION_CRITERIA}}
+
+구현 순서와 진행 체크리스트는 plan, 실제 실행한 검증 결과는 handoff에서 관리한다. 문서 작성과 제품 구현 완료를 구별한다.
+
+## 용어와 참고
+
+{{NECESSARY_GLOSSARY_AND_REFERENCES}}

@@ -5,7 +5,7 @@ PR은 해당 변경을 리뷰하기 위한 요약이다. 현재 최종 diff를 �
 ## 원본과 정보의 기준 위치
 
 - GitHub 본문 양식의 단일 원본은 [PULL_REQUEST_TEMPLATE.md](../../../../.github/PULL_REQUEST_TEMPLATE.md)다. assets에 별도 PR 사본을 만들지 않는다.
-- 기획은 features, 코드 변경 의도·구현 방식은 designs, 공통 구조는 design, 실제 검증 근거는 handoff가 소유한다. PR에는 리뷰에 필요한 요약만 둔다.
+- 기획은 features/, 기술 구조와 코드 변경 의도·구현 방식은 implementation/, 진행·기능별 커밋은 plan, 실제 검증 근거와 재개 지점은 handoff가 소유한다. PR에는 리뷰에 필요한 요약만 둔다.
 - 제목은 최종 변경을 한 문장으로 표현한다. 범위가 달라졌다면 제목과 본문을 함께 고친다. 임시 우회나 폐기한 접근의 작업 일지를 나열하지 않는다.
 - PR 본문에서는 파일 경로만 적은 상대 링크 대신 `https://github.com/<owner>/<repo>/blob/<commit-or-branch>/docs/...` 링크를 사용한다. 과거 검증 근거는 해당 커밋으로 고정한다. 저장소 안 문서는 상대 링크를 유지한다.
 

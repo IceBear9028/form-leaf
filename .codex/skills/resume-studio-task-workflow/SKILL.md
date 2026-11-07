@@ -9,7 +9,7 @@ Resume the documented task and keep repository evidence, user scope, and actual 
 
 ## Inspect and choose scope
 
-Read applicable AGENTS.md, docs/README.md, the current task README/design/plan/handoff, relevant code, git status and uncommitted diffs. Preserve unrelated user changes. A request to continue or reformat documents does not create a new numbered task or authorize implementation.
+Read applicable AGENTS.md, docs/README.md, the current task README, planning, implementation design, plan and handoff, relevant code, git status and uncommitted diffs. Preserve unrelated user changes. A request to continue or reformat documents does not create a new numbered task or authorize implementation.
 
 For documentation or template work, read [references/documentation.md](references/documentation.md). It defines information ownership, As-Is/To-Be and Mermaid rules, optional document criteria, and source templates. Use Korean for project documents unless requested otherwise.
 
@@ -23,18 +23,18 @@ Use these canonical assets; replace placeholders, remove authoring comments and 
 
 | Output | Template | When |
 |---|---|---|
-| README.md | [task-readme](assets/task-readme.md.template) | Default; overall problem, users, goals, success, scope and feature index |
-| design.md | [design](assets/design.md.template) | Shared architecture and cross-feature decisions; single-feature tasks also keep their code design here |
-| plan.md | [plan](assets/plan.md.template) | Default; transition, dependencies, gates and implementation status |
-| handoff.md | [handoff](assets/handoff.md.template) | Default; actual changes, evidence, unknowns and next action |
-| features/NN-name.md | [feature](assets/feature.md.template) | Only for independently detailed user tasks; small features stay in README |
-| designs/NN-name.md | [feature-design](assets/feature-design.md.template) | Before coding each independently detailed feature; matching stem links planning to concrete code changes |
-| runtime-flows.md | [runtime-flows](assets/runtime-flows.md.template) | Only when inline design sequences need separate navigation |
-| tool-contracts.md | [tool-contracts](assets/tool-contracts.md.template) | Only when exact external/API/IPC contracts need independent maintenance |
+| README.md | [task-readme](assets/task-readme.md.template) | Short introduction, key changes and document navigation |
+| features/README.md | [features-readme](assets/features-readme.md.template) | Overall planning: problem, users, goals, scope, success and feature index |
+| features/NN-name.md | [feature](assets/feature.md.template) | Independently detailed feature planning; match the implementation filename |
+| implementation/README.md | [implementation-readme](assets/implementation-readme.md.template) | Technical summary, shared decisions, architecture and design navigation |
+| implementation/NN-name.md | [feature-implementation](assets/feature-implementation.md.template) | Before coding: code changes, reasons, flows, contracts, failures and verification |
+| plan.md | [plan](assets/plan.md.template) | Dependencies, execution order, completion gates, status and feature commits |
+| handoff.md | [handoff](assets/handoff.md.template) | Current actual state, validation evidence, limits and resumption point |
+| implementation/<topic>.md | [runtime-flows](assets/runtime-flows.md.template) or [tool-contracts](assets/tool-contracts.md.template) | Optional only: long shared flows or contracts needing a separate owner |
 
-README owns the overall feature map. Do not generate an additional features.md/PRD by default. Exact tool/operation catalogs belong in contracts; implementation checklists belong in plan. Reuse shared templates from here rather than copying template guides into each task. docs/templates/README.md is the repository-facing index, not a second set of templates.
+features owns product planning; implementation owns all technical design. Keep the root README brief. features/README.md owns the full feature map; implementation/README.md summarizes architecture and links detailed designs. Do not create a root design.md or mandatory runtime-flows.md/tool-contracts.md in the new format. Exact contracts and sequences normally belong in the relevant feature implementation design. Split long shared content within implementation/ only when necessary and link its single owner.
 
-Keep feature documents focused on product planning. Before code changes, write the corresponding implementation design: inspected current files/symbols, proposed changes and purpose, call/data flow, state and failure boundaries, alternatives, and verification. Shared design owns common boundaries; per-feature designs link them rather than duplicate them. For small or single-feature tasks, put this material in design.md instead of creating designs/. Trivial edits can use the existing task document or PR summary without a new four-file set. Remove unused links accordingly.
+Before code changes, write the corresponding implementation design: inspected current files/symbols, proposed changes and purpose, call/data flow, input/output contracts, state and failure boundaries, alternatives, and verification. Keep product requirements in features; link rather than duplicate them. For a single feature, planning and implementation details may live in each folder's README. Trivial changes can use an existing task document or PR summary; small tasks may consolidate plan/handoff into the root README. Do not force the whole file set. Remove unused sections and links. Reuse these assets; docs/templates/README.md is an index, not a second template source.
 
 When consolidating documents, preserve unique requirements and research evidence, move them to their owner, update all callers, and only then remove superseded files. Do not remove technical explanations just to reduce repetition.
 
@@ -48,11 +48,19 @@ When consolidating documents, preserve unique requirements and research evidence
 - Before implementation starts, every implementation phase remains waiting. During implementation mark one phase in progress. Documentation completion is not product completion.
 - Before coding a feature, make its affected files/symbols, before/after behavior, implementation approach and validation plan reviewable. Mark unresolved decisions and their impact. This is a documentation step, not an additional approval requirement; follow the user's requested scope for proceeding to code. Keep designs current when implementation changes them.
 
+### Finish and commit each numbered feature
+
+For authorized implementation work organized as features/NN-name.md, finish one numbered feature before starting the next in the dependency order recorded in plan. Complete its implementation, pass its required validation, update the affected design/plan/handoff, and commit that feature's code, tests and documentation together. Do not accumulate multiple completed features into one later commit; intermediate commits within a feature are allowed.
+
+Include the feature ID in the commit message (for example, `feat(F03): support document content edits`). After the commit succeeds, record its hash in plan before starting the next feature. This bookkeeping change can remain for the next commit; do not amend repeatedly to embed a commit's own hash. Handoff should identify the last completed feature and next action, linking plan for the commit record.
+
+Required checks must pass before completion. If validation or committing is blocked, record the cause and resume that feature; do not mark it complete or start the next feature. Preserve unrelated changes and stage only the feature's scope. Shared prerequisites should be explicit prior work units in plan and committed before dependent features start.
+
 ## Product and authorization boundaries
 
 Keep application code under client and task documents under docs. Keep the local-first desktop architecture; add local or remote integrations only within the user-authorized task. Maintain Tailwind for application chrome and the dedicated style system for printable document layout.
 
-Do not hardcode personal resume content or modify actual user data/backups for tests. Treat Electron userData, including the historical Resume Studio directory, as private data. Preserve uncommitted changes. Do not commit unless requested.
+Do not hardcode personal resume content or modify actual user data/backups for tests. Treat Electron userData, including the historical Resume Studio directory, as private data. Preserve uncommitted changes. The user has authorized the per-feature commits described above for requested implementation work; do not ask again at each feature boundary. Outside that workflow, commit only when requested. This rule does not authorize push, PR creation or merge by itself.
 
 ## Validate and hand off
 
