@@ -4,7 +4,7 @@
 
 {{DATE}} · 코드 기준: {{BASE_HEAD}} · 구현 상태: {{IMPLEMENTATION_STATUS}}
 
-[전체 목표·범위](features/README.md) · [설계](implementation/README.md) · [실제 검증 결과](handoff.md)
+[전체 목표·범위](features/README.md) · [설계](implementation/README.md) · [테스트 결과](tests/README.md) · [인수인계](handoff.md)
 
 ## 전환 전략과 의존성
 
@@ -31,9 +31,9 @@
 4. 해당 기능을 커밋하고 성공 여부를 확인한다.
 5. 다음 기능에 착수한다.
 
-| 순서 | 기능 ID·기획 | 선행 작업 | 상태 | 완료 커밋 |
-|---|---|---|---|---|
-| {{FEATURE_ORDER}} | {{FEATURE_ID_AND_LINK}} | {{FEATURE_DEPENDENCIES}} | 대기 | 미커밋 |
+| 순서 | 기능 ID·기획 | 대응 구현 설계 | 테스트 계획·결과 | 선행 작업 | 상태 | 완료 커밋 |
+|---|---|---|---|---|---|---|
+| {{FEATURE_ORDER}} | {{FEATURE_ID_AND_LINK}} | {{FEATURE_IMPLEMENTATION_LINK}} | {{TEST_DOCUMENT_LINK}} | {{FEATURE_DEPENDENCIES}} | 대기 | 미커밋 |
 
 **커밋은 기능 번호를 기준으로 구분한다.**
 
@@ -54,7 +54,8 @@
 - handoff의 커밋 정보는 위 표로 연결한다.
 
 <!--
-- 번호별 기능으로 나누지 않은 작은 작업은 기능 표를 생략한다.
+- features/README.md의 모든 구현 기능이 이 표와 검증 범위에 연결되는지 확인한다.
+- 구성·통합 기준을 충족하는 작은 작업만 기능 표를 생략하고 계획의 실제 위치를 안내한다.
 -->
 
 ### 단계별 진행
@@ -95,20 +96,11 @@
 - 검증할 기능/시퀀스/AC/미결정: {{TRACE_IDS_2}}
 - 검증 방법과 완료 증거: {{VALIDATION_AND_EVIDENCE_2}}
 
-## 검증 범위
+## 검증 연결
 
-| 기능·위험 | 확인할 경계·시나리오 | 시험 방법 | 통과 조건 |
-|---|---|---|---|
-| {{FEATURE_OR_RISK}} | {{SCENARIO}} | {{CHECK}} | {{PASS_CRITERION}} |
-
-- 자동 검사: {{AUTOMATED_CHECK_COMMAND}}
-- 수동 확인: {{MANUAL_CHECK_METHOD}}
-
-<!--
-- 문서만 바꾸면 링크·schema 예시·diagram·공백을 검증한다.
-- 제품 변경 시 관련 테스트, npm test/typecheck/build 등 필요한 gate를 정한다.
-- 한 번의 성공을 모든 클라이언트/플랫폼 검증으로 확대하지 않는다.
--->
+- 공통 검사: [테스트 목록](tests/README.md)
+- 기능별 완료 gate: 위 표의 테스트 문서에서 필수 사례의 결과를 확인한다.
+- 상세 시나리오·실행 로그는 tests에 두고 여기서는 단계별 종료 조건과 상태를 관리한다.
 
 ## 후속으로 남길 사항
 

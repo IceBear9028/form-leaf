@@ -24,16 +24,19 @@
 - 사용자 지정 범위: {{USER_SCOPE}}
 - 유지한 제약: {{PRESERVED_CONSTRAINTS}}
 
-## 검증 근거
+## 검증 결과 요약
 
 | 실행일·대상 커밋/작업 트리·명령·환경 | 관찰 결과·산출물 | 검증하지 못한 범위 |
 |---|---|---|
-| {{CHECK_AND_ENVIRONMENT}} | {{RESULT_AND_ARTIFACT}} | {{LIMITATION}} |
+| {{CHECK_AND_ENVIRONMENT}} | {{RESULT_SUMMARY_AND_TEST_DOCUMENT_LINK}} | {{LIMITATION}} |
 
 - 미실행 검증: {{NOT_RUN_CHECK}}
 - 미실행 이유: {{NOT_RUN_REASON}}
 
 <!--
+- 구조 검토(기능 분해·통합 근거·기획/설계 대응·AC/plan·현재 상태)와 문법 검사 결과를 별도 행으로 기록한다.
+- 파일명·링크 검사 통과를 기능 분해의 적절성까지 입증한 것으로 표현하지 않는다.
+- 제품 테스트의 상세 결과는 tests/NN-name.md에 기록하고 여기서는 요약·링크·미검증만 남긴다.
 - 문서·Mermaid 검사와 제품 실행 결과를 구별한다.
 - 임시 산출물은 임시임을 밝힌다.
 - 과거 결과는 당시 날짜·커밋을 유지하고 '기존 결과 인용'으로 표시한다.

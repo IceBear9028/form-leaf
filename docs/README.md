@@ -20,9 +20,11 @@
 - features/README.md가 전체 기획·범위·기능 목록을, features/NN-name.md가 기능별 상세 기획을 소유한다.
 - implementation/README.md는 기술 구조와 공통 결정의 요약·목차이며, implementation/NN-name.md는 같은 번호의 기능을 구현할 코드·목적·흐름·입출력 계약·실패·검증 설계를 담는다. 코드 작업 전에 작성한다.
 - 실행 흐름·계약 문서를 기본 생성하지 않는다. 여러 기능이 공유하는 긴 기술 내용만 implementation/ 내부에서 분리한다.
-- plan은 실행 순서·완료 조건·진행 상태·기능별 커밋, handoff는 실제 구현·검증 상태와 재개 지점을 관리한다.
+- tests/NN-name.md가 같은 번호 기능의 상세 시나리오·통과 기준·실행 결과를 소유하며 tests/README.md는 공통 검사와 목차를 제공한다.
+- plan은 실행 순서·완료 조건·진행 상태·기능별 커밋, handoff는 실제 구현·검증 요약·tests 링크와 재개 지점을 관리한다.
 - 기능 번호별로 구현→필수 검증 통과→문서 갱신→커밋을 마친 뒤 다음 기능으로 넘어간다.
-- 단일 기능은 각 폴더 README에 통합할 수 있다. 작은 작업은 plan·handoff도 통합하거나 기존 문서/PR 요약을 사용하며 전체 문서 세트를 강제하지 않는다.
+- 기능 목록을 먼저 정하고 [분리·통합 기준](../.codex/skills/resume-studio-task-workflow/references/documentation.md#기능-분리와-통합-판단)에 따라 번호별 문서를 대응시킨다. 통합 예외에는 이유와 실제 내용 위치를 남긴다.
+- 문서 완료 전 [구조 검토](../.codex/skills/resume-studio-task-workflow/references/documentation.md#구조-검토와-문법-검사를-분리한다)와 문법 검사를 따로 수행한다. 여러 기능의 plan·handoff는 작업 루트에 둔다.
 - 템플릿 원본은 workflow assets, [PR 양식](../.github/PULL_REQUEST_TEMPLATE.md)은 .github 한 곳에서 관리한다. PR은 변경의 요약과 상세 docs 링크를 제공한다.
 
 ## 현재 작업
@@ -41,6 +43,7 @@
 | 09 | Preview Markdown 작성 사용성 | 자동 검증 완료·사용자 실제 앱 확인 대기 | [09-preview-markdown-authoring](09-preview-markdown-authoring/README.md) |
 | 10 | Markdown 편집 DOM 단일 소유권 | 제품 통합·자동 검증 완료 | [10-markdown-editor-ownership](10-markdown-editor-ownership/README.md) |
 | 11 | 에이전트 도구 명세 및 MCP 구현 | main 병합·문서 구조 개정, Claude 로그인/타 OS 미검증 | [11-agent-tools-mcp](11-agent-tools-mcp/README.md) |
+| 12 | 정적 분석 정책과 적용 설계 | 정책·문서 완료, 제품 적용 대기 | [12-static-analysis-policy](12-static-analysis-policy/README.md) |
 
 ## References
 
@@ -66,3 +69,5 @@
 `10`은 React와 IME가 같은 editable DOM을 수정하는 구조를 제거하고, 활성 Markdown editor가 DOM·selection·composition을 단독 소유하도록 편집 경계를 교체한다.
 
 `11`은 외부 AI 에이전트가 Formleaf 기능을 조회·조작하도록 도구 계약과 MCP 서버를 만든다. AI 로그인과 앱 내부 채팅 UX는 다음 작업으로 분리한다.
+
+`12`는 TypeScript·ESLint의 검사 범위와 허용 기준을 확정하고, 테스트 TS 전환과 편집 동작 보존을 포함한 적용 설계를 기록한다.
