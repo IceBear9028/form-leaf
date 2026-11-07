@@ -1,110 +1,57 @@
 ---
 name: resume-studio-task-workflow
-description: Plan, implement, validate, document, and hand off Resume Studio development tasks across Codex sessions. Use when the user starts a new Resume Studio feature or refactor, asks to continue an existing implementation, requests task planning documents together with code changes, or needs durable handoff notes for another session. Do not trigger for a simple factual question or status check that requires no repository changes.
+description: Plan, document, implement, validate, and hand off Formleaf (formerly Resume Studio) tasks. Use for task documentation or template changes, new features and refactors, or continuing a documented task. Exclude factual questions and status checks that need no repository changes.
 ---
 
-# Resume Studio Task Workflow
+# Formleaf Task Workflow
 
-Carry one concrete Resume Studio task from repository inspection through documented handoff. Treat repository files, not prior chat history, as the durable source of truth.
+Resume the documented task and keep repository evidence, user scope, and actual implementation status distinct. The skill ID is retained for existing callers.
 
-## 1. Inspect before planning
+## Inspect and choose scope
 
-Read these sources before editing:
+Read applicable AGENTS.md, docs/README.md, the current task README/design/plan/handoff, relevant code, git status and uncommitted diffs. Preserve unrelated user changes. A request to continue or reformat documents does not create a new numbered task or authorize implementation.
 
-1. Repository-level `AGENTS.md` files, when present.
-2. `docs/README.md` and the active task directory it identifies.
-3. Relevant design documents in that task directory.
-4. `git status --short`, recent commits, and the relevant code paths.
-5. Existing uncommitted diffs. Preserve user-owned changes and do not overwrite unrelated work.
+For documentation or template work, read [references/documentation.md](references/documentation.md). It defines information ownership, As-Is/To-Be and Mermaid rules, optional document criteria, and source templates. Use Korean for project documents unless requested otherwise.
 
-If the user says to continue, resume the active documented task. Do not create a duplicate task directory.
+## Create or update the document set
 
-## 2. Establish a new task unit
+Create a numbered task only for a concrete new task; use the next numeric prefix under docs and update docs/README.md. Keep an existing task directory when continuing it. Do not rewrite completed tasks merely to apply a newer format.
 
-Create a task unit only after the user gives a concrete goal. Do not pre-create future work.
+Use these canonical assets; replace placeholders, remove authoring comments and unused optional sections/links:
 
-1. Find the highest numeric prefix under `docs/`.
-2. Allocate the next two-digit number.
-3. Create `docs/<NN>-<short-kebab-name>/`.
-4. Instantiate these files from `assets/`, replacing every placeholder:
-   - `README.md` from `assets/task-readme.md.template`
-   - `plan.md` from `assets/plan.md.template`
-   - `design.md` from `assets/design.md.template`
-   - `handoff.md` from `assets/handoff.md.template`
-5. Update the table in `docs/README.md` to show the new task as active.
+| Output | Template | When |
+|---|---|---|
+| README.md | [task-readme](assets/task-readme.md.template) | Default; overall problem, users, goals, success, scope and feature index |
+| design.md | [design](assets/design.md.template) | Default; evidence, current/target structure, data ownership, relationships, decisions and risks |
+| plan.md | [plan](assets/plan.md.template) | Default; transition, dependencies, gates and implementation status |
+| handoff.md | [handoff](assets/handoff.md.template) | Default; actual changes, evidence, unknowns and next action |
+| features/NN-name.md | [feature](assets/feature.md.template) | Only for independently detailed user tasks; small features stay in README |
+| runtime-flows.md | [runtime-flows](assets/runtime-flows.md.template) | Only when inline design sequences need separate navigation |
+| tool-contracts.md | [tool-contracts](assets/tool-contracts.md.template) | Only when exact external/API/IPC contracts need independent maintenance |
 
-Use Korean for project documents unless the user requests another language.
+README owns the overall feature map. Do not generate an additional features.md/PRD by default. Exact tool/operation catalogs belong in contracts; implementation checklists belong in plan. Reuse shared templates from here rather than copying template guides into each task. docs/templates/README.md is the repository-facing index, not a second set of templates.
 
-## 3. Plan before implementation
+When consolidating documents, preserve unique requirements and research evidence, move them to their owner, update all callers, and only then remove superseded files. Do not remove technical explanations just to reduce repetition.
 
-Record only decisions supported by the current request or repository evidence.
+## Design and implement according to the request
 
-- Define the problem, user experience, scope, exclusions, and measurable completion criteria in the task `README.md`.
-- Break implementation into independently verifiable phases in `plan.md`.
-- Describe affected components, data flow, persistence, failure handling, and alternatives in `design.md`.
-- Mark exactly one plan phase as in progress.
-- Call out unresolved choices without inventing product requirements.
+- Read code before describing As-Is; link symbols and identify the source revision. Mark To-Be as proposed until implemented and verified.
+- Explain data creation, transfer, storage, state ownership, commit and failure boundaries. Use Mermaid for architecture, feature dependencies and representative current/target sequences when they clarify the change. Simple changes can explain why a diagram is unnecessary.
+- Record realistic alternatives, costs, revisit conditions and unresolved choices with validation methods. Do not invent user research, scale targets, or product requirements.
+- Keep UI behavior, domain validation, persistence and external integrations within their documented boundaries. Preserve canonical document formats and editor ownership unless explicitly changing them.
+- For implementation, make coherent increments and validate the affected boundary. Update design when evidence changes it, plan when a stage completes, and handoff with actual results.
+- Before implementation starts, every implementation phase remains waiting. During implementation mark one phase in progress. Documentation completion is not product completion.
 
-Ask the user only when a missing decision would materially change the product or data model. Otherwise, make a narrow reversible assumption and record it.
+## Product and authorization boundaries
 
-## 4. Preserve Resume Studio boundaries
+Keep application code under client and task documents under docs. Keep the local-first desktop architecture; add local or remote integrations only within the user-authorized task. Maintain Tailwind for application chrome and the dedicated style system for printable document layout.
 
-Follow these project-specific rules:
+Do not hardcode personal resume content or modify actual user data/backups for tests. Treat Electron userData, including the historical Resume Studio directory, as private data. Preserve uncommitted changes. Do not commit unless requested.
 
-- Keep desktop application code under `client/` and task documentation under `docs/`.
-- Use Tailwind CSS for application chrome and editor UI.
-- Keep printable resume layout rules in the dedicated resume CSS/style system; do not convert them to Tailwind utilities.
-- Keep the app local-first and serverless unless the user explicitly changes that requirement.
-- Do not hardcode a user's resume, contact details, links, or imported document as application defaults.
-- Treat files under `~/Library/Application Support/Resume Studio/` as user data. Never add them to Git.
-- Do not create, rewrite, summarize, or silently shorten resume prose unless explicitly asked.
-- Preserve reusable structured data boundaries so the same resume data can later feed portfolio renderers.
-- Do not add speculative features merely for possible future use.
-- Do not commit unless the user explicitly asks.
+## Validate and hand off
 
-## 5. Implement in small verified increments
+For documentation-only changes, check relative links/anchors, JSON examples, placeholder and reference consistency, whitespace, and affected Mermaid diagrams. Do not run product suites merely because a template lists them. For application changes run relevant checks, then required project gates (normally npm test, npm run typecheck, npm run build from client). Use isolated fixtures and hidden/headless verification for app/PDF flows.
 
-For each phase:
+Run git diff --check and inspect untracked documentation too. Changed templates must be checked as templates: placeholders are intentional there, but instantiated documents must not retain them. When editing this skill, validate frontmatter and metadata and confirm referenced assets exist.
 
-1. Inspect the exact code path and its callers.
-2. Update `design.md` if implementation evidence changes the design.
-3. Make the smallest coherent code change.
-4. Run validation proportional to risk.
-5. Update `plan.md` immediately: complete the finished phase and select the next one.
-6. Update `handoff.md` whenever the session could safely stop.
-
-For visual/PDF work, compare the rendered output with the supplied reference at the same page and scale. Validate layout and content separately.
-
-## 6. Validate completion
-
-Run the narrowest relevant checks first, then the full project checks. For application changes, normally run from `client/`:
-
-```text
-npm run typecheck
-npm run build
-```
-
-Also run targeted smoke, PDF, persistence, or import/export checks when the changed behavior requires them. Record commands and results in `handoff.md`; do not write “verified” without evidence.
-
-Before finishing:
-
-- Run `git diff --check`.
-- Confirm no personal data or local workspace JSON entered the Git diff.
-- Confirm task docs match the implementation rather than the original guess.
-- Mark the task complete in both its `README.md` and `docs/README.md` only when all completion criteria pass.
-
-## 7. Prepare cross-session handoff
-
-Keep `handoff.md` concise and operational. Include:
-
-- current status and active phase;
-- completed behavior;
-- modified files;
-- validation commands and outcomes;
-- unresolved issues or decisions;
-- exact next action;
-- whether changes are committed and the commit hash when applicable.
-
-Never rely on “as discussed earlier.” Write enough repository-grounded context for a new session to continue without the old conversation.
-
-When handing work back to the user, lead with the outcome, mention validation, link the task documents, and state whether the worktree is committed.
+Keep handoff focused on current status, actual changes, commands/results and their limits, unresolved issues and the next action. Dated historical evidence may follow. Mark the product task complete only when its completion criteria pass. End with the outcome, important limitations, document links and commit state.

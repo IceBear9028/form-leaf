@@ -1,5 +1,8 @@
-import { flushMarkdownEditing, reconcileMarkdownDocumentUpdate } from "./markdown/editor/markdownEditorLifecycle.ts";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushMarkdownEditing, getMarkdownEditorPin, reconcileMarkdownDocumentUpdate } from "./markdown/editor/markdownEditorLifecycle.ts";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { registerAgentEditor } from "./agentEditorBridge.ts";
+import type { EditorContext } from "../../../../foundation/documentSessionProtocol.ts";
 import type { DocumentData } from "../../../../foundation/documentModel.ts";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
 import {
@@ -32,7 +35,13 @@ export type GenericDocumentChange =
 export function useGenericDocumentSession(
   initialDocument: DocumentData,
   onSummaryChange?: (summary: DocumentSummary) => void,
+  initialRevision?: string,
 ) {
+  const expectedRevisionRef = useRef(initialRevision);
+  const editorBusyRef = useRef(false);
+  const selectionRef = useRef<DocumentSelection | undefined>(undefined);
+  const leaseRef = useRef<string | undefined>(undefined);
+  const [externalGeneration, setExternalGeneration] = useState(0);
   const [document, setDocument] = useState(initialDocument);
   const [documentUpdate, setDocumentUpdate] = useState<DocumentUpdate>(() => fullDocumentUpdate(0));
   const [selection, setSelection] = useState<DocumentSelection>();
@@ -68,8 +77,9 @@ export function useGenericDocumentSession(
     const current = documentRef.current;
     dirtyRef.current = false;
     saveStateStore.set({ type: "saving" });
-    const request = window.documents.saveDocument(current.documentId, current)
-      .then((summary) => {
+    const request = window.documents.saveDocument(current.documentId, current, expectedRevisionRef.current ?? "")
+      .then(({ summary, revision }) => {
+        expectedRevisionRef.current = revision;
         onSummaryChange(summary);
         saveStateStore.set(dirtyRef.current ? { type: "dirty" } : { type: "saved", at: summary.updatedAt });
         return true;
@@ -113,6 +123,72 @@ export function useGenericDocumentSession(
     saveTimerRef.current = window.setTimeout(() => void saveNow(), 650);
   }, [onSummaryChange, saveNow, saveStateStore]);
 
+  selectionRef.current = selection;
+  useLayoutEffect(() => {
+    if (!onSummaryChange) return;
+    let composing = false;
+    let overlay: HTMLDivElement | undefined;
+    const root = globalThis.document.getElementById("root");
+    const focusedEditor = () => !!globalThis.document.activeElement?.matches("input, textarea, select, [contenteditable=true]");
+    const isEditing = () => composing || editorBusyRef.current || !!getMarkdownEditorPin() || focusedEditor();
+    const context = (): EditorContext => ({
+      documentId: documentRef.current.documentId, revision: expectedRevisionRef.current ?? "",
+      hasUnsavedChanges: dirtyRef.current || !!inFlightSaveRef.current, isEditing: isEditing(),
+      selection: selectionRef.current ? { target: selectionRef.current.editTarget ?? null, nodeId: selectionRef.current.nodeId } : null,
+    });
+    const release = () => {
+      leaseRef.current = undefined;
+      if (root) { root.inert = false; root.removeAttribute("aria-busy"); }
+      overlay?.remove(); overlay = undefined;
+    };
+    const unregister = registerAgentEditor((request) => {
+      const reply = (ok: boolean, leaseId?: string) => ({ requestId: request.requestId, ok, context: context(), ...(leaseId ? { leaseId } : {}) });
+      if (request.documentId !== documentRef.current.documentId) return reply(true);
+      if (request.type === "inspect") return reply(true);
+      if (request.type === "release") {
+        if (leaseRef.current === request.leaseId) release();
+        return reply(true);
+      }
+      if (request.type === "acquire") {
+        if (!root || leaseRef.current || dirtyRef.current || inFlightSaveRef.current || isEditing()) return reply(false);
+        // Reserve synchronously before replying. Existing focus/composition always wins.
+        // Inert prevents an edit from starting between the idle reply and durable commit.
+        leaseRef.current = request.requestId;
+        root.inert = true; root.setAttribute("aria-busy", "true");
+        overlay = globalThis.document.createElement("div");
+        overlay.role = "status";
+        overlay.className = "fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-background px-4 py-2 text-sm shadow-lg";
+        overlay.textContent = "에이전트 변경 적용 중…";
+        globalThis.document.body.append(overlay);
+        return reply(true, request.requestId);
+      }
+      if (request.leaseId !== leaseRef.current || dirtyRef.current || inFlightSaveRef.current || isEditing()) return reply(false);
+      expectedRevisionRef.current = request.snapshot.revision;
+      documentRef.current = request.snapshot.document;
+      revisionRef.current += 1;
+      flushSync(() => {
+        setDocument(request.snapshot.document);
+        setDocumentUpdate(fullDocumentUpdate(revisionRef.current));
+        setSelection((current) => reconcileDocumentSelection(request.snapshot.document, current));
+        setExternalGeneration((value) => value + 1);
+      });
+      saveStateStore.set({ type: "saved", at: request.snapshot.document.updatedAt });
+      return reply(true);
+    });
+    const start = () => { composing = true; window.documents.reportEditorContext(context()); };
+    const end = () => { composing = false; window.documents.reportEditorContext(context()); };
+    globalThis.document.addEventListener("compositionstart", start, true);
+    globalThis.document.addEventListener("compositionend", end, true);
+    window.documents.reportEditorContext(context());
+    const unsubscribe = saveStateStore.subscribe(() => window.documents.reportEditorContext(context()));
+    return () => {
+      unregister(); release(); unsubscribe();
+      globalThis.document.removeEventListener("compositionstart", start, true);
+      globalThis.document.removeEventListener("compositionend", end, true);
+      window.documents.reportEditorContext(null);
+    };
+  }, [onSummaryChange, saveStateStore]);
+
   useEffect(() => {
     setSelection((current) => reconcileDocumentSelection(document, current));
   }, [document]);
@@ -135,6 +211,8 @@ export function useGenericDocumentSession(
   return useMemo(() => ({
     document,
     documentUpdate,
+    externalGeneration,
+    setEditorBusy: (busy: boolean) => { editorBusyRef.current = busy; },
     selection,
     saveStateStore,
     updateDocument,
@@ -150,7 +228,7 @@ export function useGenericDocumentSession(
       dirtyRef.current = false;
       saveStateStore.set({ type: "saved", at: new Date().toISOString() });
     },
-  }), [document, documentUpdate, saveNow, saveStateStore, saveUntilClean, selection, updateDocument]);
+  }), [document, documentUpdate, externalGeneration, saveNow, saveStateStore, saveUntilClean, selection, updateDocument]);
 }
 
 export function createSaveStateStore(initialState: SaveState): SaveStateStore {

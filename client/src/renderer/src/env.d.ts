@@ -1,3 +1,4 @@
+import type { AgentRenderApi } from "../../foundation/agentRenderProtocol.ts";
 /// <reference types="vite/client" />
 
 import type { DocumentApi } from "../../foundation/documentLibrary";
@@ -5,6 +6,7 @@ import type { DocumentApi } from "../../foundation/documentLibrary";
 declare global {
   interface Window {
     documents: DocumentApi;
+    agentRender: AgentRenderApi;
     __FORMLEAF_DEBUG__?: {
       interactions?: {
         enable: () => void;

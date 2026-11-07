@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { WorkspaceDocument } from "../../../../foundation/document";
+import type { SavedDocument } from "../../../../foundation/documentSessionProtocol.ts";
 import {
   sortDeletedDocumentSummaries,
   sortDocumentSummaries,
@@ -37,14 +37,16 @@ export function useDocumentLibrary() {
     void load();
   }, [load]);
 
-  const create = async (): Promise<WorkspaceDocument | undefined> => {
+  useEffect(() => window.documents.onLibraryChange(() => { void load(false); }), [load]);
+
+  const create = async (): Promise<SavedDocument | undefined> => {
     if (busyId) return undefined;
     setBusyId("create");
     setError(undefined);
     try {
       const created = await window.documents.createDocument();
       setDocuments((current) => sortDocumentSummaries([...current, created.summary]));
-      return created.document;
+      return { document: created.document, revision: created.revision };
     } catch (createError) {
       setError(errorMessage(createError));
       return undefined;
@@ -53,7 +55,7 @@ export function useDocumentLibrary() {
     }
   };
 
-  const open = async (id: string): Promise<WorkspaceDocument | undefined> => {
+  const open = async (id: string): Promise<SavedDocument | undefined> => {
     if (busyId) return undefined;
     setBusyId(id);
     setError(undefined);

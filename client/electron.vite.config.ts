@@ -5,7 +5,9 @@ import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    // The Markdown compatibility gate is shared with MCP reads. These ESM-only
+    // plugins must be bundled for Electron's CJS main entry (not require'd as defaults).
+    plugins: [externalizeDepsPlugin({ exclude: ["unified", "remark-parse", "remark-gfm"] })],
     build: {
       rollupOptions: {
         input: resolve(__dirname, "src/main/index.ts"),
@@ -16,7 +18,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        input: resolve(__dirname, "src/preload/index.ts"),
+        input: { index: resolve(__dirname, "src/preload/index.ts"), render: resolve(__dirname, "src/preload/render.ts") },
       },
     },
   },

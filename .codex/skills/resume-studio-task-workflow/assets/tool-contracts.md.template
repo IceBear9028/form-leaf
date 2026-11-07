@@ -1,0 +1,45 @@
+# {{TASK_TITLE}} 호출 계약
+
+{{DATE}} · 계약 version: {{CONTRACT_VERSION}} · 구현 상태: {{IMPLEMENTATION_STATUS}}
+
+[전체 목표·범위](README.md) · [내부 구조](design.md)
+
+## 현재 인터페이스 → 목표 계약
+
+| 경계 | As-Is | To-Be | 호환성·전환 |
+|---|---|---|---|
+| {{BOUNDARY}} | {{CURRENT_CONTRACT}} | {{TARGET_CONTRACT}} | {{COMPATIBILITY}} |
+
+## 전체 호출 목록
+
+<!-- 정확한 이름은 이 문서에서만 목록으로 관리한다. README는 사용자 기능으로 설명한다. -->
+| ID | 이름 | 사용자 기능 | 주요 결과·부작용 |
+|---|---|---|---|
+| {{TOOL_ID}} | {{TOOL_NAME}} | {{FEATURE_LINK}} | {{RESULT_AND_EFFECT}} |
+
+## 공통 계약
+
+- 식별자·값 유형·필수/선택·단위·한도: {{COMMON_SCHEMA}}
+- 인증·권한·신뢰 경계: {{ACCESS_POLICY}}
+- 저장·동시 변경·재시도: {{CONSISTENCY_AND_RETRY}}
+- 성공·오류·부작용의 의미: {{RESULT_SEMANTICS}}
+
+{{STATE_DIAGRAM_IF_NEEDED}}
+
+## {{TOOL_ID}} {{TOOL_NAME}}
+
+- 목적·관련 기능: {{PURPOSE_AND_FEATURE}}
+- 권한·전제: {{PRECONDITIONS}}
+- 입력·기본값: {{INPUT_SCHEMA}}
+- 출력: {{OUTPUT_SCHEMA}}
+- 부작용·commit 경계: {{EFFECT_AND_COMMIT}}
+- 오류와 다음 행동: {{ERROR_AND_RECOVERY}}
+- 중복·재시도·취소: {{RETRY_AND_CANCELLATION}}
+
+{{VALID_JSON_CALL_EXAMPLE}}
+
+## 기존 코드와 검증 연결
+
+{{EXISTING_CODE_ADAPTER_AND_CONTRACT_FIXTURES}}
+
+<!-- 호출 수나 특정 transport를 고정하지 않는다. 기술 구현 순서는 plan에 연결한다. -->

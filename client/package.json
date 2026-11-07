@@ -14,7 +14,7 @@
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:document-core && npm run test:style-presets && npm run test:legacy-import && npm run test:canonical-migration && npm run test:renderer && npm run test:render-pipeline && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:markdown-editor-session && npm run test:pagination && npm run test:migration && npm run test:storage && npm run test:library",
+    "test": "npm run test:document-core && npm run test:style-presets && npm run test:legacy-import && npm run test:canonical-migration && npm run test:renderer && npm run test:render-pipeline && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:markdown-editor-session && npm run test:pagination && npm run test:migration && npm run test:storage && npm run test:library && npm run test:agent-contracts && npm run test:agent-service && npm run test:agent-access && npm run test:agent-reads && npm run test:agent-content && npm run test:agent-structure && npm run test:agent-components && npm run test:agent-style && npm run test:agent-output && npm run test:agent-history",
     "test:document-core": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-core.test.mjs",
     "test:style-presets": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-style-presets.test.mjs",
     "test:legacy-import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/legacy-document-import.test.mjs",
@@ -30,10 +30,24 @@
     "test:pagination": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/pagination.test.mjs",
     "test:migration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-migration.test.mjs",
     "test:storage": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-storage.test.mjs",
-    "test:library": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-library.test.mjs"
+    "test:library": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-library.test.mjs",
+    "test:agent-contracts": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-contracts.test.mjs",
+    "test:agent-service": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-document-service.test.mjs",
+    "test:agent-access": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-access.test.mjs",
+    "test:agent-reads": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-reads.test.mjs",
+    "test:agent-content": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-content.test.mjs",
+    "test:agent-structure": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-structure.test.mjs",
+    "test:agent-components": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-components.test.mjs",
+    "test:agent-style": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-style.test.mjs",
+    "test:agent-output": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-output.test.mjs",
+    "test:agent-history": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-history.test.mjs",
+    "test:agent-codex": "npm run build && playwright test e2e/agent-external-client.spec.ts",
+    "test:agent-load": "npm run build && playwright test e2e/agent-load.spec.ts",
+    "test:agent-claude-discovery": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-client-discovery.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@tiptap/core": "^3.32.0",
     "@tiptap/extension-list": "^3.32.0",
     "@tiptap/markdown": "^3.32.0",
@@ -52,7 +66,8 @@
     "shadcn": "^4.21.4",
     "tw-animate-css": "^1.4.0",
     "unified": "^11.0.5",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

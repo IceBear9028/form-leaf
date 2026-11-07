@@ -1,4 +1,7 @@
-import { useCallback, useState } from "react";
+import { AgentRenderPage } from "../pages/agent-render/AgentRenderPage.tsx";
+import { AgentSettingsPage } from "../pages/agent-settings/AgentSettingsPage.tsx";
+import { handleEditorRequest } from "../pages/document-editor/agentEditorBridge.ts";
+import { useCallback, useEffect, useState } from "react";
 import type { DocumentData } from "../../../foundation/document";
 import { GenericDocumentEditorPage } from "../pages/document-editor/GenericDocumentEditorPage";
 import {
@@ -14,9 +17,11 @@ import { MarkdownEditorOwnershipSpike } from "../pages/document-editor/markdown/
 type AppView =
   | { type: "library" }
   | { type: "trash" }
-  | { type: "editor"; document: DocumentData };
+  | { type: "agents" }
+  | { type: "editor"; document: DocumentData; revision: string };
 
 export function App() {
+  if (new URLSearchParams(location.search).has("agentRender")) return <AgentRenderPage />;
   if (new URLSearchParams(location.search).get("editorOwnershipSpike") === "1") {
     return <MarkdownEditorOwnershipSpike />;
   }
@@ -32,10 +37,11 @@ export function App() {
 function AppContent() {
   const [view, setView] = useState<AppView>({ type: "library" });
   const library = useDocumentLibrary();
+  useEffect(() => window.documents.onEditorRequest(handleEditorRequest), []);
 
   const openDocument = async (id: string) => {
     const document = await library.open(id);
-    if (document) setView({ type: "editor", document });
+    if (document) setView({ type: "editor", ...document });
   };
 
   const returnToLibrary = useCallback(async () => {
@@ -47,11 +53,14 @@ function AppContent() {
     return <LoadingScreen label="문서 목록을 불러오는 중…" />;
   }
 
+  if (view.type === "agents") return <AgentSettingsPage onBack={() => setView({ type: "library" })} />;
+
   if (view.type === "editor") {
     return (
       <GenericDocumentEditorPage
         key={view.document.documentId}
         initialDocument={view.document}
+        initialRevision={view.revision}
         onSummaryChange={library.updateSummary}
         onBack={returnToLibrary}
       />
@@ -81,12 +90,13 @@ function AppContent() {
       error={library.error}
       onCreate={async () => {
         const document = await library.create();
-        if (document) setView({ type: "editor", document });
+        if (document) setView({ type: "editor", ...document });
       }}
       onOpen={openDocument}
       onRename={library.rename}
       onDelete={library.moveToTrash}
       onOpenTrash={() => setView({ type: "trash" })}
+      onAgentSettings={() => setView({ type: "agents" })}
       onRetry={() => void library.load()}
     />
   );

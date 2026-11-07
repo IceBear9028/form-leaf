@@ -1,4 +1,6 @@
 import { existsSync } from "node:fs";
+import { documentRevision } from "../application/documentRevision.ts";
+import { failure } from "../../foundation/documentCommands.ts";
 import { mkdir, readdir, rename, stat, unlink } from "node:fs/promises";
 import {
   createEmptyDocument,
@@ -112,6 +114,34 @@ export class DocumentRepository {
     return this.enqueue(async () => {
       await this.ensureInitialized();
       return this.saveInside(id, document);
+    });
+  }
+
+  /** Exact staged snapshot commit. Shared service is the production writer. */
+  commitSnapshot(document: DocumentData, previousRevision: string | null): Promise<DocumentSummary> {
+    return this.enqueue(async () => {
+      await this.ensureInitialized();
+      const id = document.documentId;
+      assertSafeId(id);
+      if (!isDocumentData(document)) failure("VALIDATION_FAILED", "문서 형식이 올바르지 않습니다.");
+      const path = this.paths.activeDocument(id);
+      const index = await this.readIndex();
+      if (index.trash.some((item) => item.id === id) || existsSync(this.paths.trashDocument(id))) {
+        failure("OPERATION_RECOVERY_REQUIRED", "문서가 휴지통에 있어 저장할 수 없습니다.");
+      }
+      const current = existsSync(path) ? await this.readDocument(path) : undefined;
+      const actual = current ? documentRevision(current) : null;
+      const next = documentRevision(document);
+      if (actual !== previousRevision && actual !== next) {
+        failure("REVISION_CONFLICT", "문서가 변경되었습니다. 다시 읽어 주세요.", actual ? { currentRevision: actual } : undefined);
+      }
+      if (actual !== next) await this.writeDocument(path, document);
+      const createdAt = index.documents.find((item) => item.id === id)?.createdAt ?? document.updatedAt;
+      const summary = summaryFromDocument(document, createdAt);
+      await this.writeIndex({ ...index, documents: sortDocumentSummaries([
+        ...index.documents.filter((item) => item.id !== id), summary,
+      ]) });
+      return summary;
     });
   }
 

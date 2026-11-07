@@ -1,0 +1,133 @@
+{
+  "commit": "e16ba0e95ed22f0d75c20efbd07b37525da2ba65",
+  "node": "v26.7.0",
+  "typescript": "5.9.3",
+  "boundary": "Actual transpiled source functions with mocked Obsidian, schema and SDK boundaries; no HTTP, OS sandbox or real vault verification",
+  "results": [
+    {
+      "id": "P01",
+      "description": "Blacklist is a prefix filter, not filesystem confinement",
+      "status": "confirmed-in-source-probe",
+      "observed": {
+        "Secret/private.md": false,
+        "Public/../Secret/private.md": false,
+        "SecretsArchive/file.md": false,
+        "../../outside.md": true,
+        "/tmp/outside.md": true,
+        ".obsidian/plugins/mcp-server/main.js": true
+      }
+    },
+    {
+      "id": "P02",
+      "description": "Instructions and overview include blocked top-level folder names",
+      "status": "confirmed-in-source-probe",
+      "observed": {
+        "instructionsIncludeBlockedFolder": true,
+        "topFolders": [
+          "Public",
+          "Secret"
+        ],
+        "visibleFileCount": 1
+      }
+    },
+    {
+      "id": "P03",
+      "description": "Modify notification emits blocked file URI to registered session",
+      "status": "confirmed-in-source-probe",
+      "observed": [
+        {
+          "uri": "obsidian://notes/Secret%2Fprivate.md"
+        }
+      ]
+    },
+    {
+      "id": "P04",
+      "description": "Global tag counts do not apply file path filtering",
+      "status": "confirmed-in-source-probe",
+      "observed": {
+        "tags": {
+          "#private-project": 1
+        }
+      }
+    },
+    {
+      "id": "P05",
+      "description": "Daily-note creation precedes access rejection",
+      "status": "confirmed-in-source-probe",
+      "observed": {
+        "createDailyNoteCalls": 1,
+        "returnedError": true
+      }
+    },
+    {
+      "id": "P06",
+      "description": "Concurrent append handlers can overwrite one another",
+      "status": "confirmed-in-source-probe",
+      "observed": {
+        "writes": [
+          "base\nA",
+          "base\nB"
+        ],
+        "finalValue": "base\nB"
+      }
+    },
+    {
+      "id": "P07",
+      "description": "Repeated patch can mutate again despite idempotentHint",
+      "status": "confirmed-in-source-probe",
+      "observed": {
+        "finalValue": "xyy",
+        "idempotentHint": true
+      }
+    },
+    {
+      "id": "P08",
+      "description": "Stats count returned isError as success",
+      "status": "confirmed-in-source-probe",
+      "observed": {
+        "denied_fixture": {
+          "total": 1,
+          "successful": 1,
+          "failed": 0
+        }
+      }
+    },
+    {
+      "id": "P09",
+      "description": "Actual auth middleware: valid token, rejection, query token, auth-off bypass",
+      "status": "confirmed-in-source-probe",
+      "observed": {
+        "valid": {
+          "next": true,
+          "status": null
+        },
+        "missing": {
+          "next": false,
+          "status": 403
+        },
+        "query": {
+          "next": true,
+          "status": null
+        },
+        "disabled": {
+          "next": true,
+          "status": null
+        }
+      }
+    }
+  ],
+  "sourceSha256": {
+    "src/security.ts": "fb889e859f607be30fe5ec7c40c1a24741ed7e37b42f0dc84bb1176e984136b7",
+    "src/utils.ts": "8b5e8e5b99f95cdc1461bec15edc1f4db4ec7ce33cef5b1f1e5dd70086d6270d",
+    "src/instructions.ts": "27feb9ad4bc8a729f20b348deb91b0f1ef0a4c95a3d60ecaf513c33f8b1c2c78",
+    "src/resources/static.ts": "935680698cdb27fc9d4caee91e94eb8e5fe6b3cd7eba2e73be0b7701ae114c11",
+    "src/resources/subscriptions.ts": "bbd2890b22880561b749ae5a376a2b5a2272c4114ef4977807afff539f1df9f7",
+    "src/tools/list-all-tags.ts": "54fa2ec4319856268e96a188f6174e2803b043319a1a0dcd901cc916e81c8553",
+    "src/tools/constants.ts": "4f8ca490bd0ce90e633364f3eb5e2e2969c4836e59f1e9c0cfdc88c20c0ab180",
+    "src/tools/append-daily-note.ts": "146632a14fffac78ede979b9ec89345543b27918e944422c3ef96e8e9066257c",
+    "src/tools/append-note.ts": "8db29462e45b129fec9c4da227eb6fde5531204987874bebaa8bb63b98b9c7ec",
+    "src/tools/patch-note.ts": "cc0181af87408dcd65107875130d88ef2c990ef46f01b08b6c783b645ac5b0aa",
+    "src/stats.ts": "4e6afeaf05605334ab0014bedbb431840998fa42377f264442ed71e924847d05",
+    "src/server.ts": "cc889e833aceba1694007c6866eb45065f805e83b1cb3762077c066b2af84173"
+  }
+}

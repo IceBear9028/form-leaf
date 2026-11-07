@@ -1,3 +1,5 @@
+import type { AgentSettings, AgentGrants, AgentOperationSummary, AgentConnectionOptions, AgentTokenLifetime, IssuedAgentConnection } from "./agentConnection.ts";
+import type { SavedDocument, SaveDocumentResult, EditorContext, EditorRequest, EditorReply } from "./documentSessionProtocol.ts";
 import type { PdfExportResult } from "./document.ts";
 import type { DocumentData } from "./documentModel.ts";
 import type {
@@ -27,12 +29,24 @@ export type DocumentLibraryIndex = {
 };
 
 export type DocumentApi = {
+  agentOperations: () => Promise<AgentOperationSummary[]>;
+  agentOpenArtifact: (credentialId: string, requestId: string) => Promise<void>;
+  agentSaveArtifact: (credentialId: string, requestId: string) => Promise<PdfExportResult>;
+  agentSettings: () => Promise<AgentSettings>;
+  agentEnable: (enabled: boolean) => Promise<AgentSettings>;
+  agentCreateConnection: (name: string, options?: AgentConnectionOptions) => Promise<IssuedAgentConnection>;
+  agentRotateToken: (id: string, expiresInDays: AgentTokenLifetime) => Promise<IssuedAgentConnection>;
+  agentSetGrants: (id: string, grants: AgentGrants) => Promise<void>;
+  agentRevoke: (id: string) => Promise<void>;
   onBeforeClose: (handler: () => Promise<boolean>) => () => void;
+  onEditorRequest: (handler: (request: EditorRequest) => EditorReply) => () => void;
+  reportEditorContext: (context: EditorContext | null) => void;
+  onLibraryChange: (handler: () => void) => () => void;
   listDocuments: () => Promise<DocumentSummary[]>;
   listDeletedDocuments: () => Promise<DeletedDocumentSummary[]>;
-  createDocument: () => Promise<{ summary: DocumentSummary; document: DocumentData }>;
-  loadDocument: (id: string) => Promise<DocumentData>;
-  saveDocument: (id: string, document: DocumentData) => Promise<DocumentSummary>;
+  createDocument: () => Promise<{ summary: DocumentSummary; document: DocumentData; revision: string }>;
+  loadDocument: (id: string) => Promise<SavedDocument>;
+  saveDocument: (id: string, document: DocumentData, expectedRevision: string) => Promise<SaveDocumentResult>;
   renameDocument: (id: string, name: string) => Promise<DocumentSummary>;
   deleteDocument: (id: string) => Promise<void>;
   restoreDocument: (id: string) => Promise<DocumentSummary>;

@@ -1,35 +1,56 @@
 # {{TASK_ID}}. {{TASK_TITLE}}
 
-## 상태
+<!-- 전체 기획은 이 README에 통합한다. 별도 features.md를 만들지 않는다. -->
+## 상태와 읽는 순서
 
-계획 중
+- 갱신일: {{DATE}}
+- 상태: {{TASK_STATUS}}
+- 코드 확인 기준: {{BASE_HEAD}}
+- 제품 구현·실행 검증 상태: {{IMPLEMENTATION_AND_VALIDATION_STATUS}}
 
-## 문제
+[기술 설계](design.md) · [구현 계획](plan.md) · [인수인계](handoff.md)
 
-{{PROBLEM}}
+{{OPTIONAL_DOCUMENT_LINKS}}
 
-## 사용자 경험
+## 1. 문제와 사용자
 
-{{USER_EXPERIENCE}}
+{{PROBLEM_AND_CURRENT_PAIN}}
 
-## 목표
+| 사용자·행위자 | 하고 싶은 일 | 제품이 책임질 것 |
+|---|---|---|
+| {{ACTOR}} | {{USER_JOB}} | {{PRODUCT_RESPONSIBILITY}} |
 
-- {{GOAL_1}}
+{{OBSERVED_FACTS_AND_ASSUMPTIONS}}
 
-## 포함 범위
+## 2. 목표와 성공 기준
 
-- {{IN_SCOPE_1}}
+| 목표 | 관찰할 완료 결과 | 확인 방법 |
+|---|---|---|
+| {{GOAL}} | {{OBSERVABLE_OUTCOME}} | {{VALIDATION_METHOD}} |
 
-## 제외 범위
+## 3. 기능과 사용자 흐름
 
-- {{OUT_OF_SCOPE_1}}
+<!-- 작은 작업은 이 절에 상세 흐름·예외·대안·인수 조건을 쓴다.
+     독립 기능이 많을 때만 features/의 문서로 연결한다. API 목록은 계약에 둔다. -->
+| 기능·우선순위 | 사용자 요청 → 종료 상태 | 상세 또는 관련 문서 |
+|---|---|---|
+| {{FEATURE_ID_AND_PRIORITY}} | {{USER_REQUEST_AND_RESULT}} | {{FEATURE_LINK_OR_INLINE_DESCRIPTION}} |
 
-## 완료 조건
+{{KEY_USER_JOURNEY_AND_FAILURE_ACTIONS}}
 
-- [ ] {{ACCEPTANCE_CRITERION_1}}
+## 4. 포함·제외 범위
 
-## 관련 문서
+- 포함: {{IN_SCOPE}}
+- 제외 및 이유: {{OUT_OF_SCOPE_AND_REASON}}
+- 지켜야 할 기존 동작: {{INVARIANTS}}
+- 공통 정책의 요약과 기준 문서: {{POLICY_SUMMARY_AND_OWNER}}
 
-- [구현 계획](plan.md)
-- [기술 설계](design.md)
-- [세션 인수인계](handoff.md)
+## 5. 완료 판단
+
+{{TASK_COMPLETION_CRITERIA}}
+
+구현 순서와 진행 체크리스트는 plan, 실제 실행한 검증 결과는 handoff에서 관리한다. 문서 작성과 제품 구현 완료를 구별한다.
+
+## 용어와 참고
+
+{{NECESSARY_GLOSSARY_AND_REFERENCES}}

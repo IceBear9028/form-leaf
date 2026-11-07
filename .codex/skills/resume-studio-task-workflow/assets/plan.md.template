@@ -1,28 +1,57 @@
-# {{TASK_TITLE}} 구현 계획
+# {{TASK_TITLE}} 구현·전환 계획
+
+## 현재 상태
+
+{{DATE}} · 코드 기준: {{BASE_HEAD}} · 구현 상태: {{IMPLEMENTATION_STATUS}}
+
+[전체 목표·범위](README.md) · [설계](design.md) · [실제 검증 결과](handoff.md)
+
+## 전환 전략과 의존성
+
+{{CURRENT_TO_TARGET_TRANSITION}}
+
+{{PHASE_DEPENDENCY_MERMAID_OR_SHORT_ORDER}}
+
+- 데이터·schema·기존 동작의 호환성: {{COMPATIBILITY}}
+- 중단/비활성화와 이미 저장된 결과의 rollback 구분: {{ROLLBACK_BOUNDARY}}
 
 ## 진행 상태
 
-| 단계 | 작업 | 상태 | 검증 |
-|---|---|---|---|
-| 1 | {{PHASE_1}} | 진행 중 | {{VALIDATION_1}} |
-| 2 | {{PHASE_2}} | 대기 | {{VALIDATION_2}} |
+| 단계 | 작업 | 상태 | 진입 조건 | 산출물·종료 gate | 실패 시 유지·복귀 범위 |
+|---|---|---|---|---|---|
+| 1 | {{PHASE_1}} | 대기 | {{ENTRY_1}} | {{OUTPUT_AND_EXIT_1}} | {{ROLLBACK_1}} |
+| 2 | {{PHASE_2}} | 대기 | {{ENTRY_2}} | {{OUTPUT_AND_EXIT_2}} | {{ROLLBACK_2}} |
 
-상태는 `대기`, `진행 중`, `완료`, `차단` 중 하나만 사용한다. 동시에 하나의 단계만 `진행 중`으로 둔다.
+상태는 대기·진행 중·완료·차단을 사용한다. 구현 착수 전에는 모두 대기다. 실제 진행 중일 때만 한 단계를 진행 중으로 표시하며 문서 정리를 제품 구현 완료로 표시하지 않는다.
 
-## 구현 순서
+## 단계별 작업
 
 ### 1. {{PHASE_1}}
 
-- {{STEP_1}}
+- 기존 경로에서 바꿀 것: {{CURRENT_PATH_TO_CHANGE_1}}
+- [ ] {{IMPLEMENTATION_STEP_1}}
+- 검증할 기능/시퀀스/AC/미결정: {{TRACE_IDS_1}}
+- 검증 방법과 완료 증거: {{VALIDATION_AND_EVIDENCE_1}}
 
 ### 2. {{PHASE_2}}
 
-- {{STEP_2}}
+- 기존 경로에서 바꿀 것: {{CURRENT_PATH_TO_CHANGE_2}}
+- [ ] {{IMPLEMENTATION_STEP_2}}
+- 검증할 기능/시퀀스/AC/미결정: {{TRACE_IDS_2}}
+- 검증 방법과 완료 증거: {{VALIDATION_AND_EVIDENCE_2}}
 
-## 회귀 검증
+## 검증 범위
 
-- [ ] 관련 기능 수동 확인
-- [ ] `npm run typecheck`
-- [ ] `npm run build`
-- [ ] `git diff --check`
-- [ ] 개인정보와 로컬 사용자 데이터가 Git diff에 없는지 확인
+| 기능·위험 | 확인할 경계·시나리오 | 시험 방법 | 통과 조건 |
+|---|---|---|---|
+| {{FEATURE_OR_RISK}} | {{SCENARIO}} | {{CHECK}} | {{PASS_CRITERION}} |
+
+{{APPLICABLE_REGRESSION_COMMANDS_AND_MANUAL_CHECKS}}
+
+<!-- 문서만 바꾸면 링크·schema 예시·diagram·공백을 검증한다.
+     제품 변경 시 관련 테스트, npm test/typecheck/build 등 필요한 gate를 정한다.
+     한 번의 성공을 모든 클라이언트/플랫폼 검증으로 확대하지 않는다. -->
+
+## 후속으로 남길 사항
+
+{{EXPLICITLY_DEFERRED_SCOPE}}

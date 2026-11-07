@@ -5,6 +5,15 @@ import type { ComponentLibraryPackageInput } from "../foundation/componentLibrar
 import type { DocumentApi } from "../foundation/documentLibrary";
 
 const api: DocumentApi = {
+  agentOperations: () => ipcRenderer.invoke(IPC.agentOperations),
+  agentOpenArtifact: (credentialId, requestId) => ipcRenderer.invoke(IPC.agentOpenArtifact, credentialId, requestId),
+  agentSaveArtifact: (credentialId, requestId) => ipcRenderer.invoke(IPC.agentSaveArtifact, credentialId, requestId),
+  agentSettings: () => ipcRenderer.invoke(IPC.agentSettings),
+  agentEnable: (enabled) => ipcRenderer.invoke(IPC.agentEnable, enabled),
+  agentCreateConnection: (name, options) => ipcRenderer.invoke(IPC.agentCreateConnection, name, options),
+  agentRotateToken: (id, expiresInDays) => ipcRenderer.invoke(IPC.agentRotateToken, id, expiresInDays),
+  agentSetGrants: (id, grants) => ipcRenderer.invoke(IPC.agentSetGrants, id, grants),
+  agentRevoke: (id) => ipcRenderer.invoke(IPC.agentRevoke, id),
   onBeforeClose: (handler) => {
     const listener = () => { void handler().then(
       (saved) => ipcRenderer.send(IPC.completeClose, saved),
@@ -17,12 +26,25 @@ const api: DocumentApi = {
       ipcRenderer.send(IPC.closeGuard, false);
     };
   },
+  onEditorRequest: (handler) => {
+    const listener = (_event: Electron.IpcRendererEvent, request: Parameters<typeof handler>[0]) => {
+      try { ipcRenderer.send(IPC.editorReply, handler(request)); }
+      catch { ipcRenderer.send(IPC.editorReply, { requestId: request.requestId, ok: false, context: null }); }
+    };
+    ipcRenderer.on(IPC.editorRequest, listener);
+    return () => ipcRenderer.removeListener(IPC.editorRequest, listener);
+  },
+  reportEditorContext: (context) => ipcRenderer.send(IPC.editorContext, context),
+  onLibraryChange: (handler) => {
+    ipcRenderer.on(IPC.libraryChanged, handler);
+    return () => ipcRenderer.removeListener(IPC.libraryChanged, handler);
+  },
   listDocuments: () => ipcRenderer.invoke(IPC.listDocuments),
   listDeletedDocuments: () => ipcRenderer.invoke(IPC.listDeletedDocuments),
   createDocument: () => ipcRenderer.invoke(IPC.createDocument),
   loadDocument: (id: string) => ipcRenderer.invoke(IPC.loadDocument, id),
-  saveDocument: (id: string, document: DocumentData) =>
-    ipcRenderer.invoke(IPC.saveDocument, id, document),
+  saveDocument: (id: string, document: DocumentData, expectedRevision: string) =>
+    ipcRenderer.invoke(IPC.saveDocument, id, document, expectedRevision),
   renameDocument: (id: string, title: string) =>
     ipcRenderer.invoke(IPC.renameDocument, id, title),
   deleteDocument: (id: string) => ipcRenderer.invoke(IPC.deleteDocument, id),

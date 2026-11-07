@@ -80,6 +80,7 @@ type LibraryProps = {
   onRename: (id: string, title: string) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
   onOpenTrash: () => void;
+  onAgentSettings: () => void;
   onRetry: () => void;
 };
 
@@ -93,6 +94,7 @@ export function DocumentLibraryPage({
   onRename,
   onDelete,
   onOpenTrash,
+  onAgentSettings,
   onRetry,
 }: LibraryProps) {
   const [renameTarget, setRenameTarget] = useState<DocumentSummary>();
@@ -128,6 +130,7 @@ export function DocumentLibraryPage({
         creating={busyId === "create"}
         onCreate={onCreate}
         onOpenTrash={onOpenTrash}
+        onAgentSettings={onAgentSettings}
       />
       <main className="min-h-0 flex-1 overflow-y-auto px-8 py-9 max-sm:px-5">
         <div className="mx-auto max-w-6xl">
@@ -403,11 +406,13 @@ function LibraryHeader({
   creating,
   onCreate,
   onOpenTrash,
+  onAgentSettings,
 }: {
   deletedCount: number;
   creating: boolean;
   onCreate: () => Promise<void>;
   onOpenTrash: () => void;
+  onAgentSettings: () => void;
 }) {
   return (
     <header className="grid h-16 flex-none grid-cols-[1fr_auto] items-center border-b border-border bg-background px-5 [-webkit-app-region:drag]">
@@ -419,6 +424,7 @@ function LibraryHeader({
         </div>
       </div>
       <div className="flex items-center gap-2 [-webkit-app-region:no-drag]">
+        <Button variant="outline" onClick={onAgentSettings}>에이전트 연결</Button>
         <Button variant="outline" onClick={onOpenTrash}>
           <Trash2Icon aria-hidden="true" /> 휴지통
           {deletedCount > 0 && <Badge variant="secondary">{deletedCount}</Badge>}
