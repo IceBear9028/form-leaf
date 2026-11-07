@@ -14,7 +14,7 @@
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:document-core && npm run test:style-presets && npm run test:legacy-import && npm run test:canonical-migration && npm run test:renderer && npm run test:render-pipeline && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:markdown-editor-session && npm run test:pagination && npm run test:migration && npm run test:storage && npm run test:library && npm run test:agent-contracts && npm run test:agent-service && npm run test:agent-access && npm run test:agent-reads && npm run test:agent-content && npm run test:agent-structure && npm run test:agent-components && npm run test:agent-style && npm run test:agent-output && npm run test:agent-history",
+    "test": "npm run test:document-core && npm run test:style-presets && npm run test:legacy-import && npm run test:canonical-migration && npm run test:renderer && npm run test:render-pipeline && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:markdown-editor-session && npm run test:pagination && npm run test:migration && npm run test:storage && npm run test:library && npm run test:agent-contracts && npm run test:agent-service && npm run test:agent-access && npm run test:agent-reads && npm run test:agent-content && npm run test:agent-structure && npm run test:agent-components && npm run test:agent-style && npm run test:agent-output && npm run test:agent-history && npm run test:analysis",
     "test:document-core": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-core.test.mjs",
     "test:style-presets": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-style-presets.test.mjs",
     "test:legacy-import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/legacy-document-import.test.mjs",
@@ -43,7 +43,13 @@
     "test:agent-history": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-history.test.mjs",
     "test:agent-codex": "npm run build && playwright test e2e/agent-external-client.spec.ts",
     "test:agent-load": "npm run build && playwright test e2e/agent-load.spec.ts",
-    "test:agent-claude-discovery": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-client-discovery.test.mjs"
+    "test:agent-claude-discovery": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/agent-client-discovery.test.mjs",
+    "typecheck:app": "tsc --noEmit",
+    "lint:app": "eslint src electron.vite.config.ts",
+    "lint:tools": "eslint scripts eslint.config.mjs",
+    "lint": "npm run lint:app && npm run lint:tools",
+    "check": "npm run typecheck && npm run lint",
+    "test:analysis": "node --test test/analysis-tooling.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -70,18 +76,27 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/mdast": "^4.0.4",
     "@types/node": "^24.5.2",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
+    "eslint": "10.14.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.14.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "8.72.1"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
     "fsevents@2.3.3": true
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

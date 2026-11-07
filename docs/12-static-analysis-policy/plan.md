@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-2026-11-08 · 코드 기준 `989a7f6` · 정책·문서 완료 · 제품 구현 대기
+2026-11-08 · 코드 기준 `989a7f6` · 정책·문서 완료 · F01 완료 · F02 대기
 
 [기획](features/README.md) · [설계](implementation/README.md) · [실제 결과](handoff.md)
 
 - 브랜치: `docs/12-static-analysis-policy`.
-- 이번 작업은 문서를 기능별 기획·구현 설계 쌍으로 재구성한 것이다.
-- 모든 제품 구현 단계는 대기이며 사용자 데이터·schema migration은 없다.
+- 문서 선행 커밋: `b379b3f`. 사용자 요청에 따라 기능별 구현·검증·문서 갱신·커밋을 진행한다.
+- F01 구현·필수 검증·문서 갱신 완료. F02부터 순서대로 진행한다.
 
 ## 기능별 의존 순서·상태·커밋
 
@@ -16,7 +16,7 @@
 
 | 기능·기획 | 대응 구현 설계 | 테스트 계획·결과 | 선행 | 상태 | 완료 커밋 |
 |---|---|---|---|---|---|
-| F01 [검사 기반](features/01-analysis-tooling.md) | [01-analysis-tooling](implementation/01-analysis-tooling.md) | [테스트](tests/01-analysis-tooling.md) | 확정 정책 | 대기 | 없음 |
+| F01 [검사 기반](features/01-analysis-tooling.md) | [01-analysis-tooling](implementation/01-analysis-tooling.md) | [테스트](tests/01-analysis-tooling.md) | 확정 정책 | 완료 | 이 커밋 |
 | F02 [환경·레이어 경계](features/02-runtime-boundaries.md) | [02-runtime-boundaries](implementation/02-runtime-boundaries.md) | [테스트](tests/02-runtime-boundaries.md) | F01 | 대기 | 없음 |
 | F03 [Promise 책임](features/03-promise-ownership.md) | [03-promise-ownership](implementation/03-promise-ownership.md) | [테스트](tests/03-promise-ownership.md) | F02 | 대기 | 없음 |
 | F04 [타입 안전성](features/04-type-safety.md) | [04-type-safety](implementation/04-type-safety.md) | [테스트](tests/04-type-safety.md) | F03 | 대기 | 없음 |
@@ -28,7 +28,7 @@
 - 관련 코드·테스트·문서만 함께 커밋하고 무관한 변경을 보존한다.
 - 검증·커밋이 실패하면 해당 기능에서 재개하며 다음 기능으로 넘어가지 않는다.
 - 성공한 커밋 해시는 이 표에 기록하고 그 기록은 다음 커밋에 포함할 수 있다.
-- 문서만 작성한 현재 작업은 미커밋이며 제품 기능 완료를 뜻하지 않는다.
+- 문서와 workflow는 `b379b3f`로 커밋했다.
 
 ## 기능별 진입·종료 조건
 

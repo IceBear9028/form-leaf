@@ -1,6 +1,6 @@
 # F01. 검사 기반과 오류·경고 운영 구현 설계
 
-2026-11-08 · 설계 확정·구현 대기 · As-Is 코드 `989a7f6`
+2026-11-08 · 설계 확정·구현·검증 완료 · As-Is 코드 `989a7f6`
 
 [기능 기획](../features/01-analysis-tooling.md) · [설계 요약](README.md) · [정책](policy.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/01-analysis-tooling.md)
 
@@ -71,3 +71,9 @@ flowchart TD
 - F01 완료: 기반 도구와 현재 연결한 명령이 통과하고 미연결 범위를 기록한다.
 - 최종 명령 전체 연결 여부는 F07 이후 통합 검증에서 다시 확인한다.
 - 실패 시 의존성·config 변경만 재조정하고 제품 저장·편집 코드를 변경하지 않는다.
+
+## 적용 결과
+
+ESLint 10.14.0·typescript-eslint 8.72.1·TypeScript 5.9.3·Node 26.7.0에서 기반 검사를 확인했다. `lint:app`은 src와 Vite 설정, `lint:tools`는 scripts와 ESLint 설정을 검사한다. `check`는 기존 typecheck와 두 lint 범위를 실행한다. 테스트 project·lint는 F05, 환경 분리는 F02, TS recommended 규칙 활성화는 F04에서 연결한다.
+
+ESLint 9 설치 때 지원 종료 경고가 발생해 10으로 재선정했다. React·jsx-a11y의 현재 peer 범위는 9까지이므로 설치를 보류하고 F06·F07에서 호환 대안을 검증한다. [ESLint 지원 정책](https://eslint.org/version-support/)·[typescript-eslint 지원 범위](https://typescript-eslint.io/users/dependency-versions/)와 npm peer 정보를 확인했다.

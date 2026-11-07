@@ -2,17 +2,24 @@
 
 ## 현재 상태
 
-**12번 문서 작성을 완료했으며 제품 설정과 소스 적용은 대기 상태다.**
+**문서는 `b379b3f`로 커밋했고 F01 검사 기반 구현·검증을 완료했다. 이후 기능을 순서대로 적용한다.**
 
 - 갱신일: 2026-11-08.
 - 기준 HEAD: `989a7f6`.
 - 브랜치: main에서 분기한 `docs/12-static-analysis-policy`.
 - 작업 트리: `docs/README.md`·`docs/12-static-analysis-policy/`와 문서 양식·workflow 개선 변경이 있음.
-- 커밋: 이번 docs 변경은 미커밋이며 push·PR·merge를 수행하지 않았다.
-- 마지막 완료 작업: 정적 분석·정책 결정·문서화.
+- 문서 커밋: `b379b3f`. 기능별 완료 커밋은 plan에서 관리한다.
+- 마지막 완료 기능: F01. ESLint 10·typed lint·severity/disable 회귀와 현재 check·unit·build 통과.
 - F01–F07 구현과 완료 커밋 기록: [plan](plan.md).
 
-## 이번에 바꾼 것
+## 구현 진행
+
+- F01 결과: [검사 기반 테스트](tests/01-analysis-tooling.md).
+- ESLint 9 지원 종료 경고를 확인해 10.14.0으로 변경했다. React·접근성 plugin 호환성은 F06·F07에서 검증한다.
+- 현재 검사 범위는 제품·Vite·JS 도구이며, TS 추천 규칙은 F04, 테스트 검사는 F05에서 연결한다.
+- 아래 문서 작성 시점 기록과 실제 구현 검증을 구분한다.
+
+## 문서 작성 때 바꾼 것
 
 | 문서 | 실제 변경·책임 |
 |---|---|
@@ -84,7 +91,7 @@
 
 ## 다음 시작점
 
-**구현을 진행하는 요청에서는 plan의 F01부터 시작한다.**
+**plan의 다음 대기 기능부터 진행한다.**
 
 1. git 상태와 현재 HEAD가 문서 기준 이후 바뀌었는지 확인한다.
 2. [정책](implementation/policy.md)과 [설계 O01–O04](implementation/README.md)를 읽는다.
