@@ -1,3 +1,4 @@
+import { cloneValue } from "./runtime.ts";
 import type {
   ComponentDefinition,
   ComponentInstanceValue,
@@ -448,5 +449,5 @@ function createUniqueId(
 }
 
 function clone<T>(value: T): T {
-  return structuredClone(value);
+  return cloneValue(value);
 }

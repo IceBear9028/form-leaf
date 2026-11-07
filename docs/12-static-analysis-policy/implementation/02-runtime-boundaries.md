@@ -1,6 +1,6 @@
 # F02. 실행 환경과 레이어 경계 구현 설계
 
-2026-11-08 · 설계 확정·구현 대기 · As-Is 코드 `989a7f6`
+2026-11-08 · 설계 확정·구현·검증 완료 · As-Is 코드 `989a7f6`
 
 [기능 기획](../features/02-runtime-boundaries.md) · [설계 요약](README.md) · [정책](policy.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/02-runtime-boundaries.md)
 
@@ -106,3 +106,7 @@ classDiagram
 - 검증 범위·절차·통과 기준·실행 결과: [대응 테스트 문서](../tests/02-runtime-boundaries.md).
 - 실패 시 공통 코드 이동 범위부터 복구하며 결과 호환성이 확보될 때까지 다음 기능으로 넘어가지 않는다.
 - 이 문서의 핵심인 공통 파서 호출·의존 방향은 위 classDiagram이 설명한다. 파서 내부 실행 순서와 MCP 요청 전체의 runtime sequence는 이 이동 설계의 판단에 추가 정보가 없어 생략한다.
+
+## 적용 결과
+
+환경별 foundation/main/preload/renderer/tools project와 import 제한을 추가했다. Markdown parser와 호환성 로직은 foundation으로 이동했고 기존 renderer 경로는 재수출로 호출 호환성을 유지한다. Node/DOM 전역을 열지 않고 표준 clone/UUID 기능만 제공하는 foundation/runtime.ts를 추가했다. 경계 규칙은 상대 경로·alias·type import·export-from·dynamic import·require를 검사한다.

@@ -32,7 +32,7 @@ test('CLI exits successfully for warnings and fails for errors', () => {
 test('a type-aware rule reads the real product project', async () => {
   const typed = new ESLint({ overrideConfig: [{ files: ['src/**/*.ts'], rules: { '@typescript-eslint/await-thenable': 'error' } }] });
   const config = await typed.calculateConfigForFile('src/foundation/document/model.ts');
-  assert.equal(config.languageOptions.parserOptions.project, './tsconfig.json');
+  assert.ok(config.languageOptions.parserOptions.project.includes('./tsconfig.foundation.json'));
   const results = await typed.lintFiles(['src/foundation/**/*.ts']);
   assert.ok(results.length > 0);
   assert.equal(results.reduce((n, r) => n + r.fatalErrorCount + r.errorCount, 0), 0);

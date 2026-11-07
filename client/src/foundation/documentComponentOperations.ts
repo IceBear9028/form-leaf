@@ -1,3 +1,4 @@
+import { cloneValue } from "./runtime.ts";
 import type {
   ComponentDefinition,
   ComponentInstanceValue,
@@ -140,7 +141,7 @@ export function applyComponentDefinitionDraft(
   }
   return finalize({
     ...document,
-    components: { ...document.components, [draft.id]: structuredClone(draft) },
+    components: { ...document.components, [draft.id]: cloneValue(draft) },
   }, options);
 }
 
@@ -151,7 +152,7 @@ export function createComponentDocumentDraft(
 ): DocumentData {
   assertDocumentData(document);
   const component = requireComponent(document, componentId);
-  const draft = structuredClone(document);
+  const draft = cloneValue(document);
   const ownedNodeIds = collectComponentOwnedNodeIds(draft, component.rootNodeId);
   const outsideStyleIds = new Set(
     Object.values(draft.nodes)
@@ -171,7 +172,7 @@ export function createComponentDocumentDraft(
       localStyleId = createUniqueId("style", usedStyleIds, createId);
       localizedStyles.set(sourceStyleId, localStyleId);
       draft.styles[localStyleId] = {
-        ...structuredClone(draft.styles[sourceStyleId]),
+        ...cloneValue(draft.styles[sourceStyleId]),
         id: localStyleId,
       };
     }
@@ -209,7 +210,7 @@ export function applyComponentDocumentDraft(
   const nodes = { ...document.nodes };
   currentNodeIds.forEach((nodeId) => delete nodes[nodeId]);
   draftNodeIds.forEach((nodeId) => {
-    nodes[nodeId] = structuredClone(draft.nodes[nodeId]);
+    nodes[nodeId] = cloneValue(draft.nodes[nodeId]);
   });
 
   const styles = { ...document.styles };
@@ -220,7 +221,7 @@ export function applyComponentDocumentDraft(
     const style = draft.styles[styleId];
     if (!style) throw new Error(`component style을 찾을 수 없습니다: ${styleId}`);
     draftStyleIds.add(styleId);
-    styles[styleId] = structuredClone(style);
+    styles[styleId] = cloneValue(style);
   });
 
   const referencedStyleIds = new Set(
@@ -237,7 +238,7 @@ export function applyComponentDocumentDraft(
     styles,
     components: {
       ...document.components,
-      [componentId]: structuredClone(draftComponent),
+      [componentId]: cloneValue(draftComponent),
     },
   }, options);
 }
@@ -256,7 +257,7 @@ export function setComponentInstanceProp(
     ...document,
     nodes: {
       ...document.nodes,
-      [node.id]: { ...node, props: { ...node.props, [propId]: structuredClone(value) } },
+      [node.id]: { ...node, props: { ...node.props, [propId]: cloneValue(value) } },
     },
   }, options);
 }
@@ -317,7 +318,7 @@ export function duplicateRepeaterItem(
   if (index < 0) throw new Error(`repeater item을 찾을 수 없습니다: ${itemId}`);
   const createId = options?.createId ?? createEntityId;
   const nextItemId = createUniqueId("item", collectRepeaterItemIds(document), createId);
-  const item = { ...structuredClone(node.items[index]), id: nextItemId };
+  const item = { ...cloneValue(node.items[index]), id: nextItemId };
   const items = [...node.items];
   items.splice(index + 1, 0, item);
   return {
@@ -390,7 +391,7 @@ export function setRepeaterItemProp(
 ): DocumentData {
   return updateRepeaterItem(document, repeaterNodeId, itemId, (item) => ({
     ...item,
-    props: { ...item.props, [propId]: structuredClone(value) },
+    props: { ...item.props, [propId]: cloneValue(value) },
   }), options);
 }
 
@@ -481,18 +482,18 @@ export function importComponentPackage(
   const assets: Record<string, DocumentAsset> = {};
   Object.values(componentPackage.assets).forEach((asset) => {
     const id = requireMapped(assetMap, asset.id, "asset");
-    assets[id] = { ...structuredClone(asset), id };
+    assets[id] = { ...cloneValue(asset), id };
   });
   const styles: Record<string, StyleDefinition> = {};
   Object.values(componentPackage.styles).forEach((style) => {
     const id = requireMapped(styleMap, style.id, "style");
-    styles[id] = { ...structuredClone(style), id };
+    styles[id] = { ...cloneValue(style), id };
   });
   const nodes: Record<string, DocumentNode> = {};
   Object.values(componentPackage.nodes).forEach((source) => {
     const id = requireMapped(nodeMap, source.id, "node");
     const common = {
-      ...structuredClone(source),
+      ...cloneValue(source),
       id,
       styleId: source.styleId ? requireMapped(styleMap, source.styleId, "style") : undefined,
     };
@@ -518,7 +519,7 @@ export function importComponentPackage(
         type: source.type,
         itemComponentId: requireMapped(componentMap, source.itemComponentId, "component"),
         items: source.items.map((item) => ({
-          ...structuredClone(item),
+          ...cloneValue(item),
           id: createUniqueId("item", usedItemIds, createId),
           componentId: requireMapped(componentMap, item.componentId, "component"),
           props: remapProps(item.componentId, item.props, propMaps, assetMap),
@@ -534,11 +535,11 @@ export function importComponentPackage(
     const id = requireMapped(componentMap, source.id, "component");
     const propMap = propMaps.get(source.id)!;
     components[id] = {
-      ...structuredClone(source),
+      ...cloneValue(source),
       id,
       rootNodeId: requireMapped(nodeMap, source.rootNodeId, "node"),
       propDefinitions: source.propDefinitions.map((prop) => ({
-        ...structuredClone(prop),
+        ...cloneValue(prop),
         id: requireMapped(propMap, prop.id, "prop"),
         binding: {
           ...prop.binding,
@@ -580,7 +581,7 @@ function updateRepeaterItem(
       ...document.nodes,
       [node.id]: {
         ...node,
-        items: node.items.map((item) => item.id === itemId ? update(structuredClone(item)) : item),
+        items: node.items.map((item) => item.id === itemId ? update(cloneValue(item)) : item),
       },
     },
   }, options);
@@ -592,7 +593,7 @@ function bindingForNode(node: DocumentNode): {
   defaultValue: ComponentPropValue;
 } {
   if (node.type === "text") return { property: "text.value", valueType: "text", defaultValue: node.value };
-  if (node.type === "rich-text") return { property: "rich-text.value", valueType: "rich-text", defaultValue: structuredClone(node.value) };
+  if (node.type === "rich-text") return { property: "rich-text.value", valueType: "rich-text", defaultValue: cloneValue(node.value) };
   if (node.type === "markdown") return { property: "markdown.source", valueType: "markdown", defaultValue: node.source };
   if (node.type === "image") {
     const value: ImageValue = { alt: node.alt };
@@ -653,7 +654,7 @@ function remapProps(
 }
 
 function remapValueAssets(value: ComponentPropValue, assetMap: Map<string, string>): ComponentPropValue {
-  const copy = structuredClone(value);
+  const copy = cloneValue(value);
   if (typeof copy !== "object" || !("alt" in copy) || !copy.assetId) return copy;
   return { ...copy, assetId: requireMapped(assetMap, copy.assetId, "asset") };
 }
@@ -677,7 +678,7 @@ function pickRecord<T>(source: Record<string, T>, ids: Set<string>): Record<stri
   return Object.fromEntries([...ids].map((id) => {
     const value = source[id];
     if (!value) throw new Error(`dependency를 찾을 수 없습니다: ${id}`);
-    return [id, structuredClone(value)];
+    return [id, cloneValue(value)];
   }));
 }
 

@@ -1,3 +1,4 @@
+import { randomId } from "./runtime.ts";
 import {
   createDocumentStyleFromPreset,
   DEFAULT_DOCUMENT_STYLE_PRESET_ID,
@@ -209,7 +210,7 @@ export type CreateEmptyDocumentOptions = {
 };
 
 export function createEntityId(prefix = "item"): string {
-  return `${prefix}-${crypto.randomUUID()}`;
+  return `${prefix}-${randomId()}`;
 }
 
 export function createEmptyDocument(

@@ -4,7 +4,7 @@ import { documentTree, listEditTargets, readEditTarget } from "../../foundation/
 import { AGENT_LIMITS, operationSchema } from "../../foundation/documentCommandSchemas.ts";
 import { failure, type ToolInput } from "../../foundation/documentCommands.ts";
 import { z } from "zod";
-import { inspectMarkdownEditorCompatibility } from "../../renderer/src/pages/document-editor/markdown/editor/markdownEditorCompatibility.ts";
+import { inspectMarkdownEditorCompatibility } from "../../foundation/markdown/editorCompatibility.ts";
 import type { DocumentService } from "../application/documentService.ts";
 import { documentRevision } from "../application/documentRevision.ts";
 import type { AccessPolicy } from "./accessPolicy.ts";

@@ -1,3 +1,4 @@
+import { cloneValue } from "./runtime.ts";
 import type { StyleDefinition } from "./documentModel.ts";
 
 export type DocumentStylePresetId = "regular" | "compact";
@@ -64,7 +65,7 @@ export function createDocumentStyleFromPreset(
   return {
     id: styleId,
     name: preset.name,
-    ...structuredClone(preset.style),
+    ...cloneValue(preset.style),
   };
 }
 
