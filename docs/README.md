@@ -14,7 +14,7 @@
 
 ## 공통 문서 양식
 
-[docs 템플릿 안내](templates/README.md)를 기준으로 새 작업과 진행 중 문서를 작성한다. 완료된 과거 docs에는 새 양식을 소급 적용하지 않는다.
+[docs 템플릿 안내](templates/README.md)를 기준으로 새 작업과 진행 중 문서를 작성한다. 완료된 과거 docs는 사용자 요청 없이 일괄 변경하지 않는다. 11번은 2026-11-08의 명시적 요청에 따라 새 구조로 정리했다.
 
 - 루트 README는 작업 소개·핵심 변화·문서 안내를 짧게 담는다.
 - features/README.md가 전체 기획·범위·기능 목록을, features/NN-name.md가 기능별 상세 기획을 소유한다.
@@ -40,7 +40,7 @@
 | 08 | Preview와 Component 선택 경계 분리 | 완료 | [08-preview-component-selection-boundary](08-preview-component-selection-boundary/README.md) |
 | 09 | Preview Markdown 작성 사용성 | 자동 검증 완료·사용자 실제 앱 확인 대기 | [09-preview-markdown-authoring](09-preview-markdown-authoring/README.md) |
 | 10 | Markdown 편집 DOM 단일 소유권 | 제품 통합·자동 검증 완료 | [10-markdown-editor-ownership](10-markdown-editor-ownership/README.md) |
-| 11 | 에이전트 도구 명세 및 MCP 구현 | 구현 범위 마감·PR 제출, Claude 로그인/타 OS 미검증 기록 | [11-agent-tools-mcp](11-agent-tools-mcp/README.md) |
+| 11 | 에이전트 도구 명세 및 MCP 구현 | main 병합·문서 구조 개정, Claude 로그인/타 OS 미검증 | [11-agent-tools-mcp](11-agent-tools-mcp/README.md) |
 
 ## References
 

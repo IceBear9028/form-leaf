@@ -41,7 +41,7 @@ When consolidating documents, preserve unique requirements and research evidence
 ## Design and implement according to the request
 
 - Read code before describing As-Is; link symbols and identify the source revision. Mark To-Be as proposed until implemented and verified.
-- Explain data creation, transfer, storage, state ownership, commit and failure boundaries. Use Mermaid for architecture, feature dependencies and representative current/target sequences when they clarify the change. Simple changes can explain why a diagram is unnecessary.
+- Explain data creation, transfer, storage, state ownership, commit and failure boundaries. In implementation designs, use Mermaid flowcharts for code logic and branches, sequence diagrams for data movement across layers, and class diagrams for class/function dependencies. Follow the purpose-specific rules in documentation.md; represent free functions as module members, not invented classes. Omit only views that do not apply to a simple change and explain the omission.
 - Record realistic alternatives, costs, revisit conditions and unresolved choices with validation methods. Do not invent user research, scale targets, or product requirements.
 - Keep UI behavior, domain validation, persistence and external integrations within their documented boundaries. Preserve canonical document formats and editor ownership unless explicitly changing them.
 - For implementation, make coherent increments and validate the affected boundary. Update design when evidence changes it, plan when a stage completes, and handoff with actual results.

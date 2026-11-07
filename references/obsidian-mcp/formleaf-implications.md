@@ -1,6 +1,6 @@
 # Formleaf에 적용할 점
 
-이 문서는 외부 구현 분석에서 나온 제안이다. [11번 작업 설계](../../docs/11-agent-tools-mcp/design.md)의 확정 결정이나 새 작업 범위를 대신하지 않는다.
+이 문서는 외부 구현 분석에서 나온 제안이다. [11번 작업 설계](../../docs/11-agent-tools-mcp/implementation/architecture.md)의 확정 결정이나 새 작업 범위를 대신하지 않는다.
 
 ## 1. 참고할 구조
 

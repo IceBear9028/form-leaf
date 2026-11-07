@@ -12,6 +12,9 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 - 단일 기능이면 같은 내용을 implementation/README.md에 통합하고 상대 링크를 조정한다.
 - 작은 변경은 필요한 절만 남긴다.
 - 새 파일은 '신규 제안' 경로로 적고 링크하지 않는다.
+- 로직은 flowchart, 레이어 간 데이터 전달은 sequenceDiagram, 클래스·함수 관계는 classDiagram으로 표현한다.
+- 해당 관점을 설명할 때는 표·번호 목록만으로 도식을 대신하지 않는다.
+- 작은 변경에 해당 관점이 없으면 도식과 절을 생략하고 이유를 적는다.
 -->
 
 ## 1. 구현 목표와 범위
@@ -68,6 +71,28 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 
 {{SIGNATURE_TYPE_OR_PSEUDOCODE_IF_NEEDED}}
 
+### 코드 흐름과 분기 — 플로우차트
+
+**{{LOGIC_DIAGRAM_SENTENCE}}**
+
+- 상태·근거: {{LOGIC_DIAGRAM_STATUS_AND_EVIDENCE}}
+
+{{LOGIC_FLOWCHART_MERMAID}}
+
+- 핵심 조건·실패 시 반환: {{LOGIC_BRANCH_AND_FAILURE}}
+- 생략한 세부 로직·상세 위치: {{LOGIC_OMITTED_DETAILS_OR_LINK}}
+
+### 클래스·함수 관계 — 클래스 다이어그램
+
+**{{RELATION_DIAGRAM_SENTENCE}}**
+
+- 상태·근거: {{RELATION_DIAGRAM_STATUS_AND_EVIDENCE}}
+
+{{CLASS_OR_MODULE_RELATIONS_MERMAID}}
+
+- 관계선의 의미: {{CALL_DEPENDENCY_OR_OWNERSHIP}}
+- 일반 함수의 소속 모듈: {{FREE_FUNCTION_MODULES_OR_NOT_APPLICABLE}}
+
 <!--
 - 'service 수정', '컴포넌트 추가'만 쓰지 않는다.
 - 어느 함수가 무엇을 받아 어떤 검사와 분기를 수행하고 무엇을 반환하는지 쓴다.
@@ -75,6 +100,9 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 - 기존 로직의 재사용/이동/제거, 호출부 변경, 호환성이 필요한 타입·계약을 짚는다.
 - 이 기능의 입출력 계약은 아래에 정의한다.
 - 공통 계약을 분리한 경우 그 원본으로 연결한다.
+- flowchart에는 실제 조건·정상/실패 종료를 표시한다.
+- classDiagram에는 핵심 symbol만 담고, 일반 함수는 <<module>>의 멤버로 표시한다.
+- 일반 함수를 실제 클래스처럼 설명하거나 확인하지 않은 상속·합성을 그리지 않는다.
 -->
 
 ### 입출력과 오류 계약
@@ -95,7 +123,16 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 
 ## 5. 변경 후 실행 흐름과 상태
 
-{{TARGET_CALL_CHAIN_OR_SEQUENCE_DIAGRAM}}
+### 레이어 간 데이터 전달 — 시퀀스 다이어그램
+
+**{{DATA_SEQUENCE_SENTENCE}}**
+
+- 상태·근거: {{DATA_SEQUENCE_STATUS_AND_EVIDENCE}}
+
+{{LAYER_DATA_SEQUENCE_MERMAID}}
+
+- 메시지에 담기는 주요 데이터: {{MESSAGE_DATA_FIELDS}}
+- 저장 확정·응답·비동기 완료 경계: {{COMMIT_RESPONSE_AND_ASYNC_BOUNDARIES}}
 
 | 데이터·상태 | 기준 소유자 | 생성·전달·변경 경로 | 저장 확정·수명 |
 |---|---|---|---|
@@ -110,7 +147,8 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 
 <!--
 - 저장 없는 변경이면 그 사실을 적고 불필요한 저장 절은 제거한다.
-- 비동기·프로세스·저장 경계가 핵심이면 정상/실패 sequenceDiagram을 사용한다.
+- 레이어별 participant를 두고 실제 호출·데이터·응답 순서를 sequenceDiagram으로 표시한다.
+- 해당 흐름의 주요 실패는 alt/opt로 구분하고, 복잡하면 별도 시나리오로 나눈다.
 - 여러 기능이 공유하는 긴 흐름만 implementation/ 내부의 주제별 문서로 분리하고 연결한다.
 -->
 
