@@ -4,8 +4,12 @@
 
 [전체 목표·범위](../features/README.md) · [구현 설계 요약](README.md)
 
-<!-- 선택 양식. 기능별 계약은 해당 구현 설계에 쓴다. 여러 기능의 공통 계약을
-     독립 관리할 때만 implementation/ 안에 주제별 이름으로 분리한다. 기본 생성하지 않는다. -->
+<!--
+- 선택 양식.
+- 기능별 계약은 해당 구현 설계에 쓴다.
+- 여러 기능의 공통 계약을 독립 관리할 때만 implementation/ 안에 주제별 이름으로 분리한다.
+- 기본 생성하지 않는다.
+-->
 
 ## 현재 인터페이스 → 목표 계약
 
@@ -15,34 +19,58 @@
 
 ## 전체 호출 목록
 
-<!-- 정확한 이름은 이 문서에서만 목록으로 관리한다. features/README.md는 사용자 기능으로 설명한다. -->
+<!--
+- 정확한 이름은 이 문서에서만 목록으로 관리한다.
+- features/README.md는 사용자 기능으로 설명한다.
+-->
 | ID | 이름 | 사용자 기능 | 주요 결과·부작용 |
 |---|---|---|---|
 | {{TOOL_ID}} | {{TOOL_NAME}} | {{FEATURE_LINK}} | {{RESULT_AND_EFFECT}} |
 
 ## 공통 계약
 
-- 식별자·값 유형·필수/선택·단위·한도: {{COMMON_SCHEMA}}
-- 인증·권한·신뢰 경계: {{ACCESS_POLICY}}
-- 저장·동시 변경·재시도: {{CONSISTENCY_AND_RETRY}}
-- 성공·오류·부작용의 의미: {{RESULT_SEMANTICS}}
+**{{COMMON_CONTRACT_SENTENCE}}**
+
+- 식별자: {{IDENTIFIER_RULE}}
+- 값 유형·단위: {{VALUE_TYPES_AND_UNITS}}
+- 필수·선택 필드: {{REQUIRED_AND_OPTIONAL_FIELDS}}
+- 한도: {{LIMITS}}
+- 인증: {{AUTHENTICATION}}
+- 권한: {{PERMISSION}}
+- 신뢰 경계: {{TRUST_BOUNDARY}}
+- 저장 시점: {{PERSISTENCE_POINT}}
+- 동시 변경: {{CONCURRENCY_POLICY}}
+- 재시도: {{RETRY_POLICY}}
+- 성공 의미: {{SUCCESS_SEMANTICS}}
+- 오류 의미: {{ERROR_SEMANTICS}}
+- 부작용: {{SIDE_EFFECT_SEMANTICS}}
 
 {{STATE_DIAGRAM_IF_NEEDED}}
 
 ## {{TOOL_ID}} {{TOOL_NAME}}
 
-- 목적·관련 기능: {{PURPOSE_AND_FEATURE}}
+**{{TOOL_PURPOSE_SENTENCE}}**
+
+- 관련 기능: {{FEATURE_LINK}}
 - 권한·전제: {{PRECONDITIONS}}
 - 입력·기본값: {{INPUT_SCHEMA}}
 - 출력: {{OUTPUT_SCHEMA}}
 - 부작용·commit 경계: {{EFFECT_AND_COMMIT}}
-- 오류와 다음 행동: {{ERROR_AND_RECOVERY}}
-- 중복·재시도·취소: {{RETRY_AND_CANCELLATION}}
+- 오류: {{ERROR}}
+- 복구 행동: {{RECOVERY_ACTION}}
+- 중복 요청: {{DUPLICATE_REQUEST}}
+- 재시도: {{RETRY}}
+- 취소: {{CANCELLATION}}
 
 {{VALID_JSON_CALL_EXAMPLE}}
 
 ## 기존 코드와 검증 연결
 
-{{EXISTING_CODE_ADAPTER_AND_CONTRACT_FIXTURES}}
+- 기존 코드: {{EXISTING_CODE_LINK}}
+- 연결 방식: {{ADAPTER_APPROACH}}
+- 계약 검증: {{CONTRACT_FIXTURES}}
 
-<!-- 호출 수나 특정 transport를 고정하지 않는다. 기술 구현 순서는 plan에 연결한다. -->
+<!--
+- 호출 수나 특정 transport를 고정하지 않는다.
+- 기술 구현 순서는 plan에 연결한다.
+-->

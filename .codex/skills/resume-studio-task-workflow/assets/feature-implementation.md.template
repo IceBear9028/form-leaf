@@ -5,22 +5,31 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 
 [기능 기획](../features/{{FEATURE_STEM}}.md) · [설계 요약](README.md) · [구현 계획](../plan.md)
 
-<!-- features/NN-name.md와 implementation/NN-name.md의 번호·이름을 맞춘다.
-     기획을 복제하지 않고 관련 요구/AC를 참조한다. 이 설계는 코드 작업 전에 작성한다.
-     단일 기능이면 같은 내용을 implementation/README.md에 통합하고 상대 링크를 조정한다.
-     작은 변경은 필요한 절만 남긴다. 새 파일은 '신규 제안' 경로로 적고 링크하지 않는다. -->
+<!--
+- features/NN-name.md와 implementation/NN-name.md의 번호·이름을 맞춘다.
+- 기획을 복제하지 않고 관련 요구/AC를 참조한다.
+- 이 설계는 코드 작업 전에 작성한다.
+- 단일 기능이면 같은 내용을 implementation/README.md에 통합하고 상대 링크를 조정한다.
+- 작은 변경은 필요한 절만 남긴다.
+- 새 파일은 '신규 제안' 경로로 적고 링크하지 않는다.
+-->
 
 ## 1. 구현 목표와 범위
 
-{{FEATURE_REQUIREMENTS_AND_TECHNICAL_OUTCOME}}
+**{{IMPLEMENTATION_OUTCOME_SENTENCE}}**
 
+- 관련 요구·인수 조건: {{REQUIREMENT_LINKS}}
 - 이번 코드 변경으로 달성할 것: {{IMPLEMENTATION_GOAL}}
 - 유지할 동작·이번에 바꾸지 않을 것: {{INVARIANTS_AND_NON_GOALS}}
 - 공통 기반·다른 기능과의 선행 관계: {{DEPENDENCIES_AND_SHARED_DESIGN_LINKS}}
 
 ## 2. As-Is — 현재 코드는 어떻게 동작하는가
 
-{{CURRENT_ENTRY_POINT_CALL_CHAIN_AND_DATA_FLOW}}
+**{{CURRENT_BEHAVIOR_SENTENCE}}**
+
+- 진입점: {{CURRENT_ENTRY_POINT}}
+- 호출 순서: {{CURRENT_CALL_CHAIN}}
+- 데이터 전달: {{CURRENT_DATA_FLOW}}
 
 | 현재 파일·symbol·코드 링크 | 맡은 책임과 실제 동작 | 문제·변경이 필요한 이유 |
 |---|---|---|
@@ -28,8 +37,11 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 
 {{CURRENT_FLOW_DIAGRAM_IF_USEFUL}}
 
-<!-- 현행 코드를 읽고 호출자→처리→저장/반환 경로를 설명한다.
-     실행하지 않은 동작을 실행 확인으로 표현하지 않는다. 기존 기능이 없으면 없다고 적는다. -->
+<!--
+- 현행 코드를 읽고 호출자→처리→저장/반환 경로를 설명한다.
+- 실행하지 않은 동작을 실행 확인으로 표현하지 않는다.
+- 기존 기능이 없으면 없다고 적는다.
+-->
 
 ## 3. As-Is → To-Be — 바뀌는 동작과 코드
 
@@ -45,20 +57,39 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 
 ### {{KEY_CHANGE_UNIT}}의 구현 방식
 
-{{INPUT_VALIDATION_PROCESSING_OUTPUT_AND_REUSE}}
+**{{IMPLEMENTATION_APPROACH_SENTENCE}}**
+
+- 입력: {{INPUT}}
+- 검사: {{VALIDATION}}
+- 처리: {{PROCESSING}}
+- 반환: {{OUTPUT}}
+- 재사용·이동·제거: {{REUSE_OR_RELOCATION}}
+- 호출부 영향: {{CALLER_IMPACT}}
 
 {{SIGNATURE_TYPE_OR_PSEUDOCODE_IF_NEEDED}}
 
-<!-- 'service 수정', '컴포넌트 추가'만 쓰지 않는다. 어느 함수가 무엇을 받아 어떤 검사와
-     분기를 수행하고 무엇을 반환하는지 쓴다. 전체 코드를 미리 작성할 필요는 없다.
-     기존 로직의 재사용/이동/제거, 호출부 변경, 호환성이 필요한 타입·계약을 짚는다.
-     이 기능의 입출력 계약은 아래에 정의한다. 공통 계약을 분리한 경우 그 원본으로 연결한다. -->
+<!--
+- 'service 수정', '컴포넌트 추가'만 쓰지 않는다.
+- 어느 함수가 무엇을 받아 어떤 검사와 분기를 수행하고 무엇을 반환하는지 쓴다.
+- 전체 코드를 미리 작성할 필요는 없다.
+- 기존 로직의 재사용/이동/제거, 호출부 변경, 호환성이 필요한 타입·계약을 짚는다.
+- 이 기능의 입출력 계약은 아래에 정의한다.
+- 공통 계약을 분리한 경우 그 원본으로 연결한다.
+-->
 
 ### 입출력과 오류 계약
 
-| 호출·경계 | 입력·타입·검증·권한 | 출력·오류·부작용·재시도 | 계약을 보장할 코드 |
-|---|---|---|---|
-| {{CALL_BOUNDARY}} | {{INPUT_TYPES_VALIDATION_PERMISSION}} | {{OUTPUT_ERRORS_EFFECTS_RETRY}} | {{ENFORCING_CODE}} |
+**{{CALL_CONTRACT_SENTENCE}}**
+
+- 호출 경계: {{CALL_BOUNDARY}}
+- 입력·타입: {{INPUT_TYPES}}
+- 유효성 검사: {{INPUT_VALIDATION}}
+- 권한: {{PERMISSION}}
+- 출력: {{CONTRACT_OUTPUT}}
+- 오류: {{ERROR_CONTRACT}}
+- 부작용: {{SIDE_EFFECT}}
+- 재시도: {{RETRY_RULE}}
+- 계약을 보장할 코드: {{ENFORCING_CODE}}
 
 {{CONTRACT_EXAMPLE_OR_SHARED_CONTRACT_LINK}}
 
@@ -74,11 +105,14 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 |---|---|---|---|
 | {{FAILURE_OR_RACE}} | {{DETECTION_AND_HANDLING}} | {{PRESERVED_STATE}} | {{RECOVERY}} |
 
-{{SIDE_EFFECT_BOUNDARIES_AND_OTHER_FEATURE_IMPACT}}
+- 부작용의 적용 범위: {{SIDE_EFFECT_BOUNDARY}}
+- 다른 기능에 미치는 영향: {{OTHER_FEATURE_IMPACT}}
 
-<!-- 저장 없는 변경이면 그 사실을 적고 불필요한 저장 절은 제거한다.
-     비동기·프로세스·저장 경계가 핵심이면 정상/실패 sequenceDiagram을 사용한다.
-     여러 기능이 공유하는 긴 흐름만 implementation/ 내부의 주제별 문서로 분리하고 연결한다. -->
+<!--
+- 저장 없는 변경이면 그 사실을 적고 불필요한 저장 절은 제거한다.
+- 비동기·프로세스·저장 경계가 핵심이면 정상/실패 sequenceDiagram을 사용한다.
+- 여러 기능이 공유하는 긴 흐름만 implementation/ 내부의 주제별 문서로 분리하고 연결한다.
+-->
 
 ## 6. 선택 이유와 대안
 
@@ -86,18 +120,26 @@ As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_E
 |---|---|---|---|
 | {{IMPLEMENTATION_OPTION}} | {{BENEFIT}} | {{COST_AND_RISK}} | {{DECISION_AND_REASON}} |
 
-재검토 조건·미결정과 확인 방법: {{REVISIT_TRIGGERS_AND_OPEN_QUESTIONS}}
+- 재검토 조건: {{REVISIT_TRIGGER}}
+- 미결정: {{OPEN_QUESTION}}
+- 확인 방법: {{OPEN_QUESTION_CHECK}}
 
 ## 7. 구현 순서와 검증 연결
 
-{{IMPLEMENTATION_ORDER_AND_PLAN_LINK}}
+- 구현 순서: {{IMPLEMENTATION_ORDER}}
+- 실행 계획: {{PLAN_LINK}}
 
 | 요구·AC 또는 위험 | 검증할 동작·보존할 기존 동작 | 테스트 파일·방법 | 통과 조건 |
 |---|---|---|---|
 | {{REQUIREMENT_OR_RISK}} | {{SCENARIO_AND_INVARIANT}} | {{TEST_PATH_OR_METHOD}} | {{EXPECTED_RESULT}} |
 
-{{COMPATIBILITY_MIGRATION_AND_ROLLBACK_IF_APPLICABLE}}
+- 호환성: {{COMPATIBILITY}}
+- 전환 방법: {{MIGRATION_IF_APPLICABLE}}
+- 복구 방법: {{ROLLBACK_IF_APPLICABLE}}
 
-<!-- 이 절은 구현 전 검증 설계다. 수행 결과는 handoff, 진행 체크리스트는 plan에 둔다.
-     코드 작성 전에 변경 지점·목적·흐름·실패 처리·검증 방법을 읽고 판단할 수 있어야 한다.
-     구현 도중 설계가 바뀌면 이 문서도 갱신하되, 계획을 실행 증거로 표시하지 않는다. -->
+<!--
+- 이 절은 구현 전 검증 설계다.
+- 수행 결과는 handoff, 진행 체크리스트는 plan에 둔다.
+- 코드 작성 전에 변경 지점·목적·흐름·실패 처리·검증 방법을 읽고 판단할 수 있어야 한다.
+- 구현 도중 설계가 바뀌면 이 문서도 갱신하되, 계획을 실행 증거로 표시하지 않는다.
+-->

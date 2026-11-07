@@ -2,11 +2,17 @@
 
 ## 작업 소개
 
-{{TASK_INTRODUCTION_IN_TWO_OR_THREE_SENTENCES}}
+**{{TASK_PURPOSE_SENTENCE}}**
+
+- 대상 사용자: {{TARGET_USER}}
+- 해결할 문제: {{PROBLEM_SENTENCE}}
 
 ## 핵심 변화
 
-{{BRIEF_USER_VISIBLE_BEFORE_AND_AFTER}}
+**{{KEY_CHANGE_SENTENCE}}**
+
+- 변경 전: {{BEFORE_SENTENCE}}
+- 변경 후: {{AFTER_SENTENCE}}
 
 ## 문서 안내
 
@@ -17,6 +23,8 @@
 | 실행 순서·완료 조건·진행 상태·완료 커밋 | [작업 계획](plan.md) |
 | 실제 구현·검증 상태와 다음 시작점 | [인수인계](handoff.md) |
 
-<!-- 처음 읽을 때는 기획→구현 설계→계획, 작업 재개 시에는 handoff부터 읽는다.
-     배경·전체 기능 표·상세 As-Is/To-Be·검증 결과를 이곳에 반복하지 않는다.
-     작은 작업은 필요한 내용을 이 문서에 통합하고 존재하지 않는 링크를 제거한다. -->
+<!--
+- 처음 읽을 때는 기획→구현 설계→계획, 작업 재개 시에는 handoff부터 읽는다.
+- 배경·전체 기능 표·상세 As-Is/To-Be·검증 결과를 이곳에 반복하지 않는다.
+- 작은 작업은 필요한 내용을 이 문서에 통합하고 존재하지 않는 링크를 제거한다.
+-->

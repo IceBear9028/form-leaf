@@ -4,14 +4,21 @@
 
 [전체 기획](../features/README.md) · [실행 계획](../plan.md) · [실제 상태·검증](../handoff.md)
 
-<!-- implementation/은 기술 설계 전체를 담당한다. 이 문서는 요약과 목차다.
-     상세 코드·흐름·계약·실패 처리는 기능별 구현 설계가 소유한다.
-     단일 기능이면 feature-implementation 양식의 필요한 내용을 여기에 통합한다.
-     여러 기능이 공유하는 긴 기술 설계만 같은 폴더의 주제별 문서로 분리한다. -->
+<!--
+- implementation/은 기술 설계 전체를 담당한다.
+- 이 문서는 요약과 목차다.
+- 상세 코드·흐름·계약·실패 처리는 기능별 구현 설계가 소유한다.
+- 단일 기능이면 feature-implementation 양식의 필요한 내용을 여기에 통합한다.
+- 여러 기능이 공유하는 긴 기술 설계만 같은 폴더의 주제별 문서로 분리한다.
+-->
 
 ## 1. 설계 목표와 경계
 
-{{TECHNICAL_GOALS_NON_GOALS_AND_CONSTRAINTS}}
+**{{TECHNICAL_GOAL_SENTENCE}}**
+
+- 구현 범위: {{TECHNICAL_SCOPE}}
+- 제외 범위: {{NON_GOALS}}
+- 제약: {{CONSTRAINTS}}
 
 ## 2. As-Is → To-Be 핵심 변화
 
@@ -39,13 +46,22 @@
 |---|---|---|
 | {{FEATURE_LINK}} | {{IMPLEMENTATION_LINK_OR_INLINE_SECTION}} | {{DEPENDENCIES_AND_SHARED_LINKS}} |
 
-{{READING_ORDER_AND_FEATURE_RELATIONS}}
+- 읽는 순서: {{READING_ORDER}}
+- 기능 간 의존성: {{FEATURE_RELATIONS}}
 
-<!-- 전체 기능 목록의 원본은 features/README.md다. 이 표는 기술 설계 탐색용이며
-     제품 요구를 복제하지 않는다. 선택 공통 문서는 실제로 분리했을 때만 연결한다. -->
+<!--
+- 전체 기능 목록의 원본은 features/README.md다.
+- 이 표는 기술 설계 탐색용이며 제품 요구를 복제하지 않는다.
+- 선택 공통 문서는 실제로 분리했을 때만 연결한다.
+-->
 
 ## 6. 주요 위험과 미결정
 
-{{KEY_RISKS_OPEN_QUESTIONS_AND_VERIFICATION_LINKS}}
+**{{KEY_RISK_SENTENCE}}**
 
-실행 순서·진행 상태는 plan, 실제 검증 결과·재개 지점은 handoff에서 관리한다.
+- 영향: {{RISK_IMPACT}}
+- 미결정: {{OPEN_QUESTION}}
+- 확인 방법: {{VERIFICATION_LINK_OR_METHOD}}
+
+- 실행 순서와 진행 상태는 plan에서 관리한다.
+- 실제 검증 결과와 재개 지점은 handoff에 기록한다.
