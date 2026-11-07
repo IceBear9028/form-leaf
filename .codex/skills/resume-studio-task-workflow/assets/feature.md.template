@@ -4,6 +4,9 @@
 
 [전체 목표와 기능 목록](../README.md) · [기술 설계](../design.md)
 
+<!-- 이 문서는 기능의 기획을 소유한다. 코드 변경 상세는 designs/NN-name.md에 작성한다.
+     별도 구현 설계가 있으면 9절에서 연결하고, 단일 기능은 design.md의 해당 절로 연결한다. -->
+
 ## 1. 문제와 배경
 
 {{USER_SITUATION_PAIN_AND_REASON}}
@@ -51,6 +54,8 @@
 | {{AC_ID}} | {{FIXTURE}} | {{ACTION}} | {{OBSERVABLE_RESULT_AND_PRESERVED_DATA}} |
 
 ## 9. 기술 연결과 남은 확인
+
+{{IMPLEMENTATION_DESIGN_LINK}}
 
 {{CONTRACT_OPERATION_SEQUENCE_AND_PLAN_LINKS}}
 

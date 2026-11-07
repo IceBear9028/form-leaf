@@ -14,13 +14,16 @@
 
 ## 공통 문서 양식
 
-[docs 템플릿 안내](templates/README.md)를 기준으로 새 작업과 진행 중 문서를 작성한다. 기본 문서는 README·design·plan·handoff 네 개다.
+[docs 템플릿 안내](templates/README.md)를 기준으로 새 작업과 진행 중 문서를 작성한다. 여러 단계 작업의 기본 문서는 README·design·plan·handoff다. 단순 수정은 기존 문서나 PR 요약에 기록하고 새 문서 세트를 강제하지 않는다.
 
 - README가 전체 문제·사용자·목표·성공 기준·범위·기능 목록을 맡는다. 별도 features.md를 기본 생성하지 않는다.
 - 기능 상세·실행 흐름·외부 호출 계약은 필요한 경우에만 별도 문서로 분리한다.
+- `features/NN-name.md`는 기능 기획을 유지하고 `designs/NN-name.md`는 같은 기능의 코드 변경을 설계한다. 코드 착수 전에 현재 파일·symbol, 변경 목적·방식, As-Is/To-Be, 데이터·실패 흐름과 검증 방법을 작성한다. 단일 기능은 design에 통합할 수 있다.
+- design은 공통 구조와 기능 간 경계를, 기능별 designs는 구체적인 코드 변경을 소유한다. README 기능 목록에서 기획과 구현 설계를 함께 연결한다.
 - 설계에는 코드 근거가 있는 As-Is, 제안/구현 상태를 표시한 To-Be, 데이터 소유권·기능 관계와 정상/실패 시퀀스를 설명한다. Mermaid는 관계·순서를 이해하는 데 필요한 곳에 사용한다.
 - plan은 전환·검증·진행 상태, handoff는 실제 수행과 증거를 관리한다. 같은 목록이나 상태를 여러 파일에서 독립 관리하지 않는다.
 - 템플릿 원본은 저장소 workflow의 assets에서 관리하며 작업 폴더에 사본을 두지 않는다. 완료된 과거 문서는 새 양식 때문에 소급 수정하지 않는다.
+- PR은 [GitHub 양식](../.github/PULL_REQUEST_TEMPLATE.md)과 [작성 규칙](../.codex/skills/resume-studio-task-workflow/references/pull-requests.md)에 따라 작업 요약·기능별 전후 차이·핵심 코드·검증을 요약하고 상세 docs로 연결한다.
 
 ## 현재 작업
 

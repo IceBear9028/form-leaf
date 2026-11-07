@@ -32,9 +32,12 @@
 
 <!-- 작은 작업은 이 절에 상세 흐름·예외·대안·인수 조건을 쓴다.
      독립 기능이 많을 때만 features/의 문서로 연결한다. API 목록은 계약에 둔다. -->
-| 기능·우선순위 | 사용자 요청 → 종료 상태 | 상세 또는 관련 문서 |
-|---|---|---|
-| {{FEATURE_ID_AND_PRIORITY}} | {{USER_REQUEST_AND_RESULT}} | {{FEATURE_LINK_OR_INLINE_DESCRIPTION}} |
+| 기능·우선순위 | 사용자 요청 → 종료 상태 | 기능 기획 | 구현 설계 |
+|---|---|---|---|
+| {{FEATURE_ID_AND_PRIORITY}} | {{USER_REQUEST_AND_RESULT}} | {{FEATURE_LINK_OR_INLINE_DESCRIPTION}} | {{FEATURE_DESIGN_LINK_OR_INLINE_SECTION}} |
+
+<!-- 기획은 무엇을/왜, 구현 설계는 어느 코드를/어떻게 바꿀지 설명한다.
+     별도 문서가 없으면 이 README나 design의 해당 절을 연결하고 없는 링크는 제거한다. -->
 
 {{KEY_USER_JOURNEY_AND_FAILURE_ACTIONS}}
 

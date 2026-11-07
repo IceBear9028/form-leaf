@@ -1,0 +1,95 @@
+# {{FEATURE_ID}}. {{FEATURE_TITLE}} 구현 설계
+
+{{DATE}} · 설계 상태: {{PROPOSED_OR_DECIDED}} · 구현 상태: {{IMPLEMENTATION_STATUS}}
+As-Is 기준: {{BASE_COMMIT}} · 근거 종류: {{SOURCE_INSPECTION_OR_RUNTIME_EVIDENCE}}
+
+[기능 기획](../features/{{FEATURE_STEM}}.md) · [공통 설계](../design.md) · [구현 계획](../plan.md)
+
+<!-- features/NN-name.md와 designs/NN-name.md의 번호·이름을 맞춘다.
+     기획을 복제하지 않고 관련 요구/AC를 참조한다. 이 설계는 코드 작업 전에 작성한다.
+     단일 기능이면 같은 내용을 task의 design.md에 통합하고 상대 링크를 조정한다.
+     작은 변경은 필요한 절만 남긴다. 새 파일은 '신규 제안' 경로로 적고 링크하지 않는다. -->
+
+## 1. 구현 목표와 범위
+
+{{FEATURE_REQUIREMENTS_AND_TECHNICAL_OUTCOME}}
+
+- 이번 코드 변경으로 달성할 것: {{IMPLEMENTATION_GOAL}}
+- 유지할 동작·이번에 바꾸지 않을 것: {{INVARIANTS_AND_NON_GOALS}}
+- 공통 기반·다른 기능과의 선행 관계: {{DEPENDENCIES_AND_SHARED_DESIGN_LINKS}}
+
+## 2. As-Is — 현재 코드는 어떻게 동작하는가
+
+{{CURRENT_ENTRY_POINT_CALL_CHAIN_AND_DATA_FLOW}}
+
+| 현재 파일·symbol·코드 링크 | 맡은 책임과 실제 동작 | 문제·변경이 필요한 이유 |
+|---|---|---|
+| {{EXISTING_CODE_AND_SYMBOL}} | {{CURRENT_BEHAVIOR}} | {{CHANGE_REASON}} |
+
+{{CURRENT_FLOW_DIAGRAM_IF_USEFUL}}
+
+<!-- 현행 코드를 읽고 호출자→처리→저장/반환 경로를 설명한다.
+     실행하지 않은 동작을 실행 확인으로 표현하지 않는다. 기존 기능이 없으면 없다고 적는다. -->
+
+## 3. As-Is → To-Be — 바뀌는 동작과 코드
+
+| 기능의 행동·상황 | 현재 동작 | 변경 후 동작 | 변경할 코드·목적 |
+|---|---|---|---|
+| {{SCENARIO}} | {{BEFORE}} | {{AFTER}} | {{CODE_CHANGE_AND_PURPOSE}} |
+
+## 4. 코드 변경 설계
+
+| 변경 단위 | 기존/수정/신규/삭제 | 파일·symbol | 구체적인 변경 내용과 이유 | 호출자·영향 범위 |
+|---|---|---|---|---|
+| {{CHANGE_UNIT}} | {{CHANGE_KIND}} | {{PATH_AND_SYMBOL}} | {{CHANGE_AND_RATIONALE}} | {{CALLERS_AND_IMPACT}} |
+
+### {{KEY_CHANGE_UNIT}}의 구현 방식
+
+{{INPUT_VALIDATION_PROCESSING_OUTPUT_AND_REUSE}}
+
+{{SIGNATURE_TYPE_OR_PSEUDOCODE_IF_NEEDED}}
+
+<!-- 'service 수정', '컴포넌트 추가'만 쓰지 않는다. 어느 함수가 무엇을 받아 어떤 검사와
+     분기를 수행하고 무엇을 반환하는지 쓴다. 전체 코드를 미리 작성할 필요는 없다.
+     기존 로직의 재사용/이동/제거, 호출부 변경, 호환성이 필요한 타입·계약을 짚는다.
+     정확한 외부 schema는 tool-contracts에 한 번만 정의하고 여기서는 연결한다. -->
+
+## 5. 변경 후 실행 흐름과 상태
+
+{{TARGET_CALL_CHAIN_OR_SEQUENCE_DIAGRAM}}
+
+| 데이터·상태 | 기준 소유자 | 생성·전달·변경 경로 | 저장 확정·수명 |
+|---|---|---|---|
+| {{DATA_OR_STATE}} | {{OWNER}} | {{DATA_FLOW}} | {{COMMIT_AND_LIFETIME}} |
+
+| 실패·경쟁 상황 | 감지하는 코드와 처리 | 남는 데이터·상태 | 복구·재시도 |
+|---|---|---|---|
+| {{FAILURE_OR_RACE}} | {{DETECTION_AND_HANDLING}} | {{PRESERVED_STATE}} | {{RECOVERY}} |
+
+{{SIDE_EFFECT_BOUNDARIES_AND_OTHER_FEATURE_IMPACT}}
+
+<!-- 저장 없는 변경이면 그 사실을 적고 불필요한 저장 절은 제거한다.
+     비동기·프로세스·저장 경계가 핵심이면 정상/실패 sequenceDiagram을 사용한다.
+     긴 공통 흐름은 runtime-flows에 연결하고, 같은 그림을 복제하지 않는다. -->
+
+## 6. 선택 이유와 대안
+
+| 구현 대안 | 이점 | 비용·위험 | 선택 여부와 이유 |
+|---|---|---|---|
+| {{IMPLEMENTATION_OPTION}} | {{BENEFIT}} | {{COST_AND_RISK}} | {{DECISION_AND_REASON}} |
+
+재검토 조건·미결정과 확인 방법: {{REVISIT_TRIGGERS_AND_OPEN_QUESTIONS}}
+
+## 7. 구현 순서와 검증 연결
+
+{{IMPLEMENTATION_ORDER_AND_PLAN_LINK}}
+
+| 요구·AC 또는 위험 | 검증할 동작·보존할 기존 동작 | 테스트 파일·방법 | 통과 조건 |
+|---|---|---|---|
+| {{REQUIREMENT_OR_RISK}} | {{SCENARIO_AND_INVARIANT}} | {{TEST_PATH_OR_METHOD}} | {{EXPECTED_RESULT}} |
+
+{{COMPATIBILITY_MIGRATION_AND_ROLLBACK_IF_APPLICABLE}}
+
+<!-- 이 절은 구현 전 검증 설계다. 수행 결과는 handoff, 진행 체크리스트는 plan에 둔다.
+     코드 작성 전에 변경 지점·목적·흐름·실패 처리·검증 방법을 읽고 판단할 수 있어야 한다.
+     구현 도중 설계가 바뀌면 이 문서도 갱신하되, 계획을 실행 증거로 표시하지 않는다. -->
