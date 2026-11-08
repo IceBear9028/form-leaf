@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SavedDocument } from "../../../../foundation/documentSessionProtocol.ts";
 import { PaginatedDocumentRenderer } from "../document-editor/rendering/PaginatedDocumentRenderer.tsx";
@@ -10,7 +11,7 @@ export function AgentRenderPage() {
     for (const element of [document.documentElement, document.body, document.getElementById("root")]) {
       if (element) { element.style.height = "auto"; element.style.overflow = "visible"; }
     }
-    void window.agentRender.snapshot(jobId).then(setSnapshot);
+    runAction((window.agentRender.snapshot(jobId).then(setSnapshot)));
   }, [jobId]);
   const ready = useCallback(async () => {
     if (processing.current) return;
@@ -29,5 +30,5 @@ export function AgentRenderPage() {
       return { x: bounds.x + scrollX, y: bounds.y + scrollY, width: bounds.width, height: bounds.height };
     }), warnings: [...warnings.current] });
   }, [jobId, pass]);
-  return snapshot ? <div className="bg-white"><PaginatedDocumentRenderer key={pass} document={snapshot.document} mode="print" onLayoutReady={() => { void ready(); }} /></div> : null;
+  return snapshot ? <div className="bg-white"><PaginatedDocumentRenderer key={pass} document={snapshot.document} mode="print" onLayoutReady={() => { runAction((ready())); }} /></div> : null;
 }

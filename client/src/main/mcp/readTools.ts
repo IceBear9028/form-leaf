@@ -1,10 +1,11 @@
+import { requiredValue } from "../../foundation/requiredValue.ts";
 import { AVAILABLE_OPERATIONS } from "../application/documentOperationAdapter.ts";
 import type { DocumentData } from "../../foundation/documentModel.ts";
 import { documentTree, listEditTargets, readEditTarget } from "../../foundation/documentCommandTargets.ts";
 import { AGENT_LIMITS, operationSchema } from "../../foundation/documentCommandSchemas.ts";
 import { failure, type ToolInput } from "../../foundation/documentCommands.ts";
 import { z } from "zod";
-import { inspectMarkdownEditorCompatibility } from "../../renderer/src/pages/document-editor/markdown/editor/markdownEditorCompatibility.ts";
+import { inspectMarkdownEditorCompatibility } from "../../foundation/markdown/editorCompatibility.ts";
 import type { DocumentService } from "../application/documentService.ts";
 import { documentRevision } from "../application/documentRevision.ts";
 import type { AccessPolicy } from "./accessPolicy.ts";
@@ -62,12 +63,12 @@ export class AgentReads {
     const active = documentTree(document); const all = documentTree(document, true);
     const parent = new Map<string, string>();
     for (const id of all) {
-      const node = document.nodes[id];
+      const node = requiredValue(document.nodes[id], `node ${id}`);
       if (node.type === "container") for (const child of node.childIds) parent.set(child, id);
       if (node.archivedFrom) parent.set(id, node.archivedFrom.parentId);
     }
     return { ...base, view: "outline", rootNodeId: document.rootNodeId, nodes: [...all].map((id) => {
-      const node = document.nodes[id];
+      const node = requiredValue(document.nodes[id], `node ${id}`);
       return { id, type: node.type, name: node.name, parentId: parent.get(id) ?? null,
         childIds: node.type === "container" ? node.childIds : [], visible: node.visible, archived: !active.has(id),
         ...(node.type === "component-instance" ? { componentId: node.componentId } : {}),
@@ -106,7 +107,7 @@ export class AgentReads {
       let item;
       try { item = await this.service.loadComponent(input.libraryItemId); }
       catch { failure("NOT_FOUND_OR_DENIED", "컴포넌트를 찾을 수 없거나 접근할 수 없습니다."); }
-      const definition = item.package.components[item.package.entryComponentId];
+      const definition = requiredValue(item.package.components[item.package.entryComponentId], "library entry component");
       return { source: "library", libraryRevision: documentRevision(item), componentId: definition.id, name: definition.name, rootNodeId: definition.rootNodeId, propDefinitions: definition.propDefinitions, nodes: item.package.nodes, styles: item.package.styles, assets: metadataAssets(item.package.assets) };
     }
     const { document, revision } = await this.snapshot(input.documentId);
@@ -115,14 +116,14 @@ export class AgentReads {
     const ids = new Set<string>();
     const visit = (id: string) => {
       if (ids.has(id)) return; ids.add(id);
-      const node = document.nodes[id];
+      const node = requiredValue(document.nodes[id], `node ${id}`);
       if (node.type === "container") node.childIds.forEach(visit);
-      if (node.type === "component-instance") visit(document.components[node.componentId].rootNodeId);
-      if (node.type === "repeater") visit(document.components[node.itemComponentId].rootNodeId);
+      if (node.type === "component-instance") visit(requiredValue(document.components[node.componentId], `component ${node.componentId}`).rootNodeId);
+      if (node.type === "repeater") visit(requiredValue(document.components[node.itemComponentId], `component ${node.itemComponentId}`).rootNodeId);
     };
     visit(definition.rootNodeId);
-    const nodes = Object.fromEntries([...ids].map((id) => [id, document.nodes[id]]));
-    const styles = Object.fromEntries([...new Set(Object.values(nodes).flatMap((node) => node.styleId ? [node.styleId] : []))].map((id) => [id, document.styles[id]]));
+    const nodes = Object.fromEntries([...ids].map((id) => [id, requiredValue(document.nodes[id], `node ${id}`)]));
+    const styles = Object.fromEntries([...new Set(Object.values(nodes).flatMap((node) => node.styleId ? [node.styleId] : []))].map((id) => [id, requiredValue(document.styles[id], `style ${id}`)]));
     return { source: "document", revision, componentId: definition.id, name: definition.name, rootNodeId: definition.rootNodeId, propDefinitions: definition.propDefinitions, nodes, styles, assets: metadataAssets(document.assets) };
   }
   async operation(input: ToolInput<"get_operation">) {

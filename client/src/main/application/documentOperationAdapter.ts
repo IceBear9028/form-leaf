@@ -25,14 +25,14 @@ export function applyDocumentOperations(document: DocumentData, operations: Oper
         step.nodeIds.forEach((id) => affectedNodeIds.add(id));
         if (operation.type === "set_component_prop" || operation.type === "clear_component_prop") {
           const owner = next.nodes[operation.instanceNodeId];
-          if (owner.type === "component-instance" && ["text", "markdown", "rich-text"].includes(requireProp(next, owner.componentId, operation.propId).valueType)) {
+          if (owner?.type === "component-instance" && ["text", "markdown", "rich-text"].includes(requireProp(next, owner.componentId, operation.propId).valueType)) {
             const target = { kind: "component-prop" as const, instanceNodeId: owner.id, propId: operation.propId };
             affectedTargets.set(documentEditTargetKey(target), target);
           }
         }
         if (operation.type === "set_item_prop") {
           const owner = next.nodes[operation.repeaterNodeId];
-          if (owner.type === "repeater" && ["text", "markdown", "rich-text"].includes(requireProp(next, owner.itemComponentId, operation.propId).valueType)) {
+          if (owner?.type === "repeater" && ["text", "markdown", "rich-text"].includes(requireProp(next, owner.itemComponentId, operation.propId).valueType)) {
             const target = { kind: "repeater-item-prop" as const, repeaterNodeId: owner.id, itemId: operation.itemId, propId: operation.propId };
             affectedTargets.set(documentEditTargetKey(target), target);
           }

@@ -142,7 +142,8 @@ export function MarkdownQuickInsertMenu({
       if (event.key !== "Enter" || !items.length) return;
       event.preventDefault();
       event.stopPropagation();
-      onSelect(items[Math.min(activeIndex, items.length - 1)].command);
+      const item = items[Math.min(activeIndex, items.length - 1)];
+      if (item) onSelect(item.command);
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);

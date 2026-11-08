@@ -1,3 +1,5 @@
+import { requiredValue } from "../../../../foundation/requiredValue.ts";
+import { runAction } from "@/shared/lib/async-errors";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeftIcon, CheckIcon, FileDownIcon, MinusIcon, PlusIcon, SaveIcon, XIcon } from "lucide-react";
 import type { DocumentData, RichTextMark, RichTextValue } from "../../../../foundation/documentModel.ts";
@@ -82,6 +84,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   onBack: () => Promise<void>;
 }) {
   const session = useGenericDocumentSession(initialDocument, onSummaryChange, initialRevision);
+  const { setSelection, saveUntilClean, updateDocument: changeSessionDocument } = session;
   const deferredMarkdownChange = useSyncExternalStore(subscribeMarkdownEditor, getDeferredMarkdownChange);
   const previewRef = useRef<HTMLDivElement>(null);
   const undoRef = useRef<DocumentData[]>([]);
@@ -143,20 +146,20 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     change: GenericDocumentChange,
     operations?: readonly DocumentUpdateOperation[],
   ) => {
-    session.updateDocument((current) => {
+    changeSessionDocument((current) => {
       const next = typeof change === "function" ? change(current) : change;
       if (next === current) return current;
       pushUndoSnapshot(undoRef.current, current);
       redoRef.current = [];
       return next;
     }, operations);
-  }, [session.updateDocument]);
+  }, [changeSessionDocument]);
 
   const selectAndReveal = useCallback((selection?: DocumentSelection, moveFocus?: boolean) => {
     endMarkdownEditing();
     activeEditTargetRef.current = undefined;
     setActiveEditTarget(undefined);
-    session.setSelection(selection);
+    setSelection(selection);
     if (!selection) {
       setLayerFocusRequest(undefined);
       return;
@@ -169,16 +172,16 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       requestId: layerFocusRequestIdRef.current,
       moveFocus,
     });
-  }, [session.setSelection]);
+  }, [setSelection]);
 
   const selectFromLayer = useCallback((selection?: DocumentSelection) => {
     endMarkdownEditing();
     activeEditTargetRef.current = undefined;
     setActiveEditTarget(undefined);
     setRichTextSelection(undefined);
-    session.setSelection(selection);
+    setSelection(selection);
     if (selection) schedulePreviewFocus(previewRef.current, selection);
-  }, [session.setSelection]);
+  }, [setSelection]);
 
   const clearPreviewSelection = () => {
     selectAndReveal(undefined);
@@ -217,7 +220,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     }
     activeEditTargetRef.current = nextEditTarget;
     setActiveEditTarget(nextEditTarget);
-    session.setSelection(selectDocumentEditTarget(target));
+    setSelection(selectDocumentEditTarget(target));
     setLayerFocusRequest(undefined);
     setRichTextSelection((current) => (
       current && documentEditTargetKey(current.target) === targetKey
@@ -234,7 +237,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       renderId,
       anchorRenderId: nextEditTarget.anchorRenderId,
     });
-  }, [session.setSelection]);
+  }, [setSelection]);
 
   useEffect(() => {
     let pointerOwner: Element | undefined;
@@ -252,7 +255,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
         : node?.dataset.documentNodeId ? selectNode(node.dataset.documentNodeId) : undefined;
       if (nextSelection) pointerOwner = item ?? node ?? undefined;
       endMarkdownEditing();
-      if (nextSelection) session.setSelection(nextSelection);
+      if (nextSelection) setSelection(nextSelection);
       activeEditTargetRef.current = undefined;
       setActiveEditTarget(undefined);
     };
@@ -272,12 +275,12 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       endMarkdownEditing();
       dismissDeferredMarkdownChange();
     };
-  }, [session.setSelection]);
+  }, [setSelection]);
 
   useEffect(() => window.documents.onBeforeClose(async () => {
     endMarkdownEditing();
-    return session.saveUntilClean();
-  }), [session.saveUntilClean]);
+    return saveUntilClean();
+  }), [saveUntilClean]);
 
   const selectFromPreview = useCallback((target: RenderSelectionTarget, event?: Event) => {
     const selection = contentSelectionFromRenderTarget(target);
@@ -356,7 +359,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
         const destination = redo ? undoRef.current : redoRef.current;
         const next = source.pop();
         if (!next) return;
-        session.updateDocument((current) => {
+        changeSessionDocument((current) => {
           pushUndoSnapshot(destination, current);
           return next;
         });
@@ -383,7 +386,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     if (returning) return;
     endMarkdownEditing();
     setReturning(true);
-    if (await session.saveUntilClean()) await onBack();
+    if (await saveUntilClean()) await onBack();
     setReturning(false);
   };
 
@@ -391,7 +394,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     endMarkdownEditing();
     setExporting(true);
     session.setExportedPath(null);
-    if (!await session.saveUntilClean()) {
+    if (!await saveUntilClean()) {
       setExporting(false);
       return;
     }
@@ -412,7 +415,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
           description: result.filePath,
           actionProps: {
             children: "Finder에서 보기",
-            onClick: () => void window.documents.showInFolder(result.filePath),
+            onClick: () => runAction((window.documents.showInFolder(result.filePath))),
           },
         });
       }
@@ -434,7 +437,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
         onCancel={() => setEditingComponentId(undefined)}
         onSave={(document) => {
           updateDocument((current) => applyComponentDocumentDraft(current, editingComponentId, document));
-          session.setSelection(undefined);
+          setSelection(undefined);
           setEditingComponentId(undefined);
         }}
       />
@@ -454,13 +457,13 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       </div>}
       <header className="app-toolbar relative z-20 grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center gap-5 border-b border-border bg-background px-5 [-webkit-app-region:drag]">
         <div className="flex min-w-0 items-center gap-3">
-          <Button type="button" variant="outline" disabled={returning} className="[-webkit-app-region:no-drag]" onClick={() => void returnToLibrary()}>
+          <Button type="button" variant="outline" disabled={returning} className="[-webkit-app-region:no-drag]" onClick={() => runAction((returnToLibrary()))}>
             {returning ? <Spinner /> : <ArrowLeftIcon aria-hidden="true" />}
             {returning ? "저장 중…" : "문서 목록"}
           </Button>
           <strong className="truncate text-sm font-medium">{session.document.name || "제목 없는 문서"}</strong>
         </div>
-        <SaveIndicator store={session.saveStateStore} onRetry={() => void session.saveNow()} />
+        <SaveIndicator store={session.saveStateStore} onRetry={() => runAction((session.saveNow()))} />
         <div className="flex items-center justify-self-end gap-3 [-webkit-app-region:no-drag]">
           <ButtonGroup aria-label="미리보기 배율">
             <Tooltip>
@@ -501,7 +504,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
               <TooltipContent>확대</TooltipContent>
             </Tooltip>
           </ButtonGroup>
-          <Button type="button" disabled={exporting} onClick={() => void exportPdf()}>
+          <Button type="button" disabled={exporting} onClick={() => runAction((exportPdf()))}>
             {exporting ? <Spinner /> : <FileDownIcon aria-hidden="true" />}
             {exporting ? "PDF 준비 중…" : "PDF 내보내기"}
           </Button>
@@ -595,7 +598,7 @@ function ComponentEditorScreen({
   onSave: (document: DocumentData) => void;
 }) {
   const [draft, setDraft] = useState<DocumentData>(() => createComponentDocumentDraft(sourceDocument, componentId));
-  const component = draft.components[componentId];
+  const component = requiredValue(draft.components[componentId], `component ${componentId}`);
   const [selection, setSelection] = useState<DocumentSelection | undefined>(() => selectNode(component.rootNodeId));
   const undoRef = useRef<DocumentData[]>([]);
   const redoRef = useRef<DocumentData[]>([]);

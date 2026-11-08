@@ -1,5 +1,6 @@
+import * as Check from "../test/fixtures/assertions.ts";
 import { expect, test, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
-import electronPath from "electron";
+import electronPath from "../test/fixtures/electron-path.ts";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -56,7 +57,7 @@ test("active editor가 composition 중 DOM과 selection을 단독 소유한다",
     await expect(page.locator('[data-editor-ownership-snapshot="true"]')).toHaveText("경쟁: 가나 다");
     await expect.poll(() => caretSuffix(page)).toBe("");
   } finally {
-    await application?.close().catch(() => undefined);
+    await Check.present(application?.close(), 'fixture object').catch(() => undefined);
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });
@@ -74,7 +75,7 @@ async function focusAtEnd(editor: ReturnType<Page["locator"]>): Promise<void> {
 }
 
 async function insertComposedText(
-  cdp: Awaited<ReturnType<Page["context"]>["newCDPSession"]>,
+  cdp: Awaited<ReturnType<ReturnType<Page["context"]>["newCDPSession"]>>,
   text: string,
 ): Promise<void> {
   await cdp.send("Input.imeSetComposition", {

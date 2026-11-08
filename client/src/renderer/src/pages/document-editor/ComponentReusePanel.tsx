@@ -1,3 +1,5 @@
+import { requiredValue } from "../../../../foundation/requiredValue.ts";
+import { runAction } from "@/shared/lib/async-errors";
 import { useEffect, useMemo, useState } from "react";
 import { ArchiveIcon, BoxesIcon, CopyPlusIcon, DownloadIcon, ListPlusIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react";
 import type { ComponentLibrarySummary } from "../../../../foundation/componentLibrary.ts";
@@ -62,7 +64,7 @@ export function ComponentReusePanel({
   };
 
   useEffect(() => {
-    void refreshLibrary();
+    runAction((refreshLibrary()));
   }, []);
 
   const createFromSelection = () => {
@@ -178,7 +180,7 @@ export function ComponentReusePanel({
             <SelectControl
               value={selectedComponentId ?? ""}
               onChange={setComponentId}
-              options={componentIds.map((id) => ({ value: id, label: document.components[id].name || id }))}
+              options={componentIds.map((id) => ({ value: id, label: requiredValue(document.components[id], `component ${id}`).name || id }))}
             />
           </label>
           {component && (
@@ -200,7 +202,7 @@ export function ComponentReusePanel({
           <Button type="button" variant="outline" size="sm" onClick={addRepeater}>
             <ListPlusIcon aria-hidden="true" /> Repeater
           </Button>
-          <Button type="button" variant="outline" size="sm" disabled={libraryBusy} className="col-span-2" onClick={() => void saveToLibrary()}>
+          <Button type="button" variant="outline" size="sm" disabled={libraryBusy} className="col-span-2" onClick={() => runAction((saveToLibrary()))}>
             <SaveIcon aria-hidden="true" /> 라이브러리에 저장
           </Button>
         </div>
@@ -216,10 +218,10 @@ export function ComponentReusePanel({
           ]}
         />
         <div className="grid grid-cols-[1fr_auto] gap-2">
-          <Button type="button" variant="outline" size="sm" disabled={!libraryId || libraryBusy} onClick={() => void importFromLibrary()}>
+          <Button type="button" variant="outline" size="sm" disabled={!libraryId || libraryBusy} onClick={() => runAction((importFromLibrary()))}>
             <DownloadIcon aria-hidden="true" /> 문서로 복사
           </Button>
-          <Button type="button" variant="ghost" size="icon-sm" aria-label="라이브러리 항목 삭제" disabled={!libraryId || libraryBusy} onClick={() => void deleteLibraryItem()}>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label="라이브러리 항목 삭제" disabled={!libraryId || libraryBusy} onClick={() => runAction((deleteLibraryItem()))}>
             <Trash2Icon aria-hidden="true" />
           </Button>
         </div>
@@ -290,7 +292,7 @@ function ComponentDefinitionEditor({
           size="sm"
           disabled={draftName === component.name}
           onClick={() => onChange((current) => applyComponentDefinitionDraft(current, {
-            ...current.components[component.id],
+            ...requiredValue(current.components[component.id], `component ${component.id}`),
             name: draftName,
           }))}
         >

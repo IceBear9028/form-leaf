@@ -1,5 +1,6 @@
+import * as Check from "../test/fixtures/assertions.ts";
 import { test, expect, _electron as electron, type ElectronApplication } from "@playwright/test";
-import electronPath from "electron";
+import electronPath from "../test/fixtures/electron-path.ts";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +8,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { DocumentRepository } from "../src/main/document/documentRepository.ts";
 
+// eslint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixture argument when using testInfo.
 test("F01: 단계별 연결·실제 인증 확인·draft 보존·토큰 교체·폐기", async ({}, info) => {
   const temporary = await mkdtemp(join(tmpdir(), "formleaf-agent-connection-"));
   const userData = join(temporary, "user-data");
@@ -15,7 +17,7 @@ test("F01: 단계별 연결·실제 인증 확인·draft 보존·토큰 교체·
   const hidden = await repository.create(); await repository.rename(hidden.document.documentId, "비공개 문서");
   let app: ElectronApplication | undefined;
   const clients: Client[] = [];
-  const launch = () => electron.launch({ executablePath: electronPath as unknown as string, args: ["."], cwd: process.cwd(), env: { ...process.env, DOCUMENT_USER_DATA_DIRECTORY: userData, DOCUMENT_E2E_HEADLESS: "1" } });
+  const launch = () => electron.launch({ executablePath: electronPath, args: ["."], cwd: process.cwd(), env: { ...process.env, DOCUMENT_USER_DATA_DIRECTORY: userData, DOCUMENT_E2E_HEADLESS: "1" } });
   const connect = async (endpoint: string, token: string) => {
     const client = new Client({ name: "ui-test", version: "1" }); clients.push(client);
     await client.connect(new StreamableHTTPClientTransport(new URL(endpoint), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
@@ -41,12 +43,12 @@ test("F01: 단계별 연결·실제 인증 확인·draft 보존·토큰 교체·
     await page.getByRole("button", { name: "다음", exact: true }).click();
     await expect(page.getByText("첫 요청을 기다리고 있어요")).toBeVisible();
     const settings = await page.evaluate(() => window.documents.agentSettings());
-    const id = settings.connections[0].id;
-    expect(settings.connections[0].clientType).toBe("codex");
-    expect(settings.connections[0].expiresAt).toBeTruthy();
+    const id = Check.present(settings.connections[0], 'fixture object').id;
+    expect(Check.present(settings.connections[0], 'fixture object').clientType).toBe("codex");
+    expect(Check.present(settings.connections[0], 'fixture object').expiresAt).toBeTruthy();
     const client = await connect(settings.endpoint, token);
-    const before = await client.callTool({ name: "get_context", arguments: {} });
-    expect((before.structuredContent as any).data.capabilities.documentIds).toEqual([created.document.documentId]);
+    const before = Check.wireResult(await client.callTool({ name: "get_context", arguments: {} }));
+    expect(Check.success((Check.toolResult("get_context", before.structuredContent))).data.capabilities.documentIds).toEqual([created.document.documentId]);
     await expect(page.getByText("인증된 요청을 확인했어요")).toBeVisible();
     await page.getByRole("button", { name: "완료", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "연결 토큰", exact: true })).toHaveCount(0);
@@ -63,7 +65,7 @@ test("F01: 단계별 연결·실제 인증 확인·draft 보존·토큰 교체·
     await expect(page.getByRole("alertdialog")).toContainText("저장하지 않은 변경");
     await page.getByRole("button", { name: "취소", exact: true }).click();
     await page.getByRole("button", { name: "권한 저장", exact: true }).click();
-    await expect.poll(async () => ((await client.callTool({ name: "get_context", arguments: {} })).structuredContent as any).data.capabilities.write).toBe(false);
+    await expect.poll(async () => Check.success((Check.toolResult("get_context", (Check.wireResult(await client.callTool({ name: "get_context", arguments: {} }))).structuredContent))).data.capabilities.write).toBe(false);
     await expect(page.getByRole("button", { name: "권한 저장", exact: true })).toBeDisabled();
     await page.getByRole("checkbox", { name: "비공개 문서", exact: true }).check();
     await page.evaluate((id) => window.documents.agentSetGrants(id, { documentIds: [], write: false, create: false, render: true, libraryRead: false }), id);
@@ -98,9 +100,9 @@ test("F01: 단계별 연결·실제 인증 확인·draft 보존·토큰 교체·
     expect(newToken).not.toBe(token);
     await expect(async () => client.listTools()).rejects.toThrow();
     const newClient = await connect(settings.endpoint, newToken);
-    const after = await newClient.callTool({ name: "get_context", arguments: {} });
-    expect((after.structuredContent as any).data.capabilities.documentIds).toEqual([created.document.documentId]);
-    expect((await page.evaluate(() => window.documents.agentSettings())).connections[0].id).toBe(id);
+    const after = Check.wireResult(await newClient.callTool({ name: "get_context", arguments: {} }));
+    expect(Check.success((Check.toolResult("get_context", after.structuredContent))).data.capabilities.documentIds).toEqual([created.document.documentId]);
+    expect(Check.present((await page.evaluate(() => window.documents.agentSettings())).connections[0], 'fixture object').id).toBe(id);
     await page.getByRole("button", { name: "연결 설정 닫기", exact: true }).click();
     await page.getByRole("button", { name: "연결 설정 보기", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "연결 토큰", exact: true })).toHaveCount(0);
@@ -120,7 +122,7 @@ test("F01: 단계별 연결·실제 인증 확인·draft 보존·토큰 교체·
     await app.close(); app = await launch(); page = await app.firstWindow();
     await page.getByRole("button", { name: "에이전트 연결", exact: true }).click();
     await expect(page.getByRole("region", { name: "선택한 연결 상세" }).getByText("접근 해제됨")).toBeVisible();
-    expect((await page.evaluate(() => window.documents.agentSettings())).connections[0].expiresAt).toBeTruthy();
+    expect(Check.present((await page.evaluate(() => window.documents.agentSettings())).connections[0], 'fixture object').expiresAt).toBeTruthy();
     await page.setViewportSize({ width: 800, height: 850 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   } finally { for (const client of clients) await client.close(); await app?.close(); await rm(temporary, { recursive: true, force: true }); }

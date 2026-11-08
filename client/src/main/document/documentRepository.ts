@@ -361,7 +361,7 @@ export class DocumentRepository {
             : undefined
         ));
       } catch (error) {
-        throw new Error(`문서 migration 실패 (${path}): ${errorMessage(error)}`);
+        throw new Error(`문서 migration 실패 (${path}): ${errorMessage(error)}`, { cause: error });
       }
     }
   }

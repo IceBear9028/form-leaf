@@ -1,0 +1,46 @@
+# F06. React 규칙과 편집·초안 보존
+
+2026-11-08 · 구현·필수 검증 완료 · 기준 `af4ec23` + F06 작업 트리
+
+[기능 목록](README.md) · [대응 구현 설계](../implementation/06-react-behavior.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/06-react-behavior.md)
+
+## 1. 문제와 사용자
+
+**Hooks 진단을 기계적으로 고치면 editor 수명과 입력 보존이 깨질 수 있다.**
+
+- 목표: 사용자는 권한 초안·조합 중 입력·선택을 보존하고 개발자는 핵심 React 오류를 차단한다.
+- 사용자: 제품·테스트를 수정하는 개발자와 리뷰어, 해당 동작을 사용하는 문서 편집 사용자.
+
+## 2. 사용 흐름과 요구
+
+**수정 후 검사를 실행하고 동작 계약까지 확인한다.**
+
+1. 사용자가 권한 초안을 편집하거나 문서에서 조합 입력을 진행한다.
+2. 원격 갱신·선택 변경·부모 rerender가 일어난다.
+3. 초안과 editor 수명을 보존하면서 필요한 최신 상태만 반영한다.
+
+- 핵심 Hooks·JSX 규칙은 오류로 적용한다.
+- refs·set-state-in-effect는 경고로 두고 정상 패턴을 개별 검토한다.
+- R01 실제 문제와 R02–R05 수정 위험·정적 검토를 구분한다.
+
+## 3. 범위·대안·의존성
+
+- 정책 추적: D06, O04, AC06·AC07; 정확한 설정값은 [공통 정책](../implementation/policy.md)이 소유한다.
+- 선행 기능: F05.
+- 제외: 다른 기능의 규칙 수정과 사용자 데이터·schema migration.
+- 선택 이유: 모든 React 경고 오류화는 단순하지만 검증되지 않은 재설계를 유도한다. 핵심 오류와 재현된 문제부터 수정한다.
+- 실패 시: 기존 저장·편집 계약을 유지하고 이 기능의 수정 범위에서 재검토한다.
+
+## 4. 인수 조건
+
+| ID | Given — 전제 | When — 행동 | Then — 관찰 결과 |
+|---|---|---|---|
+| F06-AC1 | dirty 초안 중 원격 권한 변경 | 사용자가 옛 baseline으로 복원 | clean 전환 시 최신 원격 grants를 반영한다 |
+| F06-AC2 | 활성 editor·pending 입력 | 부모 갱신·선택 변경·늦은 외부 반영 | 불필요한 close·DOM 교체·입력 되돌림이 없다 |
+
+- 영향 파일은 [구현 설계](../implementation/06-react-behavior.md), 테스트 절차·통과 기준·실행 결과는 [테스트 문서](../tests/06-react-behavior.md)가 소유한다.
+- 기능 상태·커밋은 [계획](../plan.md), 결과 요약·재개 지점은 [인수인계](../handoff.md)에 기록한다.
+
+## 적용 결과
+
+핵심 Hooks·JSX 규칙을 활성화하고 refs·set-state-in-effect는 경고로 유지했다. 권한 초안은 dirty 중 원격 갱신을 보존하고 clean 복귀 시 최신 grants에 맞춘다. 페이지 effect는 안정적인 session 멤버만 구독하고 기존 editor activation·pending 입력·pagination cache 수명은 유지한다. 자동 회귀와 격리 Electron E2E는 통과했으며 실제 macOS 두벌식 조합·툴바·선택 전환·저장·재열기도 검증했다. 결과는 [테스트 기록](../tests/06-react-behavior.md)을 따른다.

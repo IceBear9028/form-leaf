@@ -17,7 +17,7 @@ export class AgentServer {
   async start(): Promise<void> {
     if (this.http?.listening) return;
     this.error = undefined;
-    const http = createServer((request, response) => { void this.handle(request, response); });
+    const http = createServer((request, response) => { this.handle(request, response).catch((error: unknown) => { console.error("Agent response failed", error); response.destroy(); }); });
     http.requestTimeout = 30_000;
     http.headersTimeout = 10_000;
     this.http = http;
@@ -47,7 +47,9 @@ export class AgentServer {
       if (!request.headers["content-type"]?.startsWith("application/json")) return reject(415, "JSON required");
       if (Number(request.headers["content-length"] ?? 0) > AGENT_LIMITS.jsonBytes) return reject(413, "Request too large");
       const chunks: Buffer[] = []; let bytes = 0;
-      for await (const chunk of request) {
+      for await (const incoming of request) {
+        const chunk: unknown = incoming;
+        if (!(typeof chunk === "string" || Buffer.isBuffer(chunk))) return reject(400, "Invalid request stream");
         bytes += Buffer.byteLength(chunk);
         if (bytes > AGENT_LIMITS.jsonBytes) return reject(413, "Request too large");
         chunks.push(Buffer.from(chunk));
@@ -58,7 +60,7 @@ export class AgentServer {
       if (this.policy.authenticate(token) !== credentialId) return reject(401, "Authentication required");
       const protocol = this.createProtocol(credentialId);
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
-      response.on("close", () => { void protocol.close(); });
+      response.on("close", () => { protocol.close().catch((error: unknown) => console.error("Agent transport cleanup failed", error)); });
       await protocol.connect(transport);
       await transport.handleRequest(request, response, body);
       if (response.statusCode >= 200 && response.statusCode < 300 && token) this.policy.recordAccess(credentialId, token);

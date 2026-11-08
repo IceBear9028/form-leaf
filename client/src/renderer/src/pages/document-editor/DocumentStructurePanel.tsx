@@ -1,3 +1,4 @@
+import { requiredValue } from "../../../../foundation/requiredValue.ts";
 import { useEffect, useRef, useState } from "react";
 import {
   BoxIcon,
@@ -75,7 +76,7 @@ export function DocumentStructurePanel({
   ));
   const treeRef = useRef<HTMLDivElement>(null);
   const lastHandledFocusRequestRef = useRef(0);
-  const root = document.nodes[rootNodeId];
+  const root = requiredValue(document.nodes[rootNodeId], `root ${rootNodeId}`);
   const layerIndentWidth = documentLayerMaxDepth(document, rootNodeId, includeComponentStructure) * 12;
   const archived = rootNodeId === document.rootNodeId
     ? Object.values(document.nodes).filter((node) => node.archivedFrom)
@@ -423,7 +424,7 @@ function TreeRow({
             <TreeRow
               key={childId}
               document={document}
-              node={document.nodes[childId]}
+              node={requiredValue(document.nodes[childId], `child ${childId}`)}
               scopeRootNodeId={scopeRootNodeId}
               includeComponentStructure={includeComponentStructure}
               depth={depth + 1}
@@ -448,7 +449,7 @@ function TreeRow({
             document={document}
             componentId={node.componentId}
             values={node.props}
-            componentNodeId={document.components[node.componentId].rootNodeId}
+            componentNodeId={requiredValue(document.components[node.componentId], `component ${node.componentId}`).rootNodeId}
             outerNodeId={node.id}
             depth={depth + 1}
             selection={selection}
@@ -943,5 +944,5 @@ function createNode(type: AddableNodeType): DocumentNode {
 
 function nodeLabel(type: AddableNodeType): string {
   if (type === "rich-text") return "Rich text";
-  return type[0].toUpperCase() + type.slice(1);
+  return type.charAt(0).toUpperCase() + type.slice(1);
 }

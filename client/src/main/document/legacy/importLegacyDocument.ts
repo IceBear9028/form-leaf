@@ -684,7 +684,7 @@ class LegacyDocumentBuilder {
         name: field.name,
         status: "active" as const,
         valueType: field.valueType,
-        binding: { nodeId, property: field.bindingProperty } as ComponentPropDefinition["binding"],
+        binding: { nodeId, property: field.bindingProperty },
         defaultValue: field.defaultValue,
       };
     });
@@ -780,7 +780,7 @@ class LegacyDocumentBuilder {
         : ["period-label", "links"].includes(field.id) || (field.id === "organization" && !organizationInContent)
           ? this.document.nodes[metaId]
           : this.document.nodes[contentId];
-      if (column.type !== "container") throw new LegacyDocumentImportError("$", "item column이 container가 아닙니다.");
+      if (column?.type !== "container") throw new LegacyDocumentImportError("$", "item column이 container가 아닙니다.");
       if (field.id === "period-end" && column.childIds.length) {
         const separatorId = this.ids.create("node", `${sourceId}-period-separator`);
         this.document.nodes[separatorId] = {
@@ -798,7 +798,7 @@ class LegacyDocumentBuilder {
         name: field.name,
         status: "active",
         valueType: field.valueType,
-        binding: { nodeId, property: field.bindingProperty } as ComponentPropDefinition["binding"],
+        binding: { nodeId, property: field.bindingProperty },
         defaultValue: field.defaultValue,
       };
     });
@@ -995,7 +995,7 @@ function parseImageDataUrl(
   path: string,
 ): { mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif" } {
   const match = value.match(/^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,/i);
-  if (!match) throw new LegacyDocumentImportError(path, "지원하지 않는 이미지 data URL입니다.");
+  if (!match?.[1]) throw new LegacyDocumentImportError(path, "지원하지 않는 이미지 data URL입니다.");
   const mimeType = match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1].toLowerCase();
   return { mimeType: mimeType as "image/png" | "image/jpeg" | "image/webp" | "image/gif" };
 }

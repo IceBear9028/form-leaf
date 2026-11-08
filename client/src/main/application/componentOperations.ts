@@ -1,3 +1,4 @@
+import { requiredValue } from "../../foundation/requiredValue.ts";
 import { createEntityId, type DocumentData } from "../../foundation/documentModel.ts";
 import type { ComponentLibraryItem } from "../../foundation/componentLibrary.ts";
 import { addComponentInstance } from "../../foundation/documentTransactions.ts";
@@ -56,14 +57,15 @@ export function applyComponentOperation(document: DocumentData, operation: Opera
     const idMap: Record<string, string> = {};
     for (const [kind, map] of Object.entries(imported.idMaps)) for (const [source, target] of map) idMap[`${kind}:${source}`] = target;
     for (const [oldId, newId] of imported.idMaps.components) {
-      library.package.components[oldId].propDefinitions.forEach((prop, index) => {
-        idMap[`props:${oldId}:${prop.id}`] = imported.document.components[newId].propDefinitions[index].id;
+      requiredValue(library.package.components[oldId], `source component ${oldId}`).propDefinitions.forEach((prop, index) => {
+        idMap[`props:${oldId}:${prop.id}`] = requiredValue(requiredValue(imported.document.components[newId], `component ${newId}`).propDefinitions[index], `prop ${index}`).id;
       });
     }
     for (const [oldId, newId] of imported.idMaps.nodes) {
-      const source = library.package.nodes[oldId]; const target = imported.document.nodes[newId];
-      if (source.type === "repeater" && target.type === "repeater") source.items.forEach((item, index) => { idMap[`items:${oldId}:${item.id}`] = target.items[index].id; });
+      const source = requiredValue(library.package.nodes[oldId], `source node ${oldId}`); const target = requiredValue(imported.document.nodes[newId], `node ${newId}`);
+      if (source.type === "repeater" && target.type === "repeater") source.items.forEach((item, index) => { idMap[`items:${oldId}:${item.id}`] = requiredValue(target.items[index], `item ${index}`).id; });
     }
     return { document: imported.document, nodeIds: [...imported.idMaps.nodes.values()], created: { componentId: imported.componentId }, idMap };
   }
+  return undefined;
 }

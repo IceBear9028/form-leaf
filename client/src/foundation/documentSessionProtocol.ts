@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { editTargetSchema } from "./documentCommandSchemas.ts";
 import type { DocumentData } from "./documentModel.ts";
 import type { DocumentEditTarget } from "./documentEditing.ts";
 import type { DocumentSummary } from "./documentLibrary.ts";
@@ -16,3 +18,12 @@ export type EditorRequest =
 export type EditorReply = {
   requestId: string; ok: boolean; context: EditorContext | null; leaseId?: string;
 };
+
+// Validate IPC messages before they reach the coordinator's typed state.
+export const editorContextSchema: z.ZodType<EditorContext> = z.strictObject({
+  documentId: z.string(), revision: z.string(), hasUnsavedChanges: z.boolean(), isEditing: z.boolean(),
+  selection: z.strictObject({ target: editTargetSchema.nullable(), nodeId: z.string().optional() }).nullable(),
+});
+export const editorReplySchema: z.ZodType<EditorReply> = z.strictObject({
+  requestId: z.string(), ok: z.boolean(), context: editorContextSchema.nullable(), leaseId: z.string().optional(),
+});

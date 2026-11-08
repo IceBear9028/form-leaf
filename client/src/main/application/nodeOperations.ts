@@ -33,7 +33,7 @@ export function applyNodeOperation(document: DocumentData, operation: Operation)
     validateIndex(operation.index, parent.childIds.length - (operation.type === "move_node" && oldParent === parent.id ? 1 : 0));
     if (operation.type === "move_node") {
       const descendants = new Set<string>();
-      const visit = (id: string) => { if (descendants.has(id)) return; descendants.add(id); const child = document.nodes[id]; if (child.type === "container") child.childIds.forEach(visit); };
+      const visit = (id: string) => { if (descendants.has(id)) return; descendants.add(id); const child = document.nodes[id]; if (child?.type === "container") child.childIds.forEach(visit); };
       visit(node.id);
       if (descendants.has(parent.id)) failure("VALIDATION_FAILED", "요소를 자기 자신이나 자손 아래로 이동할 수 없습니다.");
       return { document: moveNode(document, node.id, parent.id, operation.index, options), nodeIds: [node.id, parent.id, ...(oldParent ? [oldParent] : [])] };
@@ -62,4 +62,5 @@ export function applyNodeOperation(document: DocumentData, operation: Operation)
     const parent = requireContainer(document, node.archivedFrom.parentId);
     return { document: restoreNode(document, node.id, options), nodeIds: [node.id, parent.id] };
   }
+  return undefined;
 }

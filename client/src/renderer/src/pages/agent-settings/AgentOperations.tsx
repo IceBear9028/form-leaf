@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { useEffect, useState } from "react";
 import type { AgentOperationSummary } from "../../../../foundation/agentConnection.ts";
 import { Button } from "@/shared/ui/button";
@@ -25,7 +26,7 @@ export function AgentOperations({ credentialId, embedded = false }: { credential
       catch { if (mounted) setError("작업 기록을 읽지 못했습니다. 앱을 다시 열어 확인하세요."); }
       finally { pending = false; }
     };
-    void refresh(); const interval = setInterval(() => void refresh(), 2000);
+    runAction((refresh())); const interval = setInterval(() => runAction((refresh())), 2000);
     return () => { mounted = false; clearInterval(interval); };
   }, []);
   const act = async (item: AgentOperationSummary, kind: "open" | "save") => {
@@ -53,7 +54,7 @@ export function AgentOperations({ credentialId, embedded = false }: { credential
       {item.status === "failed" && <p className="text-sm">{item.errorCode && <code>{item.errorCode} · </code>}변경이 반영되지 않았습니다. 원인을 해결한 뒤 새 요청으로 진행할 수 있습니다.</p>}
       {item.persisted && item.uiSynced === false && <p className="text-sm">문서는 저장됐습니다. 같은 변경을 다시 저장하지 말고 입력 중인 내용을 보존한 뒤 문서를 다시 열어 확인하세요.</p>}
       {item.artifact && <div className="space-y-2 text-sm"><p>{item.artifact.filename} · {Math.ceil(item.artifact.byteSize / 1024)} KB · 보관 기한 {new Date(item.artifact.expiresAt).toLocaleString()}</p>
-        <div className="flex gap-2"><Button variant="outline" disabled={busy || !item.artifact.available} onClick={() => void act(item, "open")}>PDF 열기</Button><Button variant="outline" disabled={busy || !item.artifact.available} onClick={() => void act(item, "save")}>다른 위치에 저장</Button></div>
+        <div className="flex gap-2"><Button variant="outline" disabled={busy || !item.artifact.available} onClick={() => runAction((act(item, "open")))}>PDF 열기</Button><Button variant="outline" disabled={busy || !item.artifact.available} onClick={() => runAction((act(item, "save")))}>다른 위치에 저장</Button></div>
         {!item.artifact.available && <p className="text-muted-foreground">파일이 만료됐거나 연결이 꺼져 있습니다. 만료된 PDF가 필요하면 새 출력 요청을 만드세요.</p>}
       </div>}
     </article>)}

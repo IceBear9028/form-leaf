@@ -1,5 +1,7 @@
+import { z } from "zod";
+import * as Check from "../test/fixtures/assertions.ts";
 import { test, expect, _electron as electron, type ElectronApplication } from "@playwright/test";
-import electronPath from "electron";
+import electronPath from "../test/fixtures/electron-path.ts";
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -8,10 +10,11 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { DocumentRepository } from "../src/main/document/documentRepository.ts";
 import { AccessPolicy, emptyGrants } from "../src/main/mcp/accessPolicy.ts";
-import { agentDocument } from "../test/fixtures/agent-document.mjs";
+import { agentDocument } from "../test/fixtures/agent-document.ts";
 
 // Explicit opt-in: this invokes the user's already authenticated CLI. Credentials
 // are never copied; client config, session history and real Formleaf data stay intact.
+// eslint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixture argument when using testInfo.
 test("실제 Codex가 도구 설명만으로 세 target 수정·항목 추가·PNG·PDF를 수행한다", async ({}, info) => {
   test.skip(process.env.FORMLEAF_CODEX_E2E !== "1", "FORMLEAF_CODEX_E2E=1과 로그인된 Codex CLI가 필요합니다.");
   test.setTimeout(300_000);
@@ -20,15 +23,15 @@ test("실제 Codex가 도구 설명만으로 세 target 수정·항목 추가·P
   const agentRoot = join(temporary, "agent"); await mkdir(agentRoot);
   const repository = new DocumentRepository(workspace); const created = await repository.create();
   const fixture = agentDocument(created.document); fixture.name = "에이전트 실사용 검증";
-  fixture.nodes.markdown.name = "소개"; fixture.nodes.markdown.visible = true; fixture.nodes.markdown.source = "## 소개\n\n소개 원문입니다.";
-  fixture.nodes.instance.name = "프로젝트 카드"; fixture.nodes.repeater.name = "경력 항목"; fixture.nodes.repeater.items[0].visible = true;
+  Check.present(fixture.nodes.markdown, 'fixture object').name = "소개"; Check.present(fixture.nodes.markdown, 'fixture object').visible = true; Check.field(fixture.nodes.markdown, 'source').source = "## 소개\n\n소개 원문입니다.";
+  Check.present(fixture.nodes.instance, 'fixture object').name = "프로젝트 카드"; Check.present(fixture.nodes.repeater, 'fixture object').name = "경력 항목"; Check.present(Check.field(fixture.nodes.repeater, 'items').items[0], 'fixture object').visible = true;
   await repository.save(fixture.documentId, fixture);
   const policy = new AccessPolicy(workspace); await policy.initialize();
   const { connection, token } = await policy.create("Codex acceptance");
   await policy.setGrants(connection.id, { ...emptyGrants(), documentIds: [fixture.documentId], write: true, render: true }); await policy.setEnabled(true);
   let app: ElectronApplication | undefined; const observer = new Client({ name: "acceptance-observer", version: "1" });
   try {
-    app = await electron.launch({ executablePath: electronPath as unknown as string, args: ["."], cwd: process.cwd(), env: { ...process.env, DOCUMENT_USER_DATA_DIRECTORY: userData, DOCUMENT_E2E_HEADLESS: "1" } });
+    app = await electron.launch({ executablePath: electronPath, args: ["."], cwd: process.cwd(), env: { ...process.env, DOCUMENT_USER_DATA_DIRECTORY: userData, DOCUMENT_E2E_HEADLESS: "1" } });
     const page = await app.firstWindow(); await page.getByRole("button", { name: /에이전트 실사용 검증/ }).click();
     const endpoint = "http://127.0.0.1:32516/mcp";
     await observer.connect(new StreamableHTTPClientTransport(new URL(endpoint), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
@@ -53,22 +56,23 @@ ID와 revision은 조회로 찾으세요. 필요한 호출 형식은 제공된 �
     await writeFile(info.outputPath("codex-events.jsonl"), result.stdout.replaceAll(token, "[REDACTED]"));
     await writeFile(info.outputPath("codex-stderr.txt"), result.stderr.replaceAll(token, "[REDACTED]"));
     expect(result.code, result.stderr.slice(-1500)).toBe(0);
-    const events = result.stdout.split("\n").filter(Boolean).flatMap((line) => { try { return [JSON.parse(line)]; } catch { return []; } });
-    const calls = events.filter((event) => event.type === "item.completed" && event.item?.type === "mcp_tool_call").map((event) => event.item);
+    const eventSchema = z.object({ type: z.string(), item: z.object({ type: z.string(), tool: z.string().optional(), server: z.string().optional(), status: z.string().optional(), arguments: z.record(z.string(), z.unknown()).optional() }).optional(), usage: z.unknown().optional() });
+    const events = result.stdout.split("\n").filter(Boolean).flatMap((line) => { try { const parsed = eventSchema.safeParse(JSON.parse(line)); return parsed.success ? [parsed.data] : []; } catch { return []; } });
+    const calls = events.flatMap((event) => event.type === "item.completed" && event.item?.type === "mcp_tool_call" ? [event.item] : []);
     for (const tool of ["list_documents", "list_edit_targets", "get_edit_value", "apply_operations", "preview_document", "export_pdf", "get_operation"]) expect(calls.some((call) => call.tool === tool), `${tool} not called`).toBe(true);
     expect(calls.every((call) => call.server === "formleaf")).toBe(true);
     expect(events.some((event) => event.item?.type === "command_execution")).toBe(false);
     const saved = await page.evaluate((id) => window.documents.loadDocument(id), fixture.documentId);
-    expect(saved.document.nodes.markdown.source).toContain("소개를 에이전트로 수정했습니다.");
-    expect(saved.document.nodes.instance.props.prop).toBe("프로젝트를 에이전트로 수정했습니다.");
-    expect(saved.document.nodes.repeater.items).toHaveLength(2);
-    expect(saved.document.nodes.repeater.items.map((item) => item.props.prop)).toEqual(["기존 경력을 수정했습니다.", "새 경력을 추가했습니다."]);
+    expect(Check.field(saved.document.nodes.markdown, 'source').source).toContain("소개를 에이전트로 수정했습니다.");
+    expect(Check.field(saved.document.nodes.instance, 'props').props.prop).toBe("프로젝트를 에이전트로 수정했습니다.");
+    expect(Check.field(saved.document.nodes.repeater, 'items').items).toHaveLength(2);
+    expect(Check.field(saved.document.nodes.repeater, 'items').items.map((item) => item.props.prop)).toEqual(["기존 경력을 수정했습니다.", "새 경력을 추가했습니다."]);
     expect(saved.document.components).toEqual(fixture.components);
-    const exported = calls.findLast((call) => call.tool === "export_pdf");
-    const operation = (await observer.callTool({ name: "get_operation", arguments: { requestId: exported.arguments.requestId } })).structuredContent as any;
-    expect(operation.data.status).toBe("completed"); expect(operation.data.result.revision).toBe(saved.revision);
-    const resource = await observer.readResource({ uri: operation.data.result.uri });
-    const bytes = Buffer.from((resource.contents[0] as any).blob, "base64"); expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+    const exported = Check.present(calls.findLast((call) => call.tool === "export_pdf"), "export tool call");
+    const operation = Check.toolResult("get_operation", (Check.wireResult(await observer.callTool({ name: "get_operation", arguments: { requestId: Check.string(Check.present(exported.arguments, "export arguments").requestId) } }))).structuredContent);
+    expect(Check.success(operation).data.status).toBe("completed"); expect(Check.field(Check.success(operation).data.result, 'revision').revision).toBe(saved.revision);
+    const resource = await observer.readResource({ uri: Check.field(Check.success(operation).data.result, 'uri').uri });
+    const bytes = Buffer.from((Check.blobResource(resource.contents[0])).blob, "base64"); expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
     await writeFile(info.outputPath("codex-output.pdf"), bytes);
     await writeFile(info.outputPath("acceptance.json"), JSON.stringify({ client: "codex", calls: calls.map((call) => ({ tool: call.tool, status: call.status })), failedCalls: calls.filter((call) => call.status === "failed").length, usage: events.findLast((event) => event.type === "turn.completed")?.usage, revision: saved.revision, pdfBytes: bytes.length }, null, 2));
   } finally { await observer.close(); await app?.close(); await rm(temporary, { recursive: true, force: true }); }
@@ -76,14 +80,14 @@ ID와 revision은 조회로 찾으세요. 필요한 호출 형식은 제공된 �
 
 function runCodex(binary: string, args: string[], prompt: string, cwd: string, token: string): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
-    const env = { ...process.env, FORMLEAF_MCP_TOKEN: token };
+    const env: NodeJS.ProcessEnv = { ...process.env, FORMLEAF_MCP_TOKEN: token };
     delete env.OPENAI_API_KEY; delete env.OPENAI_BASE_URL;
     const child = spawn(binary, args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     let stdout = ""; let stderr = ""; let expired = false;
     let killTimer: ReturnType<typeof setTimeout> | undefined;
     const timer = setTimeout(() => { expired = true; child.kill("SIGTERM"); killTimer = setTimeout(() => child.kill("SIGKILL"), 5000); }, 240_000);
-    child.stdout.on("data", (data) => { stdout += data.toString(); });
-    child.stderr.on("data", (data) => { stderr += data.toString(); });
+    child.stdout.on("data", (data: Buffer) => { stdout += data.toString(); });
+    child.stderr.on("data", (data: Buffer) => { stderr += data.toString(); });
     child.on("error", (error) => { clearTimeout(timer); reject(error); });
     child.on("close", (code) => { clearTimeout(timer); if (killTimer) clearTimeout(killTimer); resolve({ stdout, stderr: expired ? `${stderr}\nAcceptance timeout` : stderr, code }); });
     child.stdin.end(prompt);

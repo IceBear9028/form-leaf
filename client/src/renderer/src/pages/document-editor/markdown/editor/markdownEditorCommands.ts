@@ -1,3 +1,4 @@
+import { requiredValue } from "../../../../../../foundation/requiredValue.ts";
 import { Extension, InputRule, wrappingInputRule, markInputRule, textblockTypeInputRule, type Editor } from "@tiptap/core";
 import type { MarkdownCommand } from "../commandTypes.ts";
 
@@ -32,14 +33,15 @@ export const MarkdownAuthoring = Extension.create({
   priority: 1100,
   addInputRules() {
     return [
-      textblockTypeInputRule({ find: /^```$/, type: this.editor.schema.nodes.codeBlock }),
-      wrappingInputRule({ find: /^(\d+)\)\s$/, type: this.editor.schema.nodes.orderedList, getAttributes: (match) => ({ start: Number(match[1]) }) }),
-      markInputRule({ find: /(?:^|\s)(\+\+([^+]+)\+\+)$/, type: this.editor.schema.marks.underline }),
+      textblockTypeInputRule({ find: /^```$/, type: requiredValue(this.editor.schema.nodes.codeBlock, "Markdown schema type") }),
+      wrappingInputRule({ find: /^(\d+)\)\s$/, type: requiredValue(this.editor.schema.nodes.orderedList, "Markdown schema type"), getAttributes: (match) => ({ start: Number(match[1]) }) }),
+      markInputRule({ find: /(?:^|\s)(\+\+([^+]+)\+\+)$/, type: requiredValue(this.editor.schema.marks.underline, "Markdown schema type") }),
       new InputRule({
         find: /^(#{1,6})\s$/,
         handler: ({ state, range, match }) => {
         if (this.editor.view.composing || state.selection.$from.parent.type.name === "codeBlock") return null;
-        state.tr.delete(range.from, range.to).setBlockType(range.from, range.from, state.schema.nodes.heading, { level: match[1].length });
+        state.tr.delete(range.from, range.to).setBlockType(range.from, range.from, requiredValue(state.schema.nodes.heading, "Markdown schema type"), { level: (match[1] ?? "").length });
+        return undefined;
         },
       }),
     ];
@@ -55,7 +57,8 @@ export const MarkdownAuthoring = Extension.create({
       "Mod-Shift--": run({ type: "divider" }),
       "Mod-\\": run({ type: "clear-formatting" }),
       "Mod-Shift-k": () => {
-        const href = window.prompt("링크 URL", this.editor.getAttributes("link").href ?? "https://");
+        const currentHref: unknown = this.editor.getAttributes("link").href;
+        const href = window.prompt("링크 URL", typeof currentHref === "string" ? currentHref : "https://");
         return href === null ? true : executeMarkdownEditorCommand(this.editor, { type: "link", href });
       },
     };

@@ -1,0 +1,44 @@
+# {{TASK_TITLE}} 테스트 계획과 결과
+
+{{DATE}} · 기준 코드: {{BASE_HEAD}} · 상태: {{TEST_STATUS}}
+
+[기능 목록](../features/README.md) · [설계 목록](../implementation/README.md) · [실행 계획](../plan.md) · [인수인계](../handoff.md)
+
+## 문서 책임과 기능별 목록
+
+**기능별 테스트 문서가 상세 시나리오·통과 기준·실제 결과를 소유한다.**
+
+| 기능 | 기획 | 구현 설계 | 테스트 계획·결과 |
+|---|---|---|---|
+| {{FEATURE_ID}} | {{FEATURE_LINK}} | {{IMPLEMENTATION_LINK}} | {{TEST_DOCUMENT_LINK}} |
+
+<!--
+- features/implementation/tests의 번호·파일명을 대응시킨다.
+- 테스트 코드는 기존 코드 영역에 두고 이 폴더에는 문서를 작성한다.
+- 기능의 인수 조건은 features, 수정 경계는 implementation, 순서·커밋은 plan, 결과 요약은 handoff가 소유한다.
+-->
+
+## 공통 환경과 실행 조건
+
+- 실행 위치·도구 버전: {{TEST_ENVIRONMENT}}
+- fixture·격리·정리 방법: {{FIXTURE_AND_CLEANUP}}
+- 외부 계정·수동 검증 등 전제: {{PREREQUISITES_AND_LIMITS}}
+
+## 공통 검사
+
+| ID | 대상·시점 | 방법·명령 | 통과 조건 |
+|---|---|---|---|
+| {{COMMON_TEST_ID}} | {{SCOPE_AND_TIMING}} | {{COMMAND_OR_PROCEDURE}} | {{PASS_CRITERION}} |
+
+## 공통 검사 실행 결과
+
+| 대상 ID | 상태 | 실행일·대상 commit/작업 트리·환경·명령 | 관찰 결과·근거 | 미검증·후속 조치 |
+|---|---|---|---|---|
+| {{COMMON_TEST_ID}} | 미실행 | 실행 기록 없음 | 결과 없음 | {{NEXT_ACTION}} |
+
+<!--
+- 기능별 결과는 각 tests/NN-name.md에 기록하고 여러 기능이 공유하는 실제 검사만 여기서 관리한다.
+- 상태: 미실행·통과·실패·차단. 실행하지 않은 검사를 통과로 채우지 않는다.
+- 문서 검사·사전 분석·후보 시험을 구현 후 제품 검증과 구분한다.
+- 해당 없는 공통 검사 절은 제거한다.
+-->

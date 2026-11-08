@@ -22,7 +22,8 @@ export function repeaterItemLabel(
   return summary ? `${fallback} · ${summary}` : fallback;
 }
 
-function displayValue(value: ComponentPropValue): string | undefined {
+function displayValue(value: ComponentPropValue | undefined): string | undefined {
+  if (value === undefined) return undefined;
   if (typeof value === "string") return value.trim() || undefined;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if ("runs" in value) {

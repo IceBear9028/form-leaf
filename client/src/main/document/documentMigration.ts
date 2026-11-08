@@ -35,7 +35,7 @@ export function migrateDocumentData(
     throw new Error("지원하지 않는 문서 schemaVersion입니다.");
   }
 
-  const candidate = structuredClone(value) as Record<string, unknown>;
+  const candidate = structuredClone<Record<string, unknown>>(value);
   candidate.schemaVersion = 4;
   const validation = validateDocumentDataForMigration(candidate);
   if (!validation.valid) throw validationError(validation.issues);
@@ -50,7 +50,7 @@ export function migrateDocumentData(
 
 export function isDocumentDataV3(value: unknown): boolean {
   if (!isRecord(value) || value.schemaVersion !== 3) return false;
-  const candidate = structuredClone(value) as Record<string, unknown>;
+  const candidate = structuredClone<Record<string, unknown>>(value);
   candidate.schemaVersion = 4;
   return validateDocumentDataForMigration(candidate).valid;
 }

@@ -1,3 +1,4 @@
+import { requiredValue } from "../../../../../foundation/requiredValue.ts";
 import { parseMarkdownBlocks } from "../markdown/parser.ts";
 import type {
   RenderComponentNode,
@@ -84,7 +85,7 @@ function splitFlowRow(node: RenderContainerNode): PaginationUnit[] | undefined {
   ))) return undefined;
 
   const flow = node.children[flowIndex];
-  if (flow.type !== "container") return undefined;
+  if (flow?.type !== "container") return undefined;
   const flowUnits = flow.children.flatMap(splitPaginationNode);
   if (flowUnits.length <= 1) return [unitFromNode(node)];
 
@@ -193,7 +194,7 @@ function fragmentStyle(
       delete next.decoration.borderEdges;
     }
   }
-  const variants = fragmentStyleCache.get(style) ?? new Map();
+  const variants = fragmentStyleCache.get(style) ?? new Map<string, NonNullable<RenderTreeNode["style"]>>();
   variants.set(key, next);
   fragmentStyleCache.set(style, variants);
   return next;
@@ -206,10 +207,10 @@ function splitMarkdown(node: RenderMarkdownNode): PaginationUnit[] {
   ));
   if (visibleBlockIndexes.length <= 1) return [unitFromNode(node)];
   const firstHeadingPosition = visibleBlockIndexes.findIndex((blockIndex) => (
-    blocks[blockIndex].node.type === "heading"
+    requiredValue(blocks[blockIndex], "Markdown block").node.type === "heading"
   ));
   return visibleBlockIndexes.map((blockIndex, fragmentIndex) => {
-    const block = blocks[blockIndex];
+    const block = requiredValue(blocks[blockIndex], "Markdown block");
     const nextBlockIndex = visibleBlockIndexes[fragmentIndex + 1];
     const nextBlock = nextBlockIndex === undefined ? undefined : blocks[nextBlockIndex];
     const leadBeforeFirstHeading = firstHeadingPosition > 0 && fragmentIndex < firstHeadingPosition;
@@ -355,7 +356,7 @@ export function samePaginatedPages<T extends Pick<PaginationUnit, "id" | "keepWi
 ): boolean {
   return left.length === right.length && left.every((page, pageIndex) => {
     const other = right[pageIndex];
-    return Boolean(other) &&
+    return other !== undefined &&
       page.id === other.id &&
       page.overflow === other.overflow &&
       page.units.length === other.units.length &&
@@ -375,9 +376,9 @@ export function reconcileVisiblePages<T extends Pick<PaginationUnit, "id" | "kee
     ),
   );
   const result: PaginatedPage<T>[] = [{
-    id: pages[0].id,
+    id: requiredValue(pages[0], "first page").id,
     units: [],
-    overflow: pages[0].overflow,
+    overflow: requiredValue(pages[0], "first page").overflow,
   }];
   units.forEach((unit) => {
     const pageIndex = pageStarts.get(unit.id);
@@ -419,7 +420,7 @@ export function paginate<T extends Pick<PaginationUnit, "id" | "keepWithNext" | 
     let lookahead = unit;
     while (lookahead.keepWithNext && lookaheadIndex + 1 < units.length) {
       lookaheadIndex += 1;
-      lookahead = units[lookaheadIndex];
+      lookahead = requiredValue(units[lookaheadIndex], "pagination lookahead");
       required += heights.get(lookahead.id) ?? 0;
     }
     if (current.length && used + required > capacity) flush();

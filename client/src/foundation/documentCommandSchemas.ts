@@ -105,6 +105,7 @@ export const OPERATION_NAMES = operationSchema.options.map((schema) => schema.sh
 const pagination = { cursor: z.string().min(1).max(2048).optional(), limit: z.number().int().min(1).max(100).default(50) };
 const listing = { query: z.string().max(200).optional(), ...pagination };
 const applyFields = { documentId: id, expectedRevision: revision, operations: z.array(operationSchema).min(1).max(50) };
+// eslint-disable-next-line no-control-regex -- Reject control characters in untrusted names/URLs.
 export const pdfFilenameSchema = z.string().min(5).max(120).regex(/^[^/\\\x00-\x1f\x7f]+\.pdf$/i);
 export const toolInputSchemas = {
   get_context: object({}),

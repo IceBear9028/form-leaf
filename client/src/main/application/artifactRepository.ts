@@ -1,3 +1,4 @@
+import { hasErrorCode } from "../../foundation/errors.ts";
 import { mkdir, readdir, lstat, readFile, open, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -29,9 +30,9 @@ export class ArtifactRepository {
   async metadata(id: string): Promise<ArtifactMetadata | undefined> {
     if (!z.uuid().safeParse(id).success) return;
     // Never follow a replaced artifact directory or metadata link into user files.
-    const directory = await lstat(this.path(id, ".")).catch((error) => { if (error.code !== "ENOENT") throw error; });
+    const directory = await lstat(this.path(id, ".")).catch((error: unknown) => { if (!hasErrorCode(error, "ENOENT")) throw error; });
     if (!directory?.isDirectory() || directory.isSymbolicLink()) return;
-    const info = await lstat(this.path(id, "metadata.json")).catch((error) => { if (error.code !== "ENOENT") throw error; });
+    const info = await lstat(this.path(id, "metadata.json")).catch((error: unknown) => { if (!hasErrorCode(error, "ENOENT")) throw error; });
     if (!info?.isFile() || info.isSymbolicLink()) return;
     const value = await readManagedJson(this.path(id, "metadata.json"));
     if (value === undefined) return;
@@ -99,7 +100,7 @@ export class ArtifactRepository {
     }
   }
   private async removePayload(id: string): Promise<void> {
-    for (const name of ["output.pdf", "output.pdf.tmp"]) await unlink(this.path(id, name)).catch((error) => { if (error.code !== "ENOENT") throw error; });
+    for (const name of ["output.pdf", "output.pdf.tmp"]) await unlink(this.path(id, name)).catch((error: unknown) => { if (!hasErrorCode(error, "ENOENT")) throw error; });
   }
 }
 export function artifactResult(metadata: ArtifactMetadata) {

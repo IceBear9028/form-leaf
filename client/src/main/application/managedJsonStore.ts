@@ -17,7 +17,7 @@ export async function writeManagedJson(path: string, value: unknown): Promise<vo
     try { await directory.sync(); } finally { await directory.close(); }
   } finally { await unlink(temporary).catch(() => undefined); }
 }
-export async function readManagedJson(path: string): Promise<unknown | undefined> {
+export async function readManagedJson(path: string): Promise<unknown> {
   try { return JSON.parse(await readFile(path, "utf8")); }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;

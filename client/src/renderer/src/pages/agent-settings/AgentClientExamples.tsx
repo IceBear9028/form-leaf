@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { useState } from "react";
 import { CopyIcon } from "lucide-react";
 import type { AgentClientType } from "../../../../foundation/agentConnection.ts";
@@ -13,7 +14,7 @@ export function AgentClientExamples({ endpoint, clientType = "other" }: { endpoi
     : type === "claude-code" ? JSON.stringify({ mcpServers: { formleaf: { type: "http", url: endpoint, headers: { Authorization: "Bearer ${FORMLEAF_MCP_TOKEN}" } } } }, null, 2)
     : `URL: ${endpoint}\nAuthorization: Bearer <Formleaf에서 발급받은 토큰>`;
   return <div className="space-y-5">
-    <Select value={type} onValueChange={(value) => { if (value) setType(value as AgentClientType); }} items={Object.entries(agentClients).map(([value, item]) => ({ value, label: item.name }))}>
+    <Select value={type} onValueChange={(value) => { if (value) setType(value); }} items={Object.entries(agentClients).map(([value, item]) => ({ value, label: item.name }))}>
       <SelectTrigger className="w-full" aria-label="연결할 클라이언트"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(agentClients).map(([value, item]) => <SelectItem key={value} value={value}>{item.name}</SelectItem>)}</SelectContent>
     </Select>
     <section className="space-y-2"><h3 className="m-0 text-sm font-medium">1. CLI를 실행할 터미널에 토큰 설정</h3>
@@ -34,5 +35,5 @@ export function AgentClientExamples({ endpoint, clientType = "other" }: { endpoi
   </div>;
 }
 function CodeBlock({ text, label }: { text: string; label: string }) {
-  return <div className="min-w-0 rounded-lg border border-border bg-muted/40"><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-relaxed">{text}</pre><div className="flex justify-end border-t border-border px-2 py-1"><Button variant="ghost" size="sm" onClick={() => void copyAgentText(text, "복사했습니다.")}><CopyIcon aria-hidden="true" />{label}</Button></div></div>;
+  return <div className="min-w-0 rounded-lg border border-border bg-muted/40"><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-relaxed">{text}</pre><div className="flex justify-end border-t border-border px-2 py-1"><Button variant="ghost" size="sm" onClick={() => runAction((copyAgentText(text, "복사했습니다.")))}><CopyIcon aria-hidden="true" />{label}</Button></div></div>;
 }

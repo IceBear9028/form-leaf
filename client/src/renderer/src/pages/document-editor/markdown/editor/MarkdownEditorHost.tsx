@@ -32,7 +32,7 @@ export function MarkdownEditorHost({ activation }: { activation: MarkdownEditorA
       setUi({
         rect: new DOMRect(coords.left, coords.top, Math.max(0, end.right - coords.left), end.bottom - coords.top),
         selected: !empty,
-        quick: empty && match ? { from: $from.start(), to: from, query: match[1] } : undefined,
+        quick: empty && match ? { from: $from.start(), to: from, query: match[1] ?? "" } : undefined,
       });
     };
     editor.on("transaction", updateUi);
@@ -62,7 +62,8 @@ export function MarkdownEditorHost({ activation }: { activation: MarkdownEditorA
       onFormat={(format) => executeMarkdownEditorCommand(editor, { type: "inline-format", format })}
       onBlockquote={() => executeMarkdownEditorCommand(editor, { type: "blockquote" })}
       onLink={() => {
-        const href = window.prompt("링크 URL", editor.getAttributes("link").href ?? "https://");
+        const currentHref: unknown = editor.getAttributes("link").href;
+        const href = window.prompt("링크 URL", typeof currentHref === "string" ? currentHref : "https://");
         if (href !== null) executeMarkdownEditorCommand(editor, { type: "link", href });
       }} />}
     {quick && ui && editor && quick.from !== dismissed && <MarkdownQuickInsertMenu rect={ui.rect} query={quick.query}

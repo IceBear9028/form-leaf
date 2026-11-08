@@ -244,7 +244,7 @@ function assertValidComponentItem(item: ComponentLibraryItem): void {
   try {
     importComponentPackage(createEmptyDocument(), item.package);
   } catch (error) {
-    throw new Error(`컴포넌트 package가 올바르지 않습니다: ${errorMessage(error)}`);
+    throw new Error(`컴포넌트 package가 올바르지 않습니다: ${errorMessage(error)}`, { cause: error });
   }
 }
 

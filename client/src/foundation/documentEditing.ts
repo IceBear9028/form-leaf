@@ -1,3 +1,5 @@
+import { requiredValue } from "./requiredValue.ts";
+import { cloneValue } from "./runtime.ts";
 import type {
   ComponentPropDefinition,
   ComponentPropValue,
@@ -30,7 +32,7 @@ export function readDocumentEditValue(
     const node = document.nodes[target.nodeId];
     if (!node) throw new Error(`node를 찾을 수 없습니다: ${target.nodeId}`);
     if (node.type === "text") return node.value;
-    if (node.type === "rich-text") return structuredClone(node.value);
+    if (node.type === "rich-text") return cloneValue(node.value);
     if (node.type === "markdown") return node.source;
     throw new Error("직접 편집할 수 없는 node type입니다.");
   }
@@ -38,14 +40,14 @@ export function readDocumentEditValue(
     const node = document.nodes[target.instanceNodeId];
     if (node?.type !== "component-instance") throw new Error("component instance를 찾을 수 없습니다.");
     const definition = requireActiveProp(document, node.componentId, target.propId);
-    return directValue(Object.hasOwn(node.props, target.propId) ? node.props[target.propId] : definition.defaultValue);
+    return directValue(Object.hasOwn(node.props, target.propId) ? requiredValue(node.props[target.propId], `prop ${target.propId}`) : definition.defaultValue);
   }
   const node = document.nodes[target.repeaterNodeId];
   if (node?.type !== "repeater") throw new Error("repeater를 찾을 수 없습니다.");
   const item = node.items.find((entry) => entry.id === target.itemId);
   if (!item) throw new Error(`repeater item을 찾을 수 없습니다: ${target.itemId}`);
   const definition = requireActiveProp(document, item.componentId, target.propId);
-  return directValue(Object.hasOwn(item.props, target.propId) ? item.props[target.propId] : definition.defaultValue);
+  return directValue(Object.hasOwn(item.props, target.propId) ? requiredValue(item.props[target.propId], `prop ${target.propId}`) : definition.defaultValue);
 }
 
 export function updateDocumentEditValue(
@@ -64,7 +66,7 @@ export function updateDocumentEditValue(
       : node.type === "markdown" && typeof value === "string"
         ? { ...node, source: value }
         : node.type === "rich-text" && isRichTextValue(value)
-          ? { ...node, value: structuredClone(value) }
+          ? { ...node, value: cloneValue(value) }
           : undefined;
     if (!nextNode) throw new Error("직접 편집 값과 node type이 일치하지 않습니다.");
     return touchDocument({
@@ -91,9 +93,10 @@ export function updateDocumentEditValue(
   const itemIndex = node.items.findIndex((item) => item.id === target.itemId);
   if (itemIndex < 0) throw new Error(`repeater item을 찾을 수 없습니다: ${target.itemId}`);
   const items = [...node.items];
+  const item = requiredValue(items[itemIndex], `repeater item ${target.itemId}`);
   items[itemIndex] = {
-    ...items[itemIndex],
-    props: { ...items[itemIndex].props, [target.propId]: cloneDirectEditValue(value) },
+    ...item,
+    props: { ...item.props, [target.propId]: cloneDirectEditValue(value) },
   };
   return touchDocument({
     ...document,
@@ -112,7 +115,7 @@ function touchDocument(
 }
 
 function cloneDirectEditValue(value: DirectEditValue): DirectEditValue {
-  return typeof value === "string" ? value : structuredClone(value);
+  return typeof value === "string" ? value : cloneValue(value);
 }
 
 export function replaceTextRange(source: string, range: TextRange, replacement: string): {
@@ -160,7 +163,7 @@ export function toggleRichTextMark(
 ): RichTextValue {
   const length = richTextPlainText(value).length;
   const normalized = normalizeRange(length, range);
-  if (normalized.start === normalized.end) return structuredClone(value);
+  if (normalized.start === normalized.end) return cloneValue(value);
   const remove = selectedRuns(value, normalized).every((run) => (
     (run.marks ?? []).some((entry) => entry.type === mark.type)
   ));
@@ -175,7 +178,7 @@ export function toggleRichTextMark(
     if (start < overlapStart) runs.push(copyRunSlice(run, 0, overlapStart - start));
     if (overlapStart < overlapEnd) {
       const marks = (run.marks ?? []).filter((entry) => entry.type !== mark.type);
-      if (!remove) marks.push(structuredClone(mark));
+      if (!remove) marks.push(cloneValue(mark));
       runs.push({
         text: run.text.slice(overlapStart - start, overlapEnd - start),
         ...(marks.length ? { marks } : {}),
@@ -193,7 +196,7 @@ export function setRichTextMark(
 ): RichTextValue {
   return transformSelectedMarks(value, range, (marks) => [
     ...marks.filter((entry) => entry.type !== mark.type),
-    structuredClone(mark),
+    cloneValue(mark),
   ]);
 }
 
@@ -216,7 +219,7 @@ function transformSelectedMarks(
 ): RichTextValue {
   const length = richTextPlainText(value).length;
   const normalized = normalizeRange(length, range);
-  if (normalized.start === normalized.end) return structuredClone(value);
+  if (normalized.start === normalized.end) return cloneValue(value);
   let offset = 0;
   const runs: RichTextRun[] = [];
   value.runs.forEach((run) => {
@@ -227,7 +230,7 @@ function transformSelectedMarks(
     const overlapEnd = Math.min(end, normalized.end);
     if (start < overlapStart) runs.push(copyRunSlice(run, 0, overlapStart - start));
     if (overlapStart < overlapEnd) {
-      const marks = update(structuredClone(run.marks ?? []));
+      const marks = update(cloneValue(run.marks ?? []));
       runs.push({
         text: run.text.slice(overlapStart - start, overlapEnd - start),
         ...(marks.length ? { marks } : {}),
@@ -260,8 +263,8 @@ function marksAtOffset(value: RichTextValue, target: number): RichTextMark[] {
   let offset = 0;
   for (const run of value.runs) {
     const end = offset + run.text.length;
-    if (target > offset && target <= end) return structuredClone(run.marks ?? []);
-    if (target === offset && run.text.length > 0) return structuredClone(run.marks ?? []);
+    if (target > offset && target <= end) return cloneValue(run.marks ?? []);
+    if (target === offset && run.text.length > 0) return cloneValue(run.marks ?? []);
     offset = end;
   }
   return [];
@@ -270,7 +273,7 @@ function marksAtOffset(value: RichTextValue, target: number): RichTextMark[] {
 function copyRunSlice(run: RichTextRun, start: number, end: number): RichTextRun {
   return {
     text: run.text.slice(start, end),
-    ...(run.marks?.length ? { marks: structuredClone(run.marks) } : {}),
+    ...(run.marks?.length ? { marks: cloneValue(run.marks) } : {}),
   };
 }
 
@@ -279,7 +282,7 @@ function normalizeRuns(runs: RichTextRun[]): RichTextRun[] {
   runs.filter((run) => run.text.length > 0).forEach((run) => {
     const previous = result.at(-1);
     if (previous && sameMarks(previous.marks, run.marks)) previous.text += run.text;
-    else result.push(structuredClone(run));
+    else result.push(cloneValue(run));
   });
   return result.length ? result : [{ text: "" }];
 }
@@ -306,7 +309,7 @@ function requireActiveProp(
 }
 
 function directValue(value: ComponentPropValue): DirectEditValue {
-  if (typeof value === "string" || isRichTextValue(value)) return structuredClone(value);
+  if (typeof value === "string" || isRichTextValue(value)) return cloneValue(value);
   throw new Error("직접 편집할 수 없는 component prop type입니다.");
 }
 

@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import type { DocumentData } from "../../../../foundation/documentModel.ts";
 import { findNodeParentId, moveNode, updateNodeStyle } from "../../../../foundation/documentTransactions.ts";
@@ -183,6 +184,7 @@ export function ComponentDirectManipulationOverlay({
     if (!drag || drag.settling) return;
     event.preventDefault();
     drag.cleanupListeners();
+    // eslint-disable-next-line react-hooks/immutability -- Restore the DOM selection style owned by this drag event, not React state.
     globalThis.document.body.style.userSelect = "";
     setDropIndicator(undefined);
 
@@ -198,6 +200,7 @@ export function ComponentDirectManipulationOverlay({
     if (drag.kind === "position" && !canceled) {
       onChangeRef.current((current) => {
         const parentNode = current.nodes[drag.parentId];
+        if (!parentNode) return current;
         const parentStyle = parentNode.styleId ? current.styles[parentNode.styleId] : undefined;
         let next = current;
         if (!parentStyle?.layout?.position) {
@@ -254,6 +257,7 @@ export function ComponentDirectManipulationOverlay({
       window.removeEventListener("keydown", onKeyDown);
     };
     source.style.visibility = "hidden";
+    // eslint-disable-next-line react-hooks/immutability -- Disable native selection during this drag; finish/unmount restores it.
     globalThis.document.body.style.userSelect = "none";
 
     const base = {
@@ -340,7 +344,7 @@ export function ComponentDirectManipulationOverlay({
         easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
         fill: "forwards",
       });
-      void animation.finished.catch(() => undefined).finally(() => cleanupDrag(drag));
+      runAction((animation.finished.catch(() => undefined).finally(() => cleanupDrag(drag))));
     }));
   };
 

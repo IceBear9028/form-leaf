@@ -1,3 +1,4 @@
+import { requiredValue } from "../../../../foundation/requiredValue.ts";
 import type { KeyboardEvent } from "react";
 import {
   AlignCenterVerticalIcon,
@@ -103,7 +104,7 @@ export function PropertyInspector({
     const itemIndex = node.items.findIndex((item) => item.id === repeaterItemId);
     const item = node.items[itemIndex];
     if (!item) return null;
-    const definitions = document.components[node.itemComponentId].propDefinitions;
+    const definitions = requiredValue(document.components[node.itemComponentId], "component definition").propDefinitions;
     return (
       <aside className="min-h-0 overflow-y-auto border-l border-border bg-background" aria-label="Properties">
         <div className="border-b border-border bg-muted/30 px-4 py-3">
@@ -253,7 +254,7 @@ export function PropertyInspector({
 
       {node.type === "component-instance" && (
         <ComponentPropsSection
-          definitions={document.components[node.componentId].propDefinitions}
+          definitions={requiredValue(document.components[node.componentId], "component definition").propDefinitions}
           values={node.props}
           assets={document.assets}
           onSet={(propId, value) => onChange((current) => setComponentInstanceProp(
@@ -746,7 +747,7 @@ function PositionFields({
               delete layout.bottomPt;
               delete layout.leftPt;
             } else {
-              layout.position = value as NonNullable<StyleDefinition["layout"]>["position"];
+              layout.position = value;
             }
             return { ...current, layout };
           })}
@@ -968,7 +969,7 @@ function ComponentPropsSection({
       {definitions.length === 0 && <p className="text-xs text-muted-foreground">노출된 prop이 없습니다.</p>}
       {definitions.map((definition) => {
         const overridden = Object.hasOwn(values, definition.id);
-        const value = overridden ? values[definition.id] : definition.defaultValue;
+        const value = overridden ? requiredValue(values[definition.id], `prop ${definition.id}`) : definition.defaultValue;
         return (
           <div className="space-y-2 rounded-md border border-border bg-background p-2" key={definition.id}>
             <div className="flex items-center justify-between gap-2 text-xs">
@@ -1005,7 +1006,7 @@ function RepeaterItemsSection({
   node: Extract<DocumentNode, { type: "repeater" }>;
   onChange: (change: GenericDocumentChange) => void;
 }) {
-  const definitions = document.components[node.itemComponentId].propDefinitions;
+  const definitions = requiredValue(document.components[node.itemComponentId], "component definition").propDefinitions;
   return (
     <InspectorSection title="반복 항목">
       <Button
@@ -1098,7 +1099,7 @@ function RepeaterItemProps({
     <div className="space-y-3">
       {definitions.map((definition) => {
         const overridden = Object.hasOwn(item.props, definition.id);
-        const value = overridden ? item.props[definition.id] : definition.defaultValue;
+        const value = overridden ? requiredValue(item.props[definition.id], `prop ${definition.id}`) : definition.defaultValue;
         return (
           <div className="space-y-1.5" key={definition.id}>
             <div className="flex items-center justify-between gap-2 text-xs">
@@ -1139,7 +1140,7 @@ function PropValueEditor({
     return (
       <textarea
         className="min-h-20 w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        value={String(value)}
+        value={typeof value === "string" ? value : ""}
         onChange={(event) => onChange(event.target.value)}
       />
     );
