@@ -1,6 +1,6 @@
 # F05. 테스트 TS 전환과 검사 범위 구현 설계
 
-2026-11-08 · 설계 확정·구현 대기 · As-Is 코드 `989a7f6`
+2026-11-08 · 설계 확정·구현·검증 완료 · As-Is 코드 `989a7f6`
 
 [기능 기획](../features/05-typescript-tests.md) · [설계 요약](README.md) · [정책](policy.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/05-typescript-tests.md)
 
@@ -70,3 +70,10 @@ flowchart TD
 - 실패 시 확장자·import·config를 같은 단위로 복구하며 사례 자체를 삭제하지 않는다.
 - 검사 경로는 위 flowchart로 설명한다. 실행 도구 내부의 호출 순서와 클래스 관계는 선택한 Node runner를 교체하는 설계가 아니므로 상세 범위에서 제외한다.
 - 최종 검사 명령 계약은 [F01](01-analysis-tooling.md)을 따른다.
+
+## 적용 결과
+
+unit 30파일과 fixture를 TS로 전환하고 기존 사례 159개의 이름·순서를 보존했다. Node runner·개별 script 목록은 유지한다. test/e2e project는 ES2023 lib·DOM/Node 타입·erasableSyntaxOnly를 적용하며 제품 target은 유지한다. typed lint는 두 project와 Playwright 설정을 포함한다. fixture의 필수 값·node 종류·MCP 응답은 실제 검사 helper로 좁히고 의도적인 invalid input에만 사유 있는 국소 예외를 둔다. Node test 등록 Promise는 top-level await로 처리한다. Electron executable의 런타임 문자열 반환을 별도 adapter에서 확인한다.
+
+- React session 시험의 inline JS/TSX 문자열도 `test/fixtures/promise-harness.ts`로 옮겨 타입 검사·lint에 포함했다.
+- Playwright는 testInfo를 쓸 때 첫 인자의 object destructuring을 요구하므로 5곳의 빈 fixture 패턴만 사유 있는 no-empty-pattern 예외로 남겼다. Electron 경로 adapter는 import.meta 없이 CJS 수집과 Node ESM 양쪽을 지원한다.

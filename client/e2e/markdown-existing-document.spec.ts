@@ -1,10 +1,10 @@
+import * as Check from "../test/fixtures/assertions.ts";
 import { expect, test, _electron as electron, type ElectronApplication } from "@playwright/test";
-import electronPath from "electron";
+import electronPath from "../test/fixtures/electron-path.ts";
 import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, writeFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { DocumentData } from "../src/foundation/documentModel.ts";
 import { documentEditTargetKey, readDocumentEditValue, updateDocumentEditValue, type DocumentEditTarget } from "../src/foundation/documentEditing.ts";
 import { buildRenderTree, type RenderTreeNode } from "../src/renderer/src/pages/document-editor/rendering/renderTree.ts";
 import { parseMarkdownBlocks } from "../src/renderer/src/pages/document-editor/markdown/parser.ts";
@@ -20,7 +20,7 @@ test("기존 문서 복사본의 한글 작성·저장·재열기·PDF와 원본
   test.setTimeout(120_000);
   const original = await readFile(originalPath!);
   const checksum = createHash("sha256").update(original).digest("hex");
-  const document = JSON.parse(original.toString("utf8")) as DocumentData;
+  const document = Check.documentJson(original.toString("utf8"));
   document.documentId = "document-existing-copy";
   document.name = "기존 문서 안전한 복사본";
   const temporaryRoot = await mkdtemp(join(tmpdir(), "formleaf-existing-copy."));
@@ -44,7 +44,7 @@ test("기존 문서 복사본의 한글 작성·저장·재열기·PDF와 원본
       if (!node.editTarget) continue;
       const blocks = parseMarkdownBlocks(node.source);
       for (let index = 0; index < blocks.length; index += 1) {
-        if (!["paragraph", "heading"].includes(blocks[index].node.type) || !inspectMarkdownEditorCompatibility(node.source, index).editable) continue;
+        if (!["paragraph", "heading"].includes(Check.present(blocks[index], 'fixture object').node.type) || !inspectMarkdownEditorCompatibility(node.source, index).editable) continue;
         const block = page.locator(`.document-page-stack--screen [data-document-edit-target-key="${documentEditTargetKey(node.editTarget)}"] [data-markdown-preview-block="${index}"]`);
         if (!await block.count() || !await block.first().isVisible()) continue;
         if (!await block.first().click({ trial: true, timeout: 1_000 }).then(() => true, () => false)) continue;
@@ -72,7 +72,7 @@ test("기존 문서 복사본의 한글 작성·저장·재열기·PDF와 원본
     await cdp.send("Input.insertText", { text: "복사본검증" });
     await page.getByRole("button", { name: "문서 목록" }).click();
     await expect(page.getByText("로컬 문서 보관함")).toBeVisible();
-    const saved = JSON.parse(await readFile(copyPath, "utf8")) as DocumentData;
+    const saved = Check.documentJson(await readFile(copyPath, "utf8"));
     // Keep private text out of assertion output, including failures.
     const savedSource = readDocumentEditValue(saved, editedTarget!);
     expect(typeof savedSource === "string" && savedSource.includes("복사본검증")).toBe(true);
@@ -91,7 +91,7 @@ test("기존 문서 복사본의 한글 작성·저장·재열기·PDF와 원본
     expect((await stat(pdfPath)).size > 1_000).toBe(true);
     expect((await readFile(pdfPath)).subarray(0, 5).toString("ascii")).toBe("%PDF-");
   } finally {
-    await application?.close().catch(() => undefined);
+    await Check.present(application?.close(), 'fixture object').catch(() => undefined);
     await rm(temporaryRoot, { recursive: true, force: true });
     expect(createHash("sha256").update(await readFile(originalPath!)).digest("hex") === checksum).toBe(true);
   }

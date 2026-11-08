@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-**문서는 `b379b3f`로 커밋했고 F01–F04 구현·검증을 완료했다. 이후 기능을 순서대로 적용한다.**
+**문서는 `b379b3f`로 커밋했고 F01–F05 구현·검증을 완료했다. 이후 기능을 순서대로 적용한다.**
 
 - 갱신일: 2026-11-08.
 - 기준 HEAD: `989a7f6`.
 - 브랜치: main에서 분기한 `docs/12-static-analysis-policy`.
 - 작업 트리: `docs/README.md`·`docs/12-static-analysis-policy/`와 문서 양식·workflow 개선 변경이 있음.
 - 문서 커밋: `b379b3f`. 기능별 완료 커밋은 plan에서 관리한다.
-- 마지막 완료 기능: F04. 타입·입력 경계와 오류 cause 보존, check·전체 unit·build·missing CSS 실패·격리 렌더 cleanup 통과.
+- 마지막 완료 기능: F05. 전체 TS 검사·lint·Node unit·build·격리 E2E 7개·검사 범위 오류 주입 통과.
 - F01–F07 구현과 완료 커밋 기록: [plan](plan.md).
 
 ## 구현 진행
@@ -18,6 +18,7 @@
 - F02 결과: [환경·레이어 테스트](tests/02-runtime-boundaries.md).
 - F03 결과: [Promise 테스트](tests/03-promise-ownership.md).
 - F04 결과: [타입 안전성 테스트](tests/04-type-safety.md).
+- F05 결과: [TS 테스트 전환](tests/05-typescript-tests.md).
 - ESLint 9 지원 종료 경고를 확인해 10.14.0으로 변경했다. React·접근성 plugin 호환성은 F06·F07에서 검증한다.
 - 현재 검사 범위는 제품·Vite·JS 도구이며, TS 추천 규칙은 F04, 테스트 검사는 F05에서 연결한다.
 - 아래 문서 작성 시점 기록과 실제 구현 검증을 구분한다.

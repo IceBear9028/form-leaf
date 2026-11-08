@@ -8,10 +8,10 @@ export default [
   { ignores: ['node_modules/**', 'out/**', 'dist/**', 'test-results/**', 'playwright-report/**'] },
   { linterOptions: { reportUnusedDisableDirectives: 'error' } },
   {
-    files: ['src/**/*.{ts,tsx}', 'electron.vite.config.ts'],
+    files: ['src/**/*.{ts,tsx}', 'electron.vite.config.ts', 'test/**/*.ts', 'e2e/**/*.ts', 'playwright.config.ts'],
     languageOptions: {
       parser: tseslint.parser,
-      parserOptions: { project: ['./tsconfig.foundation.json', './tsconfig.main.json', './tsconfig.preload.json', './tsconfig.renderer.json', './tsconfig.tools.json'], tsconfigRootDir: import.meta.dirname },
+      parserOptions: { project: ['./tsconfig.foundation.json', './tsconfig.main.json', './tsconfig.preload.json', './tsconfig.renderer.json', './tsconfig.tools.json', './tsconfig.test.json', './tsconfig.e2e.json'], tsconfigRootDir: import.meta.dirname },
     },
     plugins: { '@typescript-eslint': tseslint.plugin, boundaries },
     rules: {

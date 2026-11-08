@@ -1,0 +1,103 @@
+import * as Check from "./fixtures/assertions.ts";
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
+import { DocumentService } from "../src/main/application/documentService.ts";
+import { DocumentRepository } from "../src/main/document/documentRepository.ts";
+import { ComponentLibraryRepository } from "../src/main/document/componentLibraryRepository.ts";
+import { AccessPolicy, emptyGrants } from "../src/main/mcp/accessPolicy.ts";
+import { OutputService } from "../src/main/application/outputService.ts";
+import { ArtifactRepository } from "../src/main/application/artifactRepository.ts";
+import { OperationHistory } from "../src/main/application/operationHistory.ts";
+import { EditorCoordinator } from "../src/main/application/editorCoordinator.ts";
+import { createServer } from "node:http";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { AgentServer } from "../src/main/mcp/server.ts";
+import { createAgentProtocol } from "../src/main/mcp/tools.ts";
+import { agentDocument } from "./fixtures/agent-document.ts";
+
+await test("F08: 최근 작업은 본문·staged result를 노출하지 않고 저장/화면/복구/권한 상태를 구분한다", async (t) => {
+  const workspace = await mkdtemp(join(tmpdir(), "formleaf-history-")); t.after(() => rm(workspace, { recursive: true, force: true }));
+  const coordinator = new EditorCoordinator(20);
+  const service = new DocumentService(new DocumentRepository(workspace), new ComponentLibraryRepository(workspace), workspace, { coordinator });
+  const document = await service.create(); const id = document.document.documentId;
+  const policy = new AccessPolicy(workspace); await policy.initialize(); await policy.setEnabled(true);
+  const { connection, token } = await policy.create("history connection");
+  await policy.setGrants(connection.id, { ...emptyGrants(), documentIds: [id], write: true, render: true });
+  const outputs = new OutputService(service, policy, { render: async () => { throw new Error("unused"); } }, new ArtifactRepository(workspace));
+  const history = new OperationHistory(service, policy, outputs);
+  coordinator.attach((request) => {
+    if (request.type === "apply") return;
+    coordinator.reply({ requestId: request.requestId, ok: true, context: null, leaseId: request.type === "acquire" ? request.requestId : undefined });
+  });
+  const key = { credentialId: connection.id, requestId: randomUUID(), hash: "test" };
+  await service.mutate(key, { documentId: id, expectedRevision: document.revision, dryRun: false }, () => { policy.document(connection.id, id, "write"); }, (next) => ({ document: next, changes: { affectedNodeIds: [], affectedTargets: [], removedItemIds: [], summary: "SECRET BODY" }, results: [], warnings: [] }));
+  let recent = await history.recent();
+  assert.equal(recent.length, 1); assert.equal(Check.present(recent[0], 'fixture value').persisted, true); assert.equal(Check.present(recent[0], 'fixture value').uiSynced, false);
+  assert.ok(Check.present(recent[0], 'fixture value').acceptedAt); assert.equal(Check.present(recent[0], 'fixture value').revision, document.revision);
+  assert.equal(JSON.stringify(recent).includes("SECRET BODY"), false); assert.equal(JSON.stringify(recent).includes(token), false);
+  // A credential's expiry also redacts the local history projection, without deleting the journal.
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  await policy.rotate(connection.id, 7);
+  t.mock.timers.tick(7 * 86_400_000);
+  const expired = (await history.recent())[0];
+  assert.equal(Check.present(expired, 'fixture value').accessible, false); assert.equal(Check.present(expired, 'fixture value').documentName, undefined); assert.equal(Check.present(expired, 'fixture value').revision, undefined);
+  assert.equal(Check.present(expired, 'fixture value').status, "completed");
+  await policy.rotate(connection.id, 30);
+  assert.equal(Check.present((await history.recent())[0], 'fixture value').accessible, true);
+  const entry = Check.present(await service.operation(connection.id, key.requestId), 'fixture binding');
+  await service.journal.finish(entry, { ...Check.present(Check.present(entry, 'fixture object').response, 'fixture spread'), status: "recovery_required" as const, outcome: "unknown" });
+  recent = await history.recent(); assert.equal(Check.present(recent[0], 'fixture value').status, "recovery_required"); assert.equal(Check.present(recent[0], 'fixture value').persisted, undefined); assert.equal(Check.present(recent[0], 'fixture value').revision, undefined);
+  await service.journal.finish(entry, { ...Check.present(Check.present(entry, 'fixture object').response, 'fixture spread'), status: "failed" as const, outcome: "not_committed", error: { code: "PERSISTENCE_FAILED", message: "safe", retryable: false } });
+  assert.equal(Check.present((await history.recent())[0], 'fixture value').errorCode, "PERSISTENCE_FAILED");
+  await policy.revoke(connection.id);
+  recent = await history.recent(); assert.equal(Check.present(recent[0], 'fixture value').accessible, false); assert.equal(Check.present(recent[0], 'fixture value').documentName, undefined); assert.equal(Check.present(recent[0], 'fixture value').errorCode, undefined);
+  assert.equal(Check.present(recent[0], 'fixture value').status, "failed"); // The local owner can still see that a request occurred.
+  await assert.rejects(history.artifact(connection.id, key.requestId));
+});
+
+await test("F08: HTTP 응답 유실·취소 통지 후 재연결/재시작해도 반복 항목을 한 번만 추가한다", async (t) => {
+  const workspace = await mkdtemp(join(tmpdir(), "formleaf-reconnect-"));
+  const probe = createServer(); await new Promise((resolve) => probe.listen(0, "127.0.0.1", () => resolve(undefined)));
+  const port = Check.port(probe); await new Promise((resolve) => probe.close(resolve));
+  const policy = new AccessPolicy(workspace, port); await policy.initialize(); await policy.setEnabled(true);
+  const { connection, token } = await policy.create("reconnect");
+  const repository = new DocumentRepository(workspace);
+  const initial = await repository.create(); const fixture = agentDocument(initial.document);
+  await repository.save(fixture.documentId, fixture);
+  const makeService = () => new DocumentService(repository, new ComponentLibraryRepository(workspace), workspace);
+  let service = makeService(); await service.initialize();
+  await policy.setGrants(connection.id, { ...emptyGrants(), documentIds: [fixture.documentId], write: true });
+  const server = new AgentServer(policy, (id) => createAgentProtocol(policy, service, id, "test"));
+  await server.start();
+  const clientRef: { current?: Client } = {};
+  // The reconnect below initializes this client after the dropped transport.
+  t.after(async () => { release?.(); await service.list(); await clientRef.current?.close(); await server.stop(); await rm(workspace, { recursive: true, force: true }); });
+  const input = { documentId: fixture.documentId, expectedRevision: (await service.load(fixture.documentId)).revision, requestId: randomUUID(), operations: [{ type: "add_item" as const, repeaterNodeId: "repeater", index: 1 }] };
+  let release: () => void = () => {}; let reached: () => void = () => assert.fail("commit gate not initialized");
+  const committed = repository.commitSnapshot.bind(repository);
+  const atCommit = new Promise<void>((resolve) => { reached = resolve; });
+  repository.commitSnapshot = async (...args) => { reached(); await new Promise<void>((resolve) => { release = resolve; }); return committed(...args); };
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Accept: "application/json, text/event-stream" };
+  const url = server.status().endpoint; const abort = new AbortController();
+  const lost = fetch(url, { method: "POST", headers, signal: abort.signal, body: JSON.stringify({ jsonrpc: "2.0", id: 41, method: "tools/call", params: { name: "apply_operations", arguments: input } }) }).catch(() => undefined);
+  await Promise.race([atCommit, new Promise((_, reject) => setTimeout(() => reject(new Error("mutation never started")), 5000).unref())]);
+  abort.abort(); await lost;
+  await fetch(url, { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/cancelled", params: { requestId: 41, reason: "client disconnected" } }) });
+  release();
+  for (let i = 0; i < 100 && Check.present(Check.present((await service.operation(connection.id, input.requestId)), 'fixture object').response, 'fixture value').status !== "completed"; i++) await new Promise((resolve) => setTimeout(resolve, 10));
+  await service.load(fixture.documentId); // Drain the original writer, including its UI acknowledgement record.
+  repository.commitSnapshot = committed;
+  service = makeService(); await service.initialize();
+  const client = clientRef.current = new Client({ name: "reconnected", version: "1" });
+  await client.connect(new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers } }));
+  const operation = Check.success(Check.present(Check.toolResult("get_operation", (Check.wireResult(await client.callTool({ name: "get_operation", arguments: { requestId: input.requestId } }))).structuredContent), 'fixture value')).data;
+  assert.equal(operation.status, "completed");
+  const repeated = Check.success(Check.toolResult("apply_operations", (Check.wireResult(await client.callTool({ name: "apply_operations", arguments: input }))).structuredContent)).data;
+  assert.deepEqual(repeated, operation.result);
+  assert.equal(Check.asNode((await service.load(fixture.documentId)).document.nodes.repeater, 'repeater').items.length, Check.asNode(fixture.nodes.repeater, 'repeater').items.length + 1);
+});

@@ -1,6 +1,6 @@
 # F05. 테스트 TS 전환과 검사 범위
 
-2026-11-08 · 기획 확정 · 구현 대기 · 코드 기준 `989a7f6`
+2026-11-08 · 기획 확정 · 구현·검증 완료 · 코드 기준 `989a7f6`
 
 [기능 목록](README.md) · [대응 구현 설계](../implementation/05-typescript-tests.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/05-typescript-tests.md)
 
@@ -40,3 +40,7 @@
 
 - 영향 파일은 [구현 설계](../implementation/05-typescript-tests.md), 테스트 절차·통과 기준·실행 결과는 [테스트 문서](../tests/05-typescript-tests.md)가 소유한다.
 - 기능 상태·커밋은 [계획](../plan.md), 결과 요약·재개 지점은 [인수인계](../handoff.md)에 기록한다.
+
+## 적용 결과
+
+unit 30파일과 fixture를 TS로 전환하고 기존 사례 159개의 이름·순서를 보존했다. Node runner·개별 script 목록은 유지한다. test/e2e project는 ES2023 lib·DOM/Node 타입·erasableSyntaxOnly를 적용하며 제품 target은 유지한다. typed lint는 두 project와 Playwright 설정을 포함한다. fixture의 필수 값·node 종류·MCP 응답은 실제 검사 helper로 좁히고 의도적인 invalid input에만 사유 있는 국소 예외를 둔다. Node test 등록 Promise는 top-level await로 처리한다. Electron executable의 런타임 문자열 반환을 별도 adapter에서 확인한다.

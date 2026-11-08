@@ -1,0 +1,84 @@
+import * as Check from "./fixtures/assertions.ts";
+import { expectCode } from "./fixtures/assertions.ts";
+import type * as Types from "./fixtures/types.ts";
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { createEmptyDocument, addNode, exportComponentPackage } from "../src/foundation/document.ts";
+import { agentDocument } from "./fixtures/agent-document.ts";
+import { applyDocumentOperations } from "../src/main/application/documentOperationAdapter.ts";
+import { documentRevision } from "../src/main/application/documentRevision.ts";
+import { DocumentService } from "../src/main/application/documentService.ts";
+import { DocumentRepository } from "../src/main/document/documentRepository.ts";
+import { ComponentLibraryRepository } from "../src/main/document/componentLibraryRepository.ts";
+import { AccessPolicy, emptyGrants } from "../src/main/mcp/accessPolicy.ts";
+import { createAgentProtocol } from "../src/main/mcp/tools.ts";
+const apply = (document: Types.DocumentData, ...operations: Types.Operation[]) => applyDocumentOperations(document, operations);
+const code = expectCode;
+
+await test("F05: active prop override·clear와 item 추가/이동/복제/제거는 정의·다른 instance를 보존", () => {
+  const original = agentDocument(createEmptyDocument());
+  let next = apply(original, { type: "set_component_prop" as const, instanceNodeId: "instance", propId: "prop", value: "덮어쓴 값" }).document;
+  assert.equal(Check.asNode(next.nodes.instance, 'component-instance').props.prop, "덮어쓴 값");
+  next = apply(next, { type: "clear_component_prop" as const, instanceNodeId: "instance", propId: "prop" }).document;
+  assert.equal(Object.hasOwn(Check.asNode(next.nodes.instance, 'component-instance').props, "prop"), false);
+  const added = apply(next, { type: "add_item" as const, repeaterNodeId: "repeater", index: 0 });
+  const itemId = Check.present(Check.present(Check.present(added.results[0], 'fixture value').created, 'fixture value').itemId, 'itemId');
+  assert.equal(Check.present(Check.asNode(added.document.nodes.repeater, 'repeater').items[0], 'fixture value').id, itemId); assert.deepEqual(Check.present(Check.asNode(added.document.nodes.repeater, 'repeater').items[0], 'fixture value').props, {});
+  next = apply(added.document, { type: "set_item_prop" as const, repeaterNodeId: "repeater", itemId, propId: "prop", value: "새 항목" }, { type: "move_item" as const, repeaterNodeId: "repeater", itemId, index: 1 }).document;
+  assert.equal(Check.present(Check.asNode(next.nodes.repeater, 'repeater').items[1], 'fixture value').id, itemId);
+  const duplicated = apply(next, { type: "duplicate_item" as const, repeaterNodeId: "repeater", itemId });
+  const copiedId = Check.present(Check.present(Check.present(duplicated.results[0], 'fixture value').created, 'fixture value').itemId, 'copiedId');
+  assert.equal(Check.present(Check.asNode(duplicated.document.nodes.repeater, 'repeater').items[2], 'fixture value').id, copiedId); assert.equal(Check.present(Check.asNode(duplicated.document.nodes.repeater, 'repeater').items[2], 'fixture value').props.prop, "새 항목");
+  const removed = apply(duplicated.document, { type: "remove_item" as const, repeaterNodeId: "repeater", itemId });
+  assert.deepEqual(removed.changes.removedItemIds, [itemId]); assert.equal(Check.asNode(removed.document.nodes.repeater, 'repeater').items.length, 2);
+  assert.deepEqual(removed.document.components, original.components);
+  assert.equal(Check.present(Check.asNode(original.nodes.repeater, 'repeater').items[0], 'fixture value').props.prop, "항목 원문");
+  for (const op of [
+    { type: "set_component_prop" as const, instanceNodeId: "instance", propId: "old-prop", value: "bad" },
+    { type: "set_item_prop" as const, repeaterNodeId: "repeater", itemId: "missing", propId: "prop", value: "bad" },
+  ]) assert.throws(() => apply(original, op), code("INVALID_TARGET"));
+  assert.throws(() => apply(original, { type: "set_component_prop" as const, instanceNodeId: "instance", propId: "prop", value: 12 }), code("VALIDATION_FAILED"));
+  assert.throws(() => apply(original, { type: "move_item" as const, repeaterNodeId: "repeater", itemId: "item", index: 1 }), code("VALIDATION_FAILED"));
+});
+
+await test("F05: library 조회→revision 확인→충돌 remap import→instance 생성과 원본 불변", async (t) => {
+  const workspace = await mkdtemp(join(tmpdir(), "formleaf-agent-components-")); t.after(() => rm(workspace, { recursive: true, force: true }));
+  const service = new DocumentService(new DocumentRepository(workspace), new ComponentLibraryRepository(workspace), workspace);
+  const created = await service.create();
+  let document = agentDocument(created.document);
+  document = addNode(document, "definition", { id: "definition-image", type: "image" as const, name: "그림", visible: true, assetId: "image", alt: "그림" });
+  Check.present(document.nodes["definition-markdown"], 'fixture node').styleId = Check.present(document.nodes[document.rootNodeId], 'fixture node').styleId;
+  const saved = await service.save(document.documentId, document, created.revision);
+  const componentPackage = exportComponentPackage(document, "component");
+  const library = await service.saveComponent({ name: "개인 카드", package: componentPackage });
+  const before = await service.loadComponent(library.id);
+  const policy = new AccessPolicy(workspace); await policy.initialize(); await policy.setEnabled(true);
+  const { connection } = await policy.create("reuse"); await policy.setGrants(connection.id, { ...emptyGrants(), documentIds: [document.documentId], write: true });
+  const server = createAgentProtocol(policy, service, connection.id, "test"); const client = new Client({ name: "reuse", version: "1" });
+  const [a, b] = InMemoryTransport.createLinkedPair(); await server.connect(a); await client.connect(b); await client.listTools(); t.after(() => Promise.all([server.close(), client.close()]));
+  const call = async <T extends Types.ToolName>(name: T, input: Record<string, unknown> = {}) => Check.toolResult(name, (Check.wireResult(await client.callTool({ name, arguments: input }))).structuredContent);
+  const input = { documentId: document.documentId, expectedRevision: saved.revision, requestId: randomUUID(), operations: [{ type: "import_component" as const, libraryItemId: library.id, expectedLibraryRevision: documentRevision(before) }] };
+  assert.equal(Check.failed((await call("apply_operations", input))).error.code, "CAPABILITY_DENIED");
+  await policy.setGrants(connection.id, { ...policy.current(connection.id), libraryRead: true });
+  const listing = await call("list_components"); assert.equal(Check.present(Check.success(listing).data.items[0], 'fixture value').libraryItemId, library.id);
+  const description = await call("get_component", { source: "library", libraryItemId: library.id });
+  assert.equal(description.ok, true, JSON.stringify(description)); assert.equal(JSON.stringify(description).includes("base64"), false);
+  const stale = await call("apply_operations", { ...input, requestId: randomUUID(), operations: [{ ...Check.present(input.operations[0], 'fixture spread'), expectedLibraryRevision: "old" }] });
+  assert.equal(Check.failed(stale).error.code, "REVISION_CONFLICT"); assert.equal((await service.load(document.documentId)).revision, saved.revision);
+  const imported = await call("apply_operations", input); assert.equal(imported.ok, true, JSON.stringify(imported));
+  const result = Check.present(Check.field(Check.success(imported).data, 'results').results[0], 'fixture binding'); assert.notEqual(Check.present(result.created, 'fixture value').componentId, "component");
+  assert.ok(Check.present(result.idMap, 'fixture value')["components:component"]); assert.ok(Check.present(result.idMap, 'fixture value')["assets:image"]); assert.ok(Check.present(result.idMap, 'fixture value')["props:component:prop"]);
+  const snapshot = await service.load(document.documentId);
+  assert.deepEqual(snapshot.document.components.component, document.components.component);
+  assert.equal(Check.field(Check.present(snapshot.document.nodes[Check.present(Check.present(result.idMap, 'fixture value')["nodes:definition-image"], 'fixture key')], 'fixture node'), 'assetId').assetId, Check.present(result.idMap, 'fixture value')["assets:image"]);
+  const instance = await call("apply_operations", { documentId: document.documentId, expectedRevision: Check.field(Check.success(imported).data, 'revision').revision, requestId: randomUUID(), operations: [{ type: "add_component_instance" as const, parentId: document.rootNodeId, componentId: Check.present(result.created, 'fixture value').componentId, name: "가져온 카드" }] });
+  assert.equal(instance.ok, true, JSON.stringify(instance));
+  assert.deepEqual(Check.asNode((await service.load(document.documentId)).document.nodes[Check.present(Check.present(Check.present(Check.field(Check.success(instance).data, 'results').results[0], 'fixture object').created, 'fixture value').nodeId, 'fixture key')], 'component-instance').props, {});
+  assert.deepEqual(await service.loadComponent(library.id), before);
+});

@@ -1,5 +1,6 @@
+import * as Check from "../test/fixtures/assertions.ts";
 import { test, expect, _electron as electron, type ElectronApplication } from "@playwright/test";
-import electronPath from "electron";
+import electronPath from "../test/fixtures/electron-path.ts";
 import { mkdtemp, rm, readFile, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,6 +10,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { DocumentRepository } from "../src/main/document/documentRepository.ts";
 import { AccessPolicy, emptyGrants } from "../src/main/mcp/accessPolicy.ts";
 
+// eslint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixture argument when using testInfo.
 test("F08: 최근 결과·PDF 열기/저장·dialog 중 권한 철회·재시작 결과 보존", async ({}, info) => {
   const temporary = await mkdtemp(join(tmpdir(), "formleaf-history-e2e-"));
   const userData = join(temporary, "user-data"); const workspace = join(userData, "workspaces");
@@ -18,7 +20,7 @@ test("F08: 최근 결과·PDF 열기/저장·dialog 중 권한 철회·재시작
   const grants = { ...emptyGrants(), documentIds: [documentId], render: true };
   await policy.setGrants(connection.id, grants); await policy.setEnabled(true);
   let app: ElectronApplication | undefined; let client: Client | undefined;
-  const launch = () => electron.launch({ executablePath: electronPath as unknown as string, args: ["."], cwd: process.cwd(), env: { ...process.env, DOCUMENT_USER_DATA_DIRECTORY: userData, DOCUMENT_E2E_HEADLESS: "1" } });
+  const launch = () => electron.launch({ executablePath: electronPath, args: ["."], cwd: process.cwd(), env: { ...process.env, DOCUMENT_USER_DATA_DIRECTORY: userData, DOCUMENT_E2E_HEADLESS: "1" } });
   const connect = async () => {
     const next = new Client({ name: "history-e2e", version: "1" });
     await next.connect(new StreamableHTTPClientTransport(new URL("http://127.0.0.1:32516/mcp"), { requestInit: { headers: { Authorization: `Bearer ${token}` } } })); return next;
@@ -36,29 +38,30 @@ test("F08: 최근 결과·PDF 열기/저장·dialog 중 권한 철회·재시작
     await page.getByRole("button", { name: "연결 설정 닫기", exact: true }).click();
     await page.getByRole("tab", { name: "작업 기록", exact: true }).click();
     client = await connect();
-    const saved = (await client.callTool({ name: "get_document", arguments: { documentId } })).structuredContent as any;
-    const requestId = randomUUID(); const input = { documentId, expectedRevision: saved.data.revision, requestId };
-    await client.callTool({ name: "export_pdf", arguments: input });
-    let operation: any;
-    await expect.poll(async () => { operation = (await client!.callTool({ name: "get_operation", arguments: { requestId } })).structuredContent as any; return operation.data?.status; }, { timeout: 65_000 }).toBe("completed");
+    const saved = Check.toolResult("get_document", (Check.wireResult(await client.callTool({ name: "get_document", arguments: { documentId } }))).structuredContent);
+    const requestId = randomUUID(); const input = { documentId, expectedRevision: Check.success(saved).data.revision, requestId };
+    Check.wireResult(await client.callTool({ name: "export_pdf", arguments: input }));
+    let operation: ReturnType<typeof Check.toolResult<'get_operation'>> | undefined;
+    await expect.poll(async () => { operation = Check.toolResult("get_operation", (Check.wireResult(await client!.callTool({ name: "get_operation", arguments: { requestId } }))).structuredContent); return Check.success(operation).data?.status; }, { timeout: 65_000 }).toBe("completed");
+    const completedArtifact = Check.field(Check.present(Check.success(Check.present(operation, "operation")).data.result, "operation result"), "uri");
     const row = page.locator(`[data-agent-operation="${requestId}"]`);
     await expect(row.getByText("출력 완료", { exact: true })).toBeVisible();
-    await app.evaluate(({ shell }) => { (shell as any).openPath = async (path: string) => { (globalThis as any).openedPdf = path; return ""; }; });
+    await app.evaluate(({ shell }) => { (shell).openPath = async (path: string) => { (globalThis).openedPdf = path; return ""; }; });
     await row.getByRole("button", { name: "PDF 열기", exact: true }).click();
-    await expect.poll(() => app!.evaluate(() => (globalThis as any).openedPdf)).toContain("agent-artifacts");
+    await expect.poll(() => app!.evaluate(() => (globalThis).openedPdf)).toContain("agent-artifacts");
     const destination = join(temporary, "saved.pdf");
-    await app.evaluate(({ dialog }, path) => { (dialog as any).showSaveDialog = async () => ({ canceled: false, filePath: path }); }, destination);
+    await app.evaluate(({ dialog }, path) => { (dialog).showSaveDialog = async () => ({ canceled: false, filePath: path }); }, destination);
     await row.getByRole("button", { name: "다른 위치에 저장", exact: true }).click();
     await expect(page.getByRole("status")).toContainText("PDF를 저장했습니다");
-    const resource = await client.readResource({ uri: operation.data.result.uri });
-    expect(await readFile(destination)).toEqual(Buffer.from((resource.contents[0] as any).blob, "base64"));
+    const resource = await client.readResource({ uri: completedArtifact.uri });
+    expect(await readFile(destination)).toEqual(Buffer.from((Check.blobResource(resource.contents[0])).blob, "base64"));
     await row.screenshot({ path: info.outputPath("operation-result.png") });
     const deniedDestination = join(temporary, "must-not-save.pdf");
-    await app.evaluate(({ dialog }) => { (dialog as any).showSaveDialog = () => new Promise((resolve) => { (globalThis as any).finishSaveDialog = resolve; }); });
+    await app.evaluate(({ dialog }) => { (dialog).showSaveDialog = () => new Promise((resolve) => { (globalThis).finishSaveDialog = resolve; }); });
     await row.getByRole("button", { name: "다른 위치에 저장", exact: true }).click();
-    await expect.poll(() => app!.evaluate(() => typeof (globalThis as any).finishSaveDialog)).toBe("function");
+    await expect.poll(() => app!.evaluate(() => typeof (globalThis).finishSaveDialog)).toBe("function");
     await page.evaluate((id) => window.documents.agentSetGrants(id, { documentIds: [], write: false, create: false, libraryRead: false, render: false }), connection.id);
-    await app.evaluate((_electron, path) => (globalThis as any).finishSaveDialog({ canceled: false, filePath: path }), deniedDestination);
+    await app.evaluate((_electron, path) => { const finish = globalThis.finishSaveDialog; if (!finish) throw new Error("save dialog not pending"); finish({ canceled: false, filePath: path }); }, deniedDestination);
     await expect(page.getByRole("alert")).toContainText("PDF를 열거나 저장하지 못했습니다");
     await expect(async () => access(deniedDestination)).rejects.toThrow();
     await expect(row.getByRole("button", { name: "PDF 열기" })).toHaveCount(0);
@@ -68,8 +71,8 @@ test("F08: 최근 결과·PDF 열기/저장·dialog 중 권한 철회·재시작
     await page.getByRole("tab", { name: "작업 기록", exact: true }).click();
     await expect(page.locator(`[data-agent-operation="${requestId}"]`).getByText("출력 완료", { exact: true })).toBeVisible();
     client = await connect();
-    const retried = (await client.callTool({ name: "export_pdf", arguments: input })).structuredContent as any;
-    expect(retried.data.status).toBe("completed"); expect(retried.data.artifactId).toBe(operation.data.result.artifactId);
+    const retried = Check.toolResult("export_pdf", (Check.wireResult(await client.callTool({ name: "export_pdf", arguments: input }))).structuredContent);
+    expect(Check.success(retried).data.status).toBe("completed"); expect(Check.field(Check.success(retried).data, 'artifactId').artifactId).toBe(completedArtifact.artifactId);
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
   } finally { await client?.close(); await app?.close(); await rm(temporary, { recursive: true, force: true }); }
 });

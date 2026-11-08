@@ -1,5 +1,6 @@
+import * as Check from "../test/fixtures/assertions.ts";
 import { expect, test, _electron as electron, type ElectronApplication, type Locator, type Page } from "@playwright/test";
-import electronPath from "electron";
+import electronPath from "../test/fixtures/electron-path.ts";
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -48,7 +49,7 @@ test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF"
       await expect(editor()).toHaveCount(0);
       await expect(target("node-selection").first()).not.toHaveAttribute("data-document-selected", "true");
       await expect(outside()).toHaveAttribute("data-document-selected", "true");
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-selection"].source).toBe("문단 ABXCD\n\n## 제목 ABXCD\n\n> 인용 ABXCD\n\n- 목록 ABXCD");
+      await expect.poll(async () => Check.field((await readFixture(userData)).nodes["node-selection"], 'source').source).toBe("문단 ABXCD\n\n## 제목 ABXCD\n\n> 인용 ABXCD\n\n- 목록 ABXCD");
     });
 
     await test.step("목록 Enter·Tab·Shift+Tab·빠른 삽입·제목 level", async () => {
@@ -68,7 +69,7 @@ test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF"
       await page.keyboard.press("Enter");
       await page.keyboard.insertText("사용자 흐름");
       await outside().click();
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-direct"].source).toBe("- 첫 항목\n- 둘째 항목\n\n## 사용자 흐름");
+      await expect.poll(async () => Check.field((await readFixture(userData)).nodes["node-direct"], 'source').source).toBe("- 첫 항목\n- 둘째 항목\n\n## 사용자 흐름");
       await activateAtEnd(page, target("node-heading-change"));
       await clickBeforeText(page, editor().locator("h1, h2, h3"), "기존");
       await page.keyboard.type("## ");
@@ -80,22 +81,23 @@ test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF"
 
     await test.step("빠른 한글·Space·composition 중 publish와 부모 rerender", async () => {
       await activateAtEnd(page, target("node-composition-caret"));
-      await editor().evaluate((element) => { (window as any).ownershipRoot = element; });
+      await editor().evaluate((element) => { window.ownershipRoot = element; });
       await page.keyboard.insertText("가");
       const cdp = await page.context().newCDPSession(page);
       await cdp.send("Input.imeSetComposition", { text: "나", selectionStart: 1, selectionEnd: 1 });
       await page.getByRole("button", { name: "확대", exact: true }).evaluate((element: HTMLButtonElement) => element.click());
       await page.getByRole("complementary", { name: "Properties" }).locator("input").first().evaluate((element) => {
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
-        setter.call(element, "IME 중 DocumentData publish");
+        const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+        if (!descriptor?.set) throw new Error("input value setter missing");
+        descriptor.set.call(element, "IME 중 DocumentData publish");
         element.dispatchEvent(new Event("input", { bubbles: true }));
       });
       await page.waitForTimeout(800);
       await expect(editor()).toBeFocused();
-      expect(await editor().evaluate((element) => (window as any).ownershipRoot === element)).toBe(true);
+      expect(await editor().evaluate((element) => window.ownershipRoot === element)).toBe(true);
       await expect(editor()).toHaveText("경쟁: 가나");
-      expect((await readFixture(userData)).nodes["node-composition-caret"].source).toBe("경쟁: 가");
-      expect((await readFixture(userData)).nodes["node-composition-caret"].name).toBe("IME 중 DocumentData publish");
+      expect(Check.field((await readFixture(userData)).nodes["node-composition-caret"], 'source').source).toBe("경쟁: 가");
+      expect(Check.present((await readFixture(userData)).nodes["node-composition-caret"], 'fixture object').name).toBe("IME 중 DocumentData publish");
       await cdp.send("Input.insertText", { text: "나" });
       for (const word of ["다", "빠른", "한글", "입력"]) {
         await page.keyboard.press("Space");
@@ -105,11 +107,11 @@ test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF"
       await page.keyboard.press("Space");
       await page.keyboard.insertText("끝");
       await expect(editor()).toHaveText("경쟁: 가나 다 빠른 한글 입력  끝");
-      expect(await editor().evaluate((element) => (window as any).ownershipRoot === element)).toBe(true);
+      expect(await editor().evaluate((element) => window.ownershipRoot === element)).toBe(true);
       expect(await caretSuffix(editor())).toBe("");
       await expect(page.locator('.document-measure-page [contenteditable="true"]')).toHaveCount(0);
       await outside().click();
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-composition-caret"].source).toBe("경쟁: 가나 다 빠른 한글 입력  끝");
+      await expect.poll(async () => Check.field((await readFixture(userData)).nodes["node-composition-caret"], 'source').source).toBe("경쟁: 가나 다 빠른 한글 입력  끝");
       await cdp.detach();
     });
 
@@ -155,12 +157,12 @@ test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF"
       await outside().click();
       await expect.poll(async () => {
         const doc = await readFixture(userData);
-        return [doc.nodes["node-instance"].props["prop-markdown"], doc.nodes["node-repeater"].items[0].props["prop-markdown"], doc.nodes["node-repeater"].items[1].props["prop-markdown"], doc.components["component-markdown-card"].propDefinitions[0].defaultValue];
+        return [Check.field(doc.nodes["node-instance"], 'props').props["prop-markdown"], Check.present(Check.field(doc.nodes["node-repeater"], 'items').items[0], 'fixture object').props["prop-markdown"], Check.present(Check.field(doc.nodes["node-repeater"], 'items').items[1], 'fixture object').props["prop-markdown"], Check.present(Check.field(doc.components["component-markdown-card"], 'propDefinitions').propDefinitions[0], 'fixture object').defaultValue];
       }).toEqual(["컴포넌트 시작\n\n- 컴포넌트 항목 한글", "반복 A 시작\n\n- [x] 확인 항목 한글", "반복 B 유지", "컴포넌트 시작"]);
     });
 
     await test.step("09 작성 명령을 source 보정 없이 editor input rule로 실행한다", async () => {
-      const cases = [
+      const cases: Array<[string, string]> = [
         ["* ", "ul"], ["2) ", "ol"], ["> ", "blockquote"], ["```", "pre"], ["---", "hr"],
         ["**굵게**", "strong"], ["*기울임*", "em"], ["~~취소선~~", "s"], ["`코드`", "code"],
         ["++밑줄++", "u"], ["[링크](https://example.com)", "a"],
@@ -190,7 +192,7 @@ test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF"
       await activateAtEnd(page, fallback.first());
       await page.keyboard.insertText(" 수정");
       await outside().click();
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-fallback"].source).toBe(initial.nodes["node-fallback"].source.replace("수정 가능", "수정 가능 수정"));
+      await expect.poll(async () => Check.field((await readFixture(userData)).nodes["node-fallback"], 'source').source).toBe(Check.field(initial.nodes["node-fallback"], 'source').source.replace("수정 가능", "수정 가능 수정"));
     });
 
     await test.step("다른 page block 전환과 source range 갱신", async () => {
@@ -204,7 +206,7 @@ test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF"
       await expect(editor()).toHaveCount(1);
       await expect.poll(() => fragments.evaluateAll((elements) => elements.every((el) => el.getAttribute("data-document-selected") === "true"))).toBe(true);
       await outside().click();
-      await expect.poll(async () => (await readFixture(userData)).nodes["node-long"].source).toContain("페이지 경계 확인 문장 3. 한글 입력");
+      await expect.poll(async () => Check.field((await readFixture(userData)).nodes["node-long"], 'source').source).toContain("페이지 경계 확인 문장 3. 한글 입력");
     });
 
     await page.keyboard.press("Meta+s");
@@ -239,7 +241,7 @@ test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF"
       await cdp.send("Input.imeSetComposition", { text: "종료 저장", selectionStart: 5, selectionEnd: 5 });
       await application!.close();
       application = undefined;
-      expect((await readFixture(userData)).nodes["node-empty-composition"].source).toBe("종료 저장");
+      expect(Check.field((await readFixture(userData)).nodes["node-empty-composition"], 'source').source).toBe("종료 저장");
       ({ application } = await launchApplication(userData));
       page = await application.firstWindow();
       await openFixture(page);
@@ -247,21 +249,21 @@ test("Preview editor ownership·전체 target lifecycle·저장·재열기·PDF"
     });
     expect(errors).toEqual([]);
   } finally {
-    await application?.close().catch(() => undefined);
+    await Check.present(application?.close(), 'fixture object').catch(() => undefined);
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });
 
 async function exercisePropComposition(page: Page) {
   const root = page.locator('[data-markdown-editor-host] .ProseMirror');
-  await root.evaluate((element) => { (window as any).propEditorRoot = element; });
+  await root.evaluate((element) => { window.propEditorRoot = element; });
   await page.keyboard.press("Space");
   const cdp = await page.context().newCDPSession(page);
   await insertComposedText(cdp, "한");
   await cdp.send("Input.imeSetComposition", { text: "글", selectionStart: 1, selectionEnd: 1 });
   await page.getByRole("button", { name: "축소", exact: true }).evaluate((element: HTMLButtonElement) => element.click());
   await expect(root).toBeFocused();
-  expect(await root.evaluate((element) => (window as any).propEditorRoot === element)).toBe(true);
+  expect(await root.evaluate((element) => window.propEditorRoot === element)).toBe(true);
   await cdp.send("Input.insertText", { text: "글" });
   expect(await caretSuffix(root)).toBe("");
   await cdp.detach();
@@ -309,7 +311,7 @@ async function caretSuffix(editor: Locator) {
     return range.toString();
   });
 }
-async function insertComposedText(cdp: Awaited<ReturnType<Page["context"]>["newCDPSession"]>, text: string) {
+async function insertComposedText(cdp: Awaited<ReturnType<ReturnType<Page["context"]>["newCDPSession"]>>, text: string) {
   await cdp.send("Input.imeSetComposition", { text, selectionStart: text.length, selectionEnd: text.length });
   await cdp.send("Input.insertText", { text });
 }
