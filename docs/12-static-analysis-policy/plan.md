@@ -73,7 +73,7 @@
 
 - 공통 G02·G03과 기능별 34개 시나리오가 기록된 검증 경계 안에서 통과했다. 결과의 한계는 tests 각 문서가 소유한다.
 - 최종 check·165 unit·build·격리 Electron E2E 7개 통과, opt-in 3개 제외, warning 69개 유지. native IME는 F06에서 별도 통과했다.
-- 기능별 code·feature·implementation·tests 갱신과 커밋 순서를 유지했다. push·PR·merge는 수행하지 않았다.
+- 기능별 code·feature·implementation·tests 갱신과 커밋 순서를 유지했다. PR 게시 상태는 아래 기록을 따른다. merge는 수행하지 않았다.
 
 ## 편집기 진단 후속 수정
 
@@ -82,3 +82,8 @@
 
 - 후속 검증: 두 tsserver의 8개 경로, TS 6.0.3 전체 7 project, check·166 unit·build·agent-content E2E 1개 통과. 실행 중 VS Code 화면 갱신 한계는 F05 테스트에 기록했다.
 - 후속 기능 커밋: `c76cde3`. 원래 기능 커밋 표와 이 결함 수정 커밋을 구분한다.
+
+## PR 게시
+
+- 2026-11-08 사용자 요청에 따라 브랜치 push와 [PR #4](https://github.com/IceBear9028/form-leaf/pull/4) 게시를 완료했다.
+- base: main, head: docs/12-static-analysis-policy. merge는 수행하지 않았다.
