@@ -14,7 +14,7 @@
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "npm run typecheck:app && npm run typecheck:test",
-    "test": "npm run test:document-core && npm run test:style-presets && npm run test:legacy-import && npm run test:canonical-migration && npm run test:renderer && npm run test:render-pipeline && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:markdown-editor-session && npm run test:pagination && npm run test:migration && npm run test:storage && npm run test:library && npm run test:agent-contracts && npm run test:agent-service && npm run test:agent-access && npm run test:agent-reads && npm run test:agent-content && npm run test:agent-structure && npm run test:agent-components && npm run test:agent-style && npm run test:agent-output && npm run test:agent-history && npm run test:analysis && npm run test:boundaries && npm run test:promises && npm run test:type-safety",
+    "test": "npm run test:document-core && npm run test:style-presets && npm run test:legacy-import && npm run test:canonical-migration && npm run test:renderer && npm run test:render-pipeline && npm run test:editor && npm run test:component-reuse && npm run test:direct-edit && npm run test:markdown && npm run test:markdown-editor-session && npm run test:pagination && npm run test:migration && npm run test:storage && npm run test:library && npm run test:agent-contracts && npm run test:agent-service && npm run test:agent-access && npm run test:agent-reads && npm run test:agent-content && npm run test:agent-structure && npm run test:agent-components && npm run test:agent-style && npm run test:agent-output && npm run test:agent-history && npm run test:analysis && npm run test:boundaries && npm run test:promises && npm run test:type-safety && npm run test:react",
     "test:document-core": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-core.test.ts",
     "test:style-presets": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/document-style-presets.test.ts",
     "test:legacy-import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/legacy-document-import.test.ts",
@@ -54,7 +54,8 @@
     "test:promises": "node --test test/promise-ownership.test.ts",
     "test:type-safety": "node --test test/type-safety.test.ts",
     "typecheck:test": "tsc -p tsconfig.test.json && tsc -p tsconfig.e2e.json",
-    "lint:test": "eslint test e2e playwright.config.ts"
+    "lint:test": "eslint test e2e playwright.config.ts",
+    "test:react": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/react-behavior.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -81,6 +82,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@eslint/compat": "2.1.1",
     "@eslint/js": "10.0.1",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
@@ -90,6 +92,7 @@
     "@types/react-dom": "^19.1.9",
     "esbuild": "0.25.12",
     "eslint": "10.14.0",
+    "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.14.0",
@@ -104,5 +107,10 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "overrides": {
+    "eslint-plugin-react": {
+      "eslint": "$eslint"
+    }
   }
 }

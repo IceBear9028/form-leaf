@@ -19,7 +19,7 @@ export function AgentConnectionDetail({ connection, settings, documents, busy, o
     <CardHeader className="flex flex-row items-center justify-between gap-3 py-5"><div className="flex min-w-0 items-center gap-3"><AgentIcon type={connection.clientType} /><div className="min-w-0"><h2 className="m-0 break-words text-lg font-medium">{connection.name}</h2><p className="m-0 mt-1 text-xs text-muted-foreground">이 연결의 문서 접근을 관리합니다.</p></div></div><ConnectionStatus connection={connection} settings={settings} /></CardHeader>
     <Tabs defaultValue="permissions">
       <TabsList className="mx-6" aria-label="연결 상세"><TabsTrigger value="permissions">문서와 권한</TabsTrigger><TabsTrigger value="security">연결 · 보안</TabsTrigger><TabsTrigger value="activity">작업 기록</TabsTrigger></TabsList>
-      <TabsContent value="permissions" keepMounted><GrantEditor connection={connection} documents={documents} busy={busy} onSave={onSave} onDirtyChange={onDirtyChange} /></TabsContent>
+      <TabsContent value="permissions" keepMounted><GrantEditor key={connection.id} connection={connection} documents={documents} busy={busy} onSave={onSave} onDirtyChange={onDirtyChange} /></TabsContent>
       <TabsContent value="security"><CardContent className="gap-5 py-6">
         <Alert role="note"><AlertDescription>{connection.revoked ? "접근이 해제된 연결입니다. 기존 토큰은 더 이상 사용할 수 없습니다." : tokenExpired(connection) ? "토큰이 만료되어 접근이 차단됐습니다. 새 토큰으로 교체한 뒤 CLI 설정을 업데이트하세요." : connection.lastUsedAt ? "현재 토큰으로 인증된 요청을 받았습니다. CLI 실행 여부와 AI 계정 로그인 상태를 뜻하지는 않습니다." : "이번 앱 실행에서 현재 토큰의 인증 요청이 아직 확인되지 않았습니다."}</AlertDescription></Alert>
         <dl className="m-0 divide-y divide-border text-sm">{[
@@ -36,19 +36,23 @@ export function AgentConnectionDetail({ connection, settings, documents, busy, o
   </Card>;
 }
 
-function GrantEditor({ connection, documents, busy, onSave, onDirtyChange }: {
+export function GrantEditor({ connection, documents, busy, onSave, onDirtyChange }: {
   connection: AgentConnection; documents: DocumentSummary[]; busy: boolean;
   onSave: (grants: AgentGrants) => Promise<boolean>; onDirtyChange: (dirty: boolean) => void;
 }) {
   const [draft, setDraft] = useState(connection.grants);
   const [baseline, setBaseline] = useState(connection.grants);
-  const remote = JSON.stringify(connection.grants);
+  const grants = connection.grants;
+  const remote = JSON.stringify(grants);
   const dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
   const stale = remote !== JSON.stringify(baseline);
   useEffect(() => { onDirtyChange(dirty); }, [dirty, onDirtyChange]);
   useEffect(() => {
-    if (!dirty || connection.revoked) { setDraft(connection.grants); setBaseline(connection.grants); }
-  }, [remote, connection.revoked]); // Polling must not replace an unsaved draft.
+    if (!dirty || connection.revoked) {
+      setDraft(current => sameGrants(current, grants) ? current : grants);
+      setBaseline(current => sameGrants(current, grants) ? current : grants);
+    }
+  }, [grants, dirty, connection.revoked]); // Polling must not replace an unsaved draft.
   const reset = () => { setDraft(connection.grants); setBaseline(connection.grants); };
   return <div>
     <CardContent className="py-6">
@@ -58,4 +62,8 @@ function GrantEditor({ connection, documents, busy, onSave, onDirtyChange }: {
     </CardContent>
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-4"><p className="m-0 text-xs text-muted-foreground">{dirty ? "저장하지 않은 변경사항이 있습니다." : "저장된 권한입니다."}</p><div className="flex gap-2">{dirty && <Button variant="ghost" disabled={busy} onClick={reset}>변경 취소</Button>}<Button disabled={busy || connection.revoked || !dirty || stale} onClick={() => runAction((onSave(draft).then((saved) => { if (saved) { setBaseline(draft); onDirtyChange(false); } })))}>권한 저장</Button></div></div>
   </div>;
+}
+
+function sameGrants(left: AgentGrants, right: AgentGrants): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }

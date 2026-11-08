@@ -1,6 +1,6 @@
 # F06. React 규칙과 편집·초안 보존
 
-2026-11-08 · 기획 확정 · 구현 대기 · 코드 기준 `989a7f6`
+2026-11-08 · 구현·필수 검증 완료 · 기준 `af4ec23` + F06 작업 트리
 
 [기능 목록](README.md) · [대응 구현 설계](../implementation/06-react-behavior.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/06-react-behavior.md)
 
@@ -40,3 +40,7 @@
 
 - 영향 파일은 [구현 설계](../implementation/06-react-behavior.md), 테스트 절차·통과 기준·실행 결과는 [테스트 문서](../tests/06-react-behavior.md)가 소유한다.
 - 기능 상태·커밋은 [계획](../plan.md), 결과 요약·재개 지점은 [인수인계](../handoff.md)에 기록한다.
+
+## 적용 결과
+
+핵심 Hooks·JSX 규칙을 활성화하고 refs·set-state-in-effect는 경고로 유지했다. 권한 초안은 dirty 중 원격 갱신을 보존하고 clean 복귀 시 최신 grants에 맞춘다. 페이지 effect는 안정적인 session 멤버만 구독하고 기존 editor activation·pending 입력·pagination cache 수명은 유지한다. 자동 회귀와 격리 Electron E2E는 통과했으며 실제 macOS 두벌식 조합·툴바·선택 전환·저장·재열기도 검증했다. 결과는 [테스트 기록](../tests/06-react-behavior.md)을 따른다.

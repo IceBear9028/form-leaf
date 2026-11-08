@@ -1,6 +1,6 @@
 # F06. React 규칙과 편집·초안 보존 구현 설계
 
-2026-11-08 · 설계 확정·구현 대기 · As-Is 코드 `989a7f6`
+2026-11-08 · 구현·필수 검증 완료 · As-Is 코드 `989a7f6`, 적용 기준 `af4ec23` + F06 작업 트리
 
 [기능 기획](../features/06-react-behavior.md) · [설계 요약](README.md) · [정책](policy.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/06-react-behavior.md)
 
@@ -218,3 +218,19 @@ flowchart TD
 - 검증 범위·절차·통과 기준·실행 결과: [대응 테스트 문서](../tests/06-react-behavior.md).
 - 실패 시 해당 후보 변경을 재설계하며 baseline의 pending guard·cleanup·activation을 보존한다.
 - 상태 소유자와 session 수명은 위 sequence, 입력 수용 조건은 flowchart에서 설명한다. 같은 관계를 반복하는 별도 class 도식은 생략한다.
+
+## 적용 전 호환성 결정
+
+- eslint-plugin-react 7.37.5의 peer 범위는 ESLint 9까지다. ESLint 10을 유지하면서 공식 [compat utilities](https://eslint.org/blog/2024/05/eslint-compatibility-utilities/)의 fixupPluginRules를 사용하고, 이 plugin의 eslint peer만 직접 설치 버전으로 override한다. 이는 maintainer의 ESLint 10 지원 선언을 뜻하지 않으며 선택한 세 규칙의 실제 TSX 실행을 검증한다.
+- rules-of-hooks·exhaustive-deps·set-state-in-render·immutability·purity·globals·static-components는 error, refs·set-state-in-effect는 warn으로 명시한다.
+
+## 실제 적용과 검증 경계
+
+- `GrantEditor`는 `grants·dirty·revoked`를 구독하고 동일값 polling에는 기존 draft·baseline 참조를 재사용한다. connection ID를 key로 사용해 연결 전환 시 초안을 분리한다. 실제 컴포넌트 격리 시험을 위해 named export를 제공한다.
+- `GenericDocumentEditorPage`의 `setSelection·saveUntilClean·updateDocument`와 App의 `load`는 안정 멤버로 분리한다. `useGenericDocumentSession` 저장 단축키는 기존 단일 SaveStateStore도 의존성에 포함한다.
+- `AgentSettingsPage` cleanup은 안정적인 `deactivateRefresh`를 호출한다. 현재 active ref와 sequence를 종료 시점에 변경하므로 오래된 응답을 배제하는 조건은 그대로다. ref 값의 초기 snapshot으로 바꾸지 않았다.
+- drag의 실제 DOM `body.style.userSelect` 변경 두 곳에만 `immutability` 국소 예외를 둔다. 이벤트 시작·종료·unmount가 소유하며 Escape와 unmount 후 복구를 실제 overlay로 검증했다.
+- activation·buffer pending guard·pagination의 cache와 panel cache는 재설계하지 않았다. refs/effect 45경고가 남으며 필수 오류는 0이다. 경고 전체를 해결하기 위한 editor 수명 변경은 범위에서 제외한다.
+- `test/react-behavior.test.ts`는 실제 컴포넌트를 임시 esbuild 번들로 실행한다. session 관측 코드는 번들에만 주입하며 제품 API에 노출하지 않는다. fixture에는 DOM bridge의 최소 구현과 일반 CSS 치수를 제공한다.
+- 초기 시험의 about:blank localStorage 차단·스위치 치수 부재·canvas ref 준비 전 overlay mount 문제는 격리 환경 수정 후 재실행해 해결했다. App의 `library.loading` 오치환은 타입 검사에서 발견해 복구했다. 최종 제품·test 타입 검사, lint, unit, build, Electron E2E는 통과했다.
+- 실제 IME는 첫 제어 시간 초과와 단발 입력 이후, durationMs=80 네이티브 키 누름으로 ㅎ→하→한 등 실제 composition 이벤트를 확인했다. 툴바·대상 전환·추가 입력·저장·재열기까지 통과했다. CDP 결과와 별도 기록한다. 상세 결과와 미완료 경계는 [F06 테스트](../tests/06-react-behavior.md)가 소유한다.

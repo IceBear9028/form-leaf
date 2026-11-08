@@ -1,3 +1,6 @@
+import react from 'eslint-plugin-react';
+import hooks from 'eslint-plugin-react-hooks';
+import { fixupPluginRules } from '@eslint/compat';
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
@@ -23,6 +26,19 @@ export default [
       'boundaries/imports': 'error',
       '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
       '@typescript-eslint/no-misused-promises': 'error',
+    },
+  },
+  {
+    files: ['src/renderer/**/*.{ts,tsx}'],
+    plugins: { react: fixupPluginRules(react), 'react-hooks': hooks },
+    settings: { react: { version: 'detect' } },
+    rules: {
+      'react/jsx-key': 'error',
+      'react/jsx-no-duplicate-props': 'error',
+      'react/no-unknown-property': 'error',
+      ...Object.fromEntries(['rules-of-hooks', 'exhaustive-deps', 'set-state-in-render', 'immutability', 'purity', 'globals', 'static-components'].map(rule => ['react-hooks/' + rule, 'error'])),
+      'react-hooks/refs': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
     },
   },
   {

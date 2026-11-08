@@ -36,13 +36,14 @@ export function AgentSettingsPage({ onBack }: { onBack: () => void }) {
       if (active.current && sequence === refreshSequence.current) { setSettings(next); setDocuments(listed); }
     } catch { if (active.current && sequence === refreshSequence.current) setError("연결 정보를 읽지 못했습니다. 잠시 후 다시 시도하세요."); }
   }, []);
+  const deactivateRefresh = useCallback(() => { active.current = false; ++refreshSequence.current; }, []);
   useEffect(() => {
     active.current = true;
     let pending = false;
     const poll = async () => { if (pending) return; pending = true; try { await refresh(); } finally { pending = false; } };
     runAction((poll())); const interval = setInterval(() => runAction((poll())), 2000);
-    return () => { active.current = false; ++refreshSequence.current; clearInterval(interval); };
-  }, [refresh]);
+    return () => { deactivateRefresh(); clearInterval(interval); };
+  }, [deactivateRefresh, refresh]);
   const selected = settings?.connections.find((connection) => connection.id === selectedId) ?? settings?.connections[0];
   const onDirtyChange = useCallback((value: boolean) => { dirty.current = value; }, []);
   const navigate = (proceed: () => void) => { if (dirty.current) setConfirmation({ kind: "discard", proceed }); else proceed(); };

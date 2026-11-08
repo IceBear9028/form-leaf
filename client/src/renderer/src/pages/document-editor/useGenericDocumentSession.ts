@@ -206,7 +206,7 @@ export function useGenericDocumentSession(
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [saveNow]);
+  }, [saveNow, saveStateStore]);
 
   return useMemo(() => ({
     document,

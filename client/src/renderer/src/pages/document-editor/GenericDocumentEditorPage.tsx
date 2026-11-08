@@ -84,6 +84,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
   onBack: () => Promise<void>;
 }) {
   const session = useGenericDocumentSession(initialDocument, onSummaryChange, initialRevision);
+  const { setSelection, saveUntilClean, updateDocument: changeSessionDocument } = session;
   const deferredMarkdownChange = useSyncExternalStore(subscribeMarkdownEditor, getDeferredMarkdownChange);
   const previewRef = useRef<HTMLDivElement>(null);
   const undoRef = useRef<DocumentData[]>([]);
@@ -145,20 +146,20 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     change: GenericDocumentChange,
     operations?: readonly DocumentUpdateOperation[],
   ) => {
-    session.updateDocument((current) => {
+    changeSessionDocument((current) => {
       const next = typeof change === "function" ? change(current) : change;
       if (next === current) return current;
       pushUndoSnapshot(undoRef.current, current);
       redoRef.current = [];
       return next;
     }, operations);
-  }, [session.updateDocument]);
+  }, [changeSessionDocument]);
 
   const selectAndReveal = useCallback((selection?: DocumentSelection, moveFocus?: boolean) => {
     endMarkdownEditing();
     activeEditTargetRef.current = undefined;
     setActiveEditTarget(undefined);
-    session.setSelection(selection);
+    setSelection(selection);
     if (!selection) {
       setLayerFocusRequest(undefined);
       return;
@@ -171,16 +172,16 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       requestId: layerFocusRequestIdRef.current,
       moveFocus,
     });
-  }, [session.setSelection]);
+  }, [setSelection]);
 
   const selectFromLayer = useCallback((selection?: DocumentSelection) => {
     endMarkdownEditing();
     activeEditTargetRef.current = undefined;
     setActiveEditTarget(undefined);
     setRichTextSelection(undefined);
-    session.setSelection(selection);
+    setSelection(selection);
     if (selection) schedulePreviewFocus(previewRef.current, selection);
-  }, [session.setSelection]);
+  }, [setSelection]);
 
   const clearPreviewSelection = () => {
     selectAndReveal(undefined);
@@ -219,7 +220,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     }
     activeEditTargetRef.current = nextEditTarget;
     setActiveEditTarget(nextEditTarget);
-    session.setSelection(selectDocumentEditTarget(target));
+    setSelection(selectDocumentEditTarget(target));
     setLayerFocusRequest(undefined);
     setRichTextSelection((current) => (
       current && documentEditTargetKey(current.target) === targetKey
@@ -236,7 +237,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       renderId,
       anchorRenderId: nextEditTarget.anchorRenderId,
     });
-  }, [session.setSelection]);
+  }, [setSelection]);
 
   useEffect(() => {
     let pointerOwner: Element | undefined;
@@ -254,7 +255,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
         : node?.dataset.documentNodeId ? selectNode(node.dataset.documentNodeId) : undefined;
       if (nextSelection) pointerOwner = item ?? node ?? undefined;
       endMarkdownEditing();
-      if (nextSelection) session.setSelection(nextSelection);
+      if (nextSelection) setSelection(nextSelection);
       activeEditTargetRef.current = undefined;
       setActiveEditTarget(undefined);
     };
@@ -274,12 +275,12 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       endMarkdownEditing();
       dismissDeferredMarkdownChange();
     };
-  }, [session.setSelection]);
+  }, [setSelection]);
 
   useEffect(() => window.documents.onBeforeClose(async () => {
     endMarkdownEditing();
-    return session.saveUntilClean();
-  }), [session.saveUntilClean]);
+    return saveUntilClean();
+  }), [saveUntilClean]);
 
   const selectFromPreview = useCallback((target: RenderSelectionTarget, event?: Event) => {
     const selection = contentSelectionFromRenderTarget(target);
@@ -358,7 +359,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
         const destination = redo ? undoRef.current : redoRef.current;
         const next = source.pop();
         if (!next) return;
-        session.updateDocument((current) => {
+        changeSessionDocument((current) => {
           pushUndoSnapshot(destination, current);
           return next;
         });
@@ -385,7 +386,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     if (returning) return;
     endMarkdownEditing();
     setReturning(true);
-    if (await session.saveUntilClean()) await onBack();
+    if (await saveUntilClean()) await onBack();
     setReturning(false);
   };
 
@@ -393,7 +394,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
     endMarkdownEditing();
     setExporting(true);
     session.setExportedPath(null);
-    if (!await session.saveUntilClean()) {
+    if (!await saveUntilClean()) {
       setExporting(false);
       return;
     }
@@ -436,7 +437,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
         onCancel={() => setEditingComponentId(undefined)}
         onSave={(document) => {
           updateDocument((current) => applyComponentDocumentDraft(current, editingComponentId, document));
-          session.setSelection(undefined);
+          setSelection(undefined);
           setEditingComponentId(undefined);
         }}
       />

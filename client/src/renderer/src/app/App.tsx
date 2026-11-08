@@ -38,6 +38,7 @@ export function App() {
 function AppContent() {
   const [view, setView] = useState<AppView>({ type: "library" });
   const library = useDocumentLibrary();
+  const { load } = library;
   useEffect(() => window.documents.onEditorRequest(handleEditorRequest), []);
 
   const openDocument = async (id: string) => {
@@ -46,9 +47,9 @@ function AppContent() {
   };
 
   const returnToLibrary = useCallback(async () => {
-    await library.load(false);
+    await load(false);
     setView({ type: "library" });
-  }, [library.load]);
+  }, [load]);
 
   if (library.loading) {
     return <LoadingScreen label="문서 목록을 불러오는 중…" />;
@@ -78,7 +79,7 @@ function AppContent() {
         onRestore={library.restore}
         onPermanentlyDelete={library.permanentlyDelete}
         onOpenRestored={openDocument}
-        onRetry={() => runAction((library.load(false)))}
+        onRetry={() => runAction((load(false)))}
       />
     );
   }
@@ -98,7 +99,7 @@ function AppContent() {
       onDelete={library.moveToTrash}
       onOpenTrash={() => setView({ type: "trash" })}
       onAgentSettings={() => setView({ type: "agents" })}
-      onRetry={() => runAction((library.load()))}
+      onRetry={() => runAction((load()))}
     />
   );
 }

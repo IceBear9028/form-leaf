@@ -184,6 +184,7 @@ export function ComponentDirectManipulationOverlay({
     if (!drag || drag.settling) return;
     event.preventDefault();
     drag.cleanupListeners();
+    // eslint-disable-next-line react-hooks/immutability -- Restore the DOM selection style owned by this drag event, not React state.
     globalThis.document.body.style.userSelect = "";
     setDropIndicator(undefined);
 
@@ -256,6 +257,7 @@ export function ComponentDirectManipulationOverlay({
       window.removeEventListener("keydown", onKeyDown);
     };
     source.style.visibility = "hidden";
+    // eslint-disable-next-line react-hooks/immutability -- Disable native selection during this drag; finish/unmount restores it.
     globalThis.document.body.style.userSelect = "none";
 
     const base = {
