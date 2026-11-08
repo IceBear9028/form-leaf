@@ -110,3 +110,7 @@ classDiagram
 ## 적용 결과
 
 환경별 foundation/main/preload/renderer/tools project와 import 제한을 추가했다. Markdown parser와 호환성 로직은 foundation으로 이동했고 기존 renderer 경로는 재수출로 호출 호환성을 유지한다. Node/DOM 전역을 열지 않고 표준 clone/UUID 기능만 제공하는 foundation/runtime.ts를 추가했다. 경계 규칙은 상대 경로·alias·type import·export-from·dynamic import·require를 검사한다.
+
+## 편집기 연결 후속 수정
+
+- 분리한 leaf project를 root solution references로 연결해 편집기 자동 탐색에도 같은 환경을 적용한다. 공통 baseUrl은 제거하고 paths의 config 기준 상대 해석을 유지한다. 상세 원인·수정·검증은 [F05 후속 설계](05-typescript-tests.md#편집기-프로젝트-연결-누락의-후속-수정-설계)가 소유한다.

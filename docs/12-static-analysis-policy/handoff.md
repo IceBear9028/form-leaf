@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-**F01–F07 구현과 필수 검증을 완료했다. 기능별 코드·테스트·문서 커밋은 [plan](plan.md)에 기록한다.**
+**F01–F07 적용 후 발견한 편집기 프로젝트 연결 누락과 baseUrl 진단도 수정·검증했다. 기능별 코드·테스트·문서 커밋은 [plan](plan.md)에 기록한다.**
 
 - 갱신일: 2026-11-08. 브랜치 `docs/12-static-analysis-policy`.
-- 최초 설계 기준은 `989a7f6`, 문서 선행 커밋은 `b379b3f`다. 최종 구현 커밋은 `41907d8`이며 검증한 `74c05a8` + F07 작업 트리를 포함한다. 기능별 해시는 plan에서 관리한다.
-- 마지막 완료 기능은 F07이다. 구현·검증 결과는 [기능 목록](features/README.md)·[설계 목록](implementation/README.md)·[테스트](tests/README.md)를 따른다.
+- 최초 설계 기준은 `989a7f6`, 문서 선행 커밋은 `b379b3f`다. 초기 구현 완료 커밋은 `41907d8`, 후속 수정 기준은 `dceeffe` + F05 편집기 연결 변경이다. 기능별 해시는 plan에서 관리한다.
+- 마지막 완료 작업은 F05의 편집기 연결 후속 수정이다. 구현·검증 결과는 [기능 목록](features/README.md)·[설계 목록](implementation/README.md)·[테스트](tests/README.md)를 따른다.
 - push·PR·merge는 수행하지 않았다. 실제 사용자 데이터·개인 문서·토큰으로 시험하지 않았다.
 
 ## 구현 결과와 검증
@@ -21,11 +21,11 @@
 | F06 React·초안·IME 수명 | [테스트](tests/06-react-behavior.md) |
 | F07 접근성·Refresh | [테스트](tests/07-accessibility-refresh.md) |
 
-- 최종 G02: 195파일의 lint 적용과 7개 TS project 포함 범위를 대조하고 정책상 옵션·규칙·severity를 확인했다.
-- 최종 G03: check 종료 0·오류 0/경고 69, unit 165개·build·격리 Electron E2E 7개 통과. opt-in 3개는 제외했다.
+- 초기 완료 시점 G02: 195파일의 lint 적용과 7개 TS project 포함 범위를 대조하고 정책상 옵션·규칙·severity를 확인했다.
+- 초기 완료 시점 G03: check 종료 0·오류 0/경고 69, unit 165개·build·격리 Electron E2E 7개 통과. opt-in 3개는 제외했다.
 - native IME는 80ms 네이티브 키 누름으로 실제 조합·Space·툴바·선택 전환·추가 입력·저장·재열기를 별도 검증했다. 최초 도구 시간 초과·단발 입력만 보고 검증 불가로 판단했던 것을 정정했다.
-- 구조 검토: 7개 feature/implementation/tests 대응·34개 시나리오·AC 추적·완료 상태 일치를 확인했다.
-- 문법 검사: 30개 문서·상대 링크 384개·anchor·placeholder·fence·공백 검사를 통과했다. 기존 Mermaid 9개는 변경하지 않았고 도식과 audit 보존 검사를 통과했다.
+- 구조 검토: 7개 feature/implementation/tests 대응·35개 시나리오·AC 추적·완료 상태 일치를 확인했다.
+- 문법 검사: 30개 문서·상대 링크 386개·anchor·placeholder·fence·공백 검사를 통과했다. 기존 Mermaid 9개와 audit을 보존하고 편집기 project 선택 도식 1개를 추가했다. 총 10개의 parse·render를 통과했다.
 
 ## 운영상 한계와 다음 작업
 
@@ -33,7 +33,8 @@
 - 경고 69개는 정책상 유지한다. Hooks refs/effect 수명을 경고 해소만을 위해 재설계하거나 canvas 키 이벤트·혼합 export를 일괄 변경하지 않았다.
 - exactOptionalPropertyTypes의 전역 강화와 skipLibCheck 해제는 범위에 포함하지 않는다.
 - 외부 CLI·부하·개인 문서 opt-in 3개와 최소 Node 버전·보조 기술 전체 조합은 별도 검증하지 않았다.
-- 구현 잔여 작업은 없다. 추가 범위가 정해지면 이 결과와 정책을 기준으로 진행한다.
+- F05 후속 수정 완료: solution project 연결·baseUrl 제거, 두 버전의 실제 tsserver project 선택/진단, TS 6 전체 project 진단, check·166 unit·build·관련 E2E 1개 통과. 기존 완료 보고에서 editor 자동 탐색을 검증하지 않았던 점을 정정한다.
+- 실제 실행 중 VS Code UI의 이전 진단 1개 갱신은 CUA 명령이 반응하지 않아 확인하지 못했다. 새 tsserver의 진단은 0이다. 표시가 남으면 TypeScript 서버 다시 시작 또는 창 다시 로드가 필요하다.
 
 ## 문서 작성 시점의 기록
 

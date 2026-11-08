@@ -77,3 +77,33 @@ unit 30파일과 fixture를 TS로 전환하고 기존 사례 159개의 이름·�
 
 - React session 시험의 inline JS/TSX 문자열도 `test/fixtures/promise-harness.ts`로 옮겨 타입 검사·lint에 포함했다.
 - Playwright는 testInfo를 쓸 때 첫 인자의 object destructuring을 요구하므로 5곳의 빈 fixture 패턴만 사유 있는 no-empty-pattern 예외로 남겼다. Electron 경로 adapter는 import.meta 없이 CJS 수집과 Node ESM 양쪽을 지원한다.
+
+## 편집기 프로젝트 연결 누락의 후속 수정 설계
+
+- 기준 `dceeffe`에서 실제 tsserver를 실행하니 e2e/agent-content.spec.ts와 test/react-behavior.test.ts가 inferred project로 열렸다. CLI의 명시적 -p 검사와 편집기 자동 탐색이 다른 상태였다. agentRoot를 포함한 기존 전역 선언 파일 자체는 존재한다.
+- client/tsconfig.json은 src만 포함하는 혼합 프로젝트였으며 분리한 test/e2e config를 편집기에 알려주지 않았다. 루트를 files=[] + 7개 leaf project references의 solution으로 바꾼다. 제품 파일도 각 환경 config를 선택하도록 한다.
+- VS Code 내장 TS 6.0.3과 workspace TS 5.9.3을 확인했다. 공통 baseUrl은 삭제하고 기존 ./src/renderer/src/* paths를 config 기준 상대 경로로 유지한다. ignoreDeprecations나 전역 Window 선언 확장으로 덮지 않는다.
+- 검증: 실제 tsserver의 projectInfo·semanticDiagnosticsSync·compilerOptionsDiagnostics-full로 E2E/unit·foundation/main/preload/renderer/tools 선택과 진단을 확인한다. 기본 npm suite에 workspace tsserver 회귀를 추가하고 설치된 VS Code 6.0.3으로 별도 검증한다. alias 해석은 기존 check·build로 확인한다.
+- 기존 domain·저장·React 수명 변경은 없다. references는 leaf 간 출력 의존성을 새로 만들지 않는 편집기 탐색용 solution이다. 기존 -p 검사와 noEmit 계약은 유지하며 build mode로 전환하지 않는다.
+
+- 근거: TypeScript의 [solution config 안내](https://www.typescriptlang.org/docs/handbook/project-references)와 [TS 6.0 baseUrl 변경](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html). 실제 protocol 회귀는 test/editor-projects.test.ts·fixtures/tsserver-client.ts가 소유한다.
+
+### 후속 적용 결과
+
+- root solution references와 baseUrl 제거를 적용하고 실제 editor discovery 회귀를 기본 suite에 연결했다. -p 검사·Node 타입 제거·Electron build 계약은 유지했다.
+- workspace/VS Code 두 tsserver의 8개 경로·root config 진단, TS 6의 전체 7 project 진단과 CLI check·166 unit·build·해당 E2E 1개가 통과했다. 기존 화면의 잔여 진단 갱신 한계는 F05 테스트 결과에 명시한다.
+
+### 편집기와 CLI의 project 선택 경로
+
+기존 혼합 root project 대신 동일한 leaf 설정으로 진단을 연결한다. 전역 선언은 선택된 project 안에서만 로드한다.
+
+```mermaid
+flowchart TD
+  E[편집기에서 파일 열기] --> R[루트 solution references 탐색]
+  R -->|파일 소속으로 선택| L[환경별 leaf project]
+  C[CLI의 명시적 -p] -->|명령으로 선택| L
+  L --> O[옵션·파일·전역 선언 로드]
+  O --> D[semantic 검사와 진단]
+```
+
+- root solution은 파일을 직접 혼합하지 않는다. 테스트 전역 선언을 제품 project로 옮기지 않는다. 새 runtime 모듈/클래스 의존성을 만들지 않는 설정 선택 흐름이므로 별도 classDiagram은 추가하지 않는다.

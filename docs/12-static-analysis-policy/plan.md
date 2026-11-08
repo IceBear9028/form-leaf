@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-2026-11-08 · 코드 기준 `989a7f6` · 정책·문서 완료 · 전체 구현·필수 검증 완료
+2026-11-08 · 코드 기준 `989a7f6` · 정책·문서·기능별 적용 완료 · 편집기 진단 후속 수정·검증 완료
 
 [기획](features/README.md) · [설계](implementation/README.md) · [실제 결과](handoff.md)
 
@@ -74,3 +74,11 @@
 - 공통 G02·G03과 기능별 34개 시나리오가 기록된 검증 경계 안에서 통과했다. 결과의 한계는 tests 각 문서가 소유한다.
 - 최종 check·165 unit·build·격리 Electron E2E 7개 통과, opt-in 3개 제외, warning 69개 유지. native IME는 F06에서 별도 통과했다.
 - 기능별 code·feature·implementation·tests 갱신과 커밋 순서를 유지했다. push·PR·merge는 수행하지 않았다.
+
+## 편집기 진단 후속 수정
+
+- 사용자 제보: E2E Window.agentRoot 누락, VS Code TS 6의 baseUrl deprecation.
+- F05 후속 수정 완료: solution config 연결·baseUrl 제거·실제 tsserver 회귀를 추가한다. 기존 완료 보고는 CLI 검증 범위였으며 editor 자동 프로젝트 탐색까지 완료한 것으로 해석한 점을 정정한다.
+
+- 후속 검증: 두 tsserver의 8개 경로, TS 6.0.3 전체 7 project, check·166 unit·build·agent-content E2E 1개 통과. 실행 중 VS Code 화면 갱신 한계는 F05 테스트에 기록했다.
+- 후속 기능 커밋: 기록 예정. 원래 기능 커밋 표와 이 결함 수정 커밋을 구분한다.

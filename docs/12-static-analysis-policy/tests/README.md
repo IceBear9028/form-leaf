@@ -65,3 +65,9 @@
 - [기존 정적 분석](../implementation/audit.md)과 [React 사전 근거](../implementation/06-react-behavior.md)는 당시 조건을 유지하며 구현 후 통과 증거로 사용하지 않는다.
 - 이번 문서 작성의 링크·구조·양식 검사는 [handoff](../handoff.md)에 기록한다.
 - 문서 검사 통과는 위 제품 시나리오의 통과를 뜻하지 않는다.
+
+## 5. 편집기 진단 제보 후의 후속 검증
+
+- 기준 dceeffe + F05 후속 수정: G02 파일 범위 197개(test 포함 45) 재대조와 G03 check·166 unit·build·관련 agent-content E2E 1개 재실행을 통과했다. 원래 G02·G03 행의 195파일·165 unit·E2E 7개는 41907d8 시점 결과다.
+- 실제 tsserver의 자동 project 선택도 검사해야 한다는 누락을 보완했다. workspace 5.9.3·VS Code 6.0.3의 8개 경로와 root config 진단이 0이며 TS 6 전체 7 project 진단도 0이다.
+- 초기 검사 설계/결과 34개 시나리오에 F05-T05를 추가해 현재 35개다. UI 표시의 잔여 캐시와 명령 갱신 한계, 상세 명령·로그는 [F05 후속 결과](05-typescript-tests.md#편집기-진단-후속-실행-결과)를 따른다.

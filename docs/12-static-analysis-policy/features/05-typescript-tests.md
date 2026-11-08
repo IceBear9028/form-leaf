@@ -44,3 +44,8 @@
 ## 적용 결과
 
 unit 30파일과 fixture를 TS로 전환하고 기존 사례 159개의 이름·순서를 보존했다. Node runner·개별 script 목록은 유지한다. test/e2e project는 ES2023 lib·DOM/Node 타입·erasableSyntaxOnly를 적용하며 제품 target은 유지한다. typed lint는 두 project와 Playwright 설정을 포함한다. fixture의 필수 값·node 종류·MCP 응답은 실제 검사 helper로 좁히고 의도적인 invalid input에만 사유 있는 국소 예외를 둔다. Node test 등록 Promise는 top-level await로 처리한다. Electron executable의 런타임 문자열 반환을 별도 adapter에서 확인한다.
+
+## 편집기 진단 후속 보완
+
+- F05-AC2에는 CLI의 명시적 project 검사와 편집기의 자동 프로젝트 선택 일치도 포함한다. 기존 완료 보고에서는 이 탐색 검증을 빠뜨렸다.
+- 전역 선언을 제품 영역으로 옮기거나 오류를 억제하지 않고 root solution에서 기존 test/e2e project를 연결한다. workspace 5.9.3과 VS Code 6.0.3의 실제 tsserver 진단을 함께 확인한다.

@@ -1,17 +1,26 @@
 {
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "types": [
-      "node"
-    ]
-  },
-  "include": [
-    "src",
-    "electron.vite.config.ts"
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.foundation.json"
+    },
+    {
+      "path": "./tsconfig.main.json"
+    },
+    {
+      "path": "./tsconfig.preload.json"
+    },
+    {
+      "path": "./tsconfig.renderer.json"
+    },
+    {
+      "path": "./tsconfig.tools.json"
+    },
+    {
+      "path": "./tsconfig.test.json"
+    },
+    {
+      "path": "./tsconfig.e2e.json"
+    }
   ]
 }
