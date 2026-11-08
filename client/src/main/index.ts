@@ -96,29 +96,29 @@ function createWindow(): void {
     });
   }
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^(https?:|mailto:)/.test(url)) void shell.openExternal(url);
+    if (/^(https?:|mailto:)/.test(url)) shell.openExternal(url).catch((error: unknown) => console.error("External URL failed", error));
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (event, url) => {
     const currentUrl = mainWindow?.webContents.getURL();
     if (url === currentUrl) return;
     event.preventDefault();
-    if (/^(https?:|mailto:)/.test(url)) void shell.openExternal(url);
+    if (/^(https?:|mailto:)/.test(url)) shell.openExternal(url).catch((error: unknown) => console.error("External URL failed", error));
   });
 
   if (process.env.ELECTRON_RENDERER_URL) {
     const rendererUrl = new URL(process.env.ELECTRON_RENDERER_URL);
     if (interactionDebugEnabled) rendererUrl.searchParams.set("interactionDebug", "1");
     if (editorOwnershipSpikeEnabled) rendererUrl.searchParams.set("editorOwnershipSpike", "1");
-    void mainWindow.loadURL(rendererUrl.toString());
+    mainWindow.loadURL(rendererUrl.toString()).catch((error: unknown) => { console.error("Renderer load failed", error); app.quit(); });
   } else {
     const query = {
       ...(interactionDebugEnabled ? { interactionDebug: "1" } : {}),
       ...(editorOwnershipSpikeEnabled ? { editorOwnershipSpike: "1" } : {}),
     };
-    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"), {
+    mainWindow.loadFile(join(__dirname, "../renderer/index.html"), {
       query: Object.keys(query).length ? query : undefined,
-    });
+    }).catch((error: unknown) => { console.error("Renderer load failed", error); app.quit(); });
   }
 }
 
@@ -141,8 +141,8 @@ app.whenReady().then(() => {
     documentsDirectory: app.getPath("documents"),
     getMainWindow: () => mainWindow,
   });
-  void policy.initialize().then(() => service.initialize()).then(() => outputs.initialize()).then(async () => {
-    const cleanup = setInterval(() => { void artifacts.cleanup().catch(() => undefined); }, 60 * 60_000);
+  policy.initialize().then(() => service.initialize()).then(() => outputs.initialize()).then(async () => {
+    const cleanup = setInterval(() => { artifacts.cleanup().catch((error: unknown) => console.error("Artifact cleanup failed", error)); }, 60 * 60_000);
     cleanup.unref();
     if (policy.settings().enabled) await agentServer.start().catch(() => policy.setEnabled(false));
     createWindow();
@@ -154,7 +154,7 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-});
+}).catch((error: unknown) => { console.error("Formleaf startup failed", error); app.quit(); });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

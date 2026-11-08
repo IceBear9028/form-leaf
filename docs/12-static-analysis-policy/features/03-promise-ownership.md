@@ -1,6 +1,6 @@
 # F03. Promise 완료와 실패 책임
 
-2026-11-08 · 기획 확정 · 구현 대기 · 코드 기준 `989a7f6`
+2026-11-08 · 기획 확정 · 구현·검증 완료 · 코드 기준 `989a7f6`
 
 [기능 목록](README.md) · [대응 구현 설계](../implementation/03-promise-ownership.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/03-promise-ownership.md)
 
@@ -40,3 +40,7 @@
 
 - 영향 파일은 [구현 설계](../implementation/03-promise-ownership.md), 테스트 절차·통과 기준·실행 결과는 [테스트 문서](../tests/03-promise-ownership.md)가 소유한다.
 - 기능 상태·커밋은 [계획](../plan.md), 결과 요약·재개 지점은 [인수인계](../handoff.md)에 기록한다.
+
+## 적용 결과
+
+두 Promise 규칙을 error로 활성화했다. UI 분리 실행은 runAction에서 rejection을 받아 오류 toast·진단을 남기며, 저장 timer/단축키는 기존 save-state store에서 dirty·error 상태를 보존한다. 저장 후 닫기·내보내기·화면 복귀의 완료 대기와 boolean 검사는 유지했다. main의 외부 URL·창 로딩·초기화·background output·HTTP 정리에는 작업별 실패 경계를 추가했다.

@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import {
   memo,
   useLayoutEffect,
@@ -167,7 +168,7 @@ export const PaginatedDocumentRenderer = memo(function PaginatedDocumentRenderer
       measure(true);
     });
     const initialFrame = requestAnimationFrame(() => measure(false));
-    if (globalThis.document.fonts.status !== "loaded") void documentFontsReady().then(scheduleAll);
+    if (globalThis.document.fonts.status !== "loaded") runAction((documentFontsReady().then(scheduleAll)));
     const observer = new ResizeObserver(scheduleIfBoundsChanged);
     if (measureContentRef.current) {
       observer.observe(measureContentRef.current);

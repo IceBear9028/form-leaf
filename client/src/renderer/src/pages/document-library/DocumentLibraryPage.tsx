@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { useState } from "react";
 import {
   ArrowLeftIcon,
@@ -191,7 +192,7 @@ export function DocumentLibraryPage({
                       variant="ghost"
                       className="-m-2 h-auto flex-1 flex-col items-start whitespace-normal p-2 text-left"
                       disabled={Boolean(busyId)}
-                      onClick={() => void onOpen(document.id)}
+                      onClick={() => runAction((onOpen(document.id)))}
                     >
                       <CardTitle className="line-clamp-2">{document.name}</CardTitle>
                       <CardDescription className="mt-1.5">로컬 문서</CardDescription>
@@ -227,7 +228,7 @@ export function DocumentLibraryPage({
               value={renameValue}
               onChange={(event) => setRenameValue(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter") void submitRename();
+                if (event.key === "Enter") runAction((submitRename()));
               }}
             />
           </Field>
@@ -235,7 +236,7 @@ export function DocumentLibraryPage({
             <Button variant="outline" disabled={submitting} onClick={() => setRenameTarget(undefined)}>
               취소
             </Button>
-            <Button disabled={submitting} onClick={() => void submitRename()}>
+            <Button disabled={submitting} onClick={() => runAction((submitRename()))}>
               {submitting && <Spinner />} {submitting ? "변경 중…" : "변경"}
             </Button>
           </DialogFooter>
@@ -259,7 +260,7 @@ export function DocumentLibraryPage({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>취소</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" disabled={submitting} onClick={() => void submitDelete()}>
+            <AlertDialogAction variant="destructive" disabled={submitting} onClick={() => runAction((submitDelete()))}>
               {submitting && <Spinner />} {submitting ? "삭제 중…" : "휴지통으로 이동"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -301,7 +302,7 @@ export function DocumentTrashPage({
       description: "문서 목록으로 복원했습니다.",
       actionProps: {
         children: "바로 열기",
-        onClick: () => void onOpenRestored(document.id),
+        onClick: () => runAction((onOpenRestored(document.id))),
       },
     });
   };
@@ -354,7 +355,7 @@ export function DocumentTrashPage({
                       </CardDescription>
                     </div>
                     <div className="flex flex-none gap-2">
-                      <Button variant="outline" disabled={Boolean(busyId)} onClick={() => void restore(document)}>
+                      <Button variant="outline" disabled={Boolean(busyId)} onClick={() => runAction((restore(document)))}>
                         <RotateCcwIcon aria-hidden="true" /> 복원
                       </Button>
                       <Button variant="destructive" disabled={Boolean(busyId)} onClick={() => setDeleteTarget(document)}>
@@ -387,7 +388,7 @@ export function DocumentTrashPage({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>취소</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" disabled={deleting} onClick={() => void permanentlyDelete()}>
+            <AlertDialogAction variant="destructive" disabled={deleting} onClick={() => runAction((permanentlyDelete()))}>
               {deleting && <Spinner />} {deleting ? "삭제 중…" : "완전 삭제"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -429,7 +430,7 @@ function LibraryHeader({
           <Trash2Icon aria-hidden="true" /> 휴지통
           {deletedCount > 0 && <Badge variant="secondary">{deletedCount}</Badge>}
         </Button>
-        <Button disabled={creating} onClick={() => void onCreate()}>
+        <Button disabled={creating} onClick={() => runAction((onCreate()))}>
           {creating ? <Spinner /> : <PlusIcon aria-hidden="true" />}
           {creating ? "만드는 중…" : "새 문서"}
         </Button>
@@ -447,7 +448,7 @@ function EmptyLibrary({ onCreate, creating }: { onCreate: () => Promise<void>; c
         <EmptyDescription>첫 문서를 만들고 내용을 작성해 보세요.</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button disabled={creating} onClick={() => void onCreate()}>
+        <Button disabled={creating} onClick={() => runAction((onCreate()))}>
           {creating ? <Spinner /> : <PlusIcon aria-hidden="true" />}
           {creating ? "만드는 중…" : "첫 문서 만들기"}
         </Button>

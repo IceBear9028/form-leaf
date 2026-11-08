@@ -1,3 +1,4 @@
+import tseslint from 'typescript-eslint';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
@@ -7,7 +8,7 @@ const filePath = 'src/foundation/analysis-fixture.ts';
 const eslint = new ESLint({ overrideConfig: [{
   files: ['src/**/*.ts'],
   languageOptions: { parserOptions: { project: false, programs: null } },
-  rules: { 'no-debugger': 'error', 'no-console': 'warn' },
+  rules: { ...tseslint.configs.disableTypeChecked.rules, 'no-debugger': 'error', 'no-console': 'warn' },
 }] });
 
 test('lint severity distinguishes clean, warnings, errors and unused exceptions', async () => {

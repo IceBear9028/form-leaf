@@ -120,7 +120,7 @@ export function useGenericDocumentSession(
     saveStateStore.set({ type: "dirty" });
     if (!onSummaryChange) return;
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = window.setTimeout(() => void saveNow(), 650);
+    saveTimerRef.current = window.setTimeout(() => saveNow().catch((error: unknown) => { dirtyRef.current = true; saveStateStore.set({ type: "error", message: errorMessage(error) }); }), 650);
   }, [onSummaryChange, saveNow, saveStateStore]);
 
   selectionRef.current = selection;
@@ -201,7 +201,7 @@ export function useGenericDocumentSession(
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        void saveNow();
+        saveNow().catch((error: unknown) => { dirtyRef.current = true; saveStateStore.set({ type: "error", message: errorMessage(error) }); });
       }
     };
     window.addEventListener("keydown", onKeyDown);

@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { useCallback, useEffect, useState } from "react";
 import type { SavedDocument } from "../../../../foundation/documentSessionProtocol.ts";
 import {
@@ -34,10 +35,10 @@ export function useDocumentLibrary() {
   }, []);
 
   useEffect(() => {
-    void load();
+    runAction((load()));
   }, [load]);
 
-  useEffect(() => window.documents.onLibraryChange(() => { void load(false); }), [load]);
+  useEffect(() => window.documents.onLibraryChange(() => { runAction((load(false))); }), [load]);
 
   const create = async (): Promise<SavedDocument | undefined> => {
     if (busyId) return undefined;

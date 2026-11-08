@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import type { DocumentData } from "../../../../foundation/documentModel.ts";
 import { findNodeParentId, moveNode, updateNodeStyle } from "../../../../foundation/documentTransactions.ts";
@@ -340,7 +341,7 @@ export function ComponentDirectManipulationOverlay({
         easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
         fill: "forwards",
       });
-      void animation.finished.catch(() => undefined).finally(() => cleanupDrag(drag));
+      runAction((animation.finished.catch(() => undefined).finally(() => cleanupDrag(drag))));
     }));
   };
 

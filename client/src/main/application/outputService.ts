@@ -58,7 +58,7 @@ export class OutputService {
     if (response.status === "completed") return { requestId: input.requestId, status: "completed" as const, ...response.result };
     if (response.status === "failed") throw new CommandFailure(response.error?.code ?? "RENDER_FAILED", response.error?.message ?? "출력에 실패했습니다.");
     if (response.status === "recovery_required") failure("OPERATION_RECOVERY_REQUIRED", "이전 출력 결과를 먼저 확인하세요.");
-    if (!prepared.duplicate) void this.run(prepared.entry);
+    if (!prepared.duplicate) this.run(prepared.entry).catch((error: unknown) => console.error("Output job finalization failed", error));
     return { requestId: input.requestId, status: "pending" as const };
   }
   private async run(entry: JournalEntry): Promise<void> {

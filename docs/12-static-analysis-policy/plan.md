@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-2026-11-08 · 코드 기준 `989a7f6` · 정책·문서 완료 · F02 완료 · F03 대기
+2026-11-08 · 코드 기준 `989a7f6` · 정책·문서 완료 · F03 완료 · F04 대기
 
 [기획](features/README.md) · [설계](implementation/README.md) · [실제 결과](handoff.md)
 
 - 브랜치: `docs/12-static-analysis-policy`.
 - 문서 선행 커밋: `b379b3f`. 사용자 요청에 따라 기능별 구현·검증·문서 갱신·커밋을 진행한다.
-- F01 구현·필수 검증·문서 갱신 완료. F02부터 순서대로 진행한다.
+- F01·F02 완료 커밋 후 F03 완료 · F04 대기이다. 이후 기능은 대기한다.
 
 ## 기능별 의존 순서·상태·커밋
 
@@ -17,8 +17,8 @@
 | 기능·기획 | 대응 구현 설계 | 테스트 계획·결과 | 선행 | 상태 | 완료 커밋 |
 |---|---|---|---|---|---|
 | F01 [검사 기반](features/01-analysis-tooling.md) | [01-analysis-tooling](implementation/01-analysis-tooling.md) | [테스트](tests/01-analysis-tooling.md) | 확정 정책 | 완료 | `a567664` |
-| F02 [환경·레이어 경계](features/02-runtime-boundaries.md) | [02-runtime-boundaries](implementation/02-runtime-boundaries.md) | [테스트](tests/02-runtime-boundaries.md) | F01 | 완료 | 이 커밋 |
-| F03 [Promise 책임](features/03-promise-ownership.md) | [03-promise-ownership](implementation/03-promise-ownership.md) | [테스트](tests/03-promise-ownership.md) | F02 | 대기 | 없음 |
+| F02 [환경·레이어 경계](features/02-runtime-boundaries.md) | [02-runtime-boundaries](implementation/02-runtime-boundaries.md) | [테스트](tests/02-runtime-boundaries.md) | F01 | 완료 | `6214fac` |
+| F03 [Promise 책임](features/03-promise-ownership.md) | [03-promise-ownership](implementation/03-promise-ownership.md) | [테스트](tests/03-promise-ownership.md) | F02 | 완료 | 이 커밋 |
 | F04 [타입 안전성](features/04-type-safety.md) | [04-type-safety](implementation/04-type-safety.md) | [테스트](tests/04-type-safety.md) | F03 | 대기 | 없음 |
 | F05 [테스트 TS 전환](features/05-typescript-tests.md) | [05-typescript-tests](implementation/05-typescript-tests.md) | [테스트](tests/05-typescript-tests.md) | F04 | 대기 | 없음 |
 | F06 [React 동작 보존](features/06-react-behavior.md) | [06-react-behavior](implementation/06-react-behavior.md) | [테스트](tests/06-react-behavior.md) | F05 | 대기 | 없음 |

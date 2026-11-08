@@ -1,9 +1,10 @@
+import tseslint from 'typescript-eslint';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ESLint } from 'eslint';
 import { spawnSync } from 'node:child_process';
 import { writeFileSync, unlinkSync } from 'node:fs';
-const lint = new ESLint({ overrideConfig: [{ files: ['src/**/*.{ts,tsx}'], languageOptions: { parserOptions: { project: false } } }] });
+const lint = new ESLint({ overrideConfig: [{ files: ['src/**/*.{ts,tsx}'], languageOptions: { parserOptions: { project: false } }, rules: tseslint.configs.disableTypeChecked.rules }] });
 test('layer boundaries reject relative, alias, type, re-export and dynamic edges', async () => {
   for (const [filePath, source, rejected] of [
     ['src/main/probe.ts', 'import "../renderer/src/pages/x.ts"', true],

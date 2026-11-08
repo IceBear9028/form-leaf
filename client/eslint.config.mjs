@@ -14,7 +14,11 @@ export default [
       parserOptions: { project: ['./tsconfig.foundation.json', './tsconfig.main.json', './tsconfig.preload.json', './tsconfig.renderer.json', './tsconfig.tools.json'], tsconfigRootDir: import.meta.dirname },
     },
     plugins: { '@typescript-eslint': tseslint.plugin, boundaries },
-    rules: { 'boundaries/imports': 'error' },
+    rules: {
+      'boundaries/imports': 'error',
+      '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
+      '@typescript-eslint/no-misused-promises': 'error',
+    },
   },
   {
     files: ['scripts/**/*.mjs', 'eslint.config.mjs'],

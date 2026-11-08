@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeftIcon, CheckIcon, FileDownIcon, MinusIcon, PlusIcon, SaveIcon, XIcon } from "lucide-react";
 import type { DocumentData, RichTextMark, RichTextValue } from "../../../../foundation/documentModel.ts";
@@ -412,7 +413,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
           description: result.filePath,
           actionProps: {
             children: "Finder에서 보기",
-            onClick: () => void window.documents.showInFolder(result.filePath),
+            onClick: () => runAction((window.documents.showInFolder(result.filePath))),
           },
         });
       }
@@ -454,13 +455,13 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
       </div>}
       <header className="app-toolbar relative z-20 grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center gap-5 border-b border-border bg-background px-5 [-webkit-app-region:drag]">
         <div className="flex min-w-0 items-center gap-3">
-          <Button type="button" variant="outline" disabled={returning} className="[-webkit-app-region:no-drag]" onClick={() => void returnToLibrary()}>
+          <Button type="button" variant="outline" disabled={returning} className="[-webkit-app-region:no-drag]" onClick={() => runAction((returnToLibrary()))}>
             {returning ? <Spinner /> : <ArrowLeftIcon aria-hidden="true" />}
             {returning ? "저장 중…" : "문서 목록"}
           </Button>
           <strong className="truncate text-sm font-medium">{session.document.name || "제목 없는 문서"}</strong>
         </div>
-        <SaveIndicator store={session.saveStateStore} onRetry={() => void session.saveNow()} />
+        <SaveIndicator store={session.saveStateStore} onRetry={() => runAction((session.saveNow()))} />
         <div className="flex items-center justify-self-end gap-3 [-webkit-app-region:no-drag]">
           <ButtonGroup aria-label="미리보기 배율">
             <Tooltip>
@@ -501,7 +502,7 @@ export const GenericDocumentEditorPage = memo(function GenericDocumentEditorPage
               <TooltipContent>확대</TooltipContent>
             </Tooltip>
           </ButtonGroup>
-          <Button type="button" disabled={exporting} onClick={() => void exportPdf()}>
+          <Button type="button" disabled={exporting} onClick={() => runAction((exportPdf()))}>
             {exporting ? <Spinner /> : <FileDownIcon aria-hidden="true" />}
             {exporting ? "PDF 준비 중…" : "PDF 내보내기"}
           </Button>

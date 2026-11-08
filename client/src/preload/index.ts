@@ -15,10 +15,10 @@ const api: DocumentApi = {
   agentSetGrants: (id, grants) => ipcRenderer.invoke(IPC.agentSetGrants, id, grants),
   agentRevoke: (id) => ipcRenderer.invoke(IPC.agentRevoke, id),
   onBeforeClose: (handler) => {
-    const listener = () => { void handler().then(
+    const listener = () => { handler().then(
       (saved) => ipcRenderer.send(IPC.completeClose, saved),
       () => ipcRenderer.send(IPC.completeClose, false),
-    ); };
+    ).catch((error: unknown) => console.error("Close response delivery failed", error)); };
     ipcRenderer.on(IPC.requestClose, listener);
     ipcRenderer.send(IPC.closeGuard, true);
     return () => {

@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { useEffect, useState } from "react";
 import type { AgentConnection, AgentGrants, AgentSettings } from "../../../../foundation/agentConnection.ts";
 import type { DocumentSummary } from "../../../../foundation/documentLibrary.ts";
@@ -55,6 +56,6 @@ function GrantEditor({ connection, documents, busy, onSave, onDirtyChange }: {
       {stale && dirty && <Alert><AlertDescription>서버의 권한이 변경됐습니다. 최신 권한을 불러온 뒤 다시 편집해 주세요.</AlertDescription><Button variant="outline" size="sm" onClick={reset}>최신 권한 불러오기</Button></Alert>}
       <AgentGrantFields value={draft} onChange={setDraft} documents={documents} disabled={busy || connection.revoked} />
     </CardContent>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-4"><p className="m-0 text-xs text-muted-foreground">{dirty ? "저장하지 않은 변경사항이 있습니다." : "저장된 권한입니다."}</p><div className="flex gap-2">{dirty && <Button variant="ghost" disabled={busy} onClick={reset}>변경 취소</Button>}<Button disabled={busy || connection.revoked || !dirty || stale} onClick={() => void onSave(draft).then((saved) => { if (saved) { setBaseline(draft); onDirtyChange(false); } })}>권한 저장</Button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-4"><p className="m-0 text-xs text-muted-foreground">{dirty ? "저장하지 않은 변경사항이 있습니다." : "저장된 권한입니다."}</p><div className="flex gap-2">{dirty && <Button variant="ghost" disabled={busy} onClick={reset}>변경 취소</Button>}<Button disabled={busy || connection.revoked || !dirty || stale} onClick={() => runAction((onSave(draft).then((saved) => { if (saved) { setBaseline(draft); onDirtyChange(false); } })))}>권한 저장</Button></div></div>
   </div>;
 }

@@ -1,6 +1,6 @@
 # F03. Promise 완료와 실패 책임 구현 설계
 
-2026-11-08 · 설계 확정·구현 대기 · As-Is 코드 `989a7f6`
+2026-11-08 · 설계 확정·구현·검증 완료 · As-Is 코드 `989a7f6`
 
 [기능 기획](../features/03-promise-ownership.md) · [설계 요약](README.md) · [정책](policy.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/03-promise-ownership.md)
 
@@ -101,3 +101,13 @@ sequenceDiagram
 - 분리 실행은 처리되지 않은 rejection이 없고 필요한 UI 오류가 표시되는지 확인한다.
 - 호출 책임과 완료 순서는 위 sequence에서 설명한다. 별도 class 도식은 이 기능에 필요한 추가 의존 관계를 설명하지 않아 생략한다.
 - 실패 시 해당 호출 수정만 재검토하고 기존 saveUntilClean 계약을 유지한다.
+
+## 적용 설계 보완
+
+- 기존 저장·닫기·export의 await와 boolean 성공 검사는 유지한다.
+- UI 이벤트·timer·poll의 분리 호출은 마지막 catch에서 공통 `reportActionError`로 예상 밖 rejection을 표시한다. 기존 함수의 지역 오류 상태·busy·dirty 처리를 우선 유지하며, 이 경계는 완료 순서를 보장하는 대체 수단이 아니다.
+- main의 외부 URL·창 로딩·서버·출력 background 작업은 각각 로그/종료/응답 정리 경계에서 실패를 처리한다. 기존 빈 cleanup catch도 진단 가능하게 바꾼다.
+
+## 적용 결과
+
+두 Promise 규칙을 error로 활성화했다. UI 분리 실행은 runAction에서 rejection을 받아 오류 toast·진단을 남기며, 저장 timer/단축키는 기존 save-state store에서 dirty·error 상태를 보존한다. 저장 후 닫기·내보내기·화면 복귀의 완료 대기와 boolean 검사는 유지했다. main의 외부 URL·창 로딩·초기화·background output·HTTP 정리에는 작업별 실패 경계를 추가했다.

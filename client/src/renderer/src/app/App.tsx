@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { AgentRenderPage } from "../pages/agent-render/AgentRenderPage.tsx";
 import { AgentSettingsPage } from "../pages/agent-settings/AgentSettingsPage.tsx";
 import { handleEditorRequest } from "../pages/document-editor/agentEditorBridge.ts";
@@ -77,7 +78,7 @@ function AppContent() {
         onRestore={library.restore}
         onPermanentlyDelete={library.permanentlyDelete}
         onOpenRestored={openDocument}
-        onRetry={() => void library.load(false)}
+        onRetry={() => runAction((library.load(false)))}
       />
     );
   }
@@ -97,7 +98,7 @@ function AppContent() {
       onDelete={library.moveToTrash}
       onOpenTrash={() => setView({ type: "trash" })}
       onAgentSettings={() => setView({ type: "agents" })}
-      onRetry={() => void library.load()}
+      onRetry={() => runAction((library.load()))}
     />
   );
 }

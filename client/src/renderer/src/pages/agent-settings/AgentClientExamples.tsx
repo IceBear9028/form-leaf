@@ -1,3 +1,4 @@
+import { runAction } from "@/shared/lib/async-errors";
 import { useState } from "react";
 import { CopyIcon } from "lucide-react";
 import type { AgentClientType } from "../../../../foundation/agentConnection.ts";
@@ -34,5 +35,5 @@ export function AgentClientExamples({ endpoint, clientType = "other" }: { endpoi
   </div>;
 }
 function CodeBlock({ text, label }: { text: string; label: string }) {
-  return <div className="min-w-0 rounded-lg border border-border bg-muted/40"><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-relaxed">{text}</pre><div className="flex justify-end border-t border-border px-2 py-1"><Button variant="ghost" size="sm" onClick={() => void copyAgentText(text, "복사했습니다.")}><CopyIcon aria-hidden="true" />{label}</Button></div></div>;
+  return <div className="min-w-0 rounded-lg border border-border bg-muted/40"><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-relaxed">{text}</pre><div className="flex justify-end border-t border-border px-2 py-1"><Button variant="ghost" size="sm" onClick={() => runAction((copyAgentText(text, "복사했습니다.")))}><CopyIcon aria-hidden="true" />{label}</Button></div></div>;
 }
