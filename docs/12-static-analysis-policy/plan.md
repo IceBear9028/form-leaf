@@ -81,4 +81,4 @@
 - F05 후속 수정 완료: solution config 연결·baseUrl 제거·실제 tsserver 회귀를 추가한다. 기존 완료 보고는 CLI 검증 범위였으며 editor 자동 프로젝트 탐색까지 완료한 것으로 해석한 점을 정정한다.
 
 - 후속 검증: 두 tsserver의 8개 경로, TS 6.0.3 전체 7 project, check·166 unit·build·agent-content E2E 1개 통과. 실행 중 VS Code 화면 갱신 한계는 F05 테스트에 기록했다.
-- 후속 기능 커밋: 기록 예정. 원래 기능 커밋 표와 이 결함 수정 커밋을 구분한다.
+- 후속 기능 커밋: `c76cde3`. 원래 기능 커밋 표와 이 결함 수정 커밋을 구분한다.
