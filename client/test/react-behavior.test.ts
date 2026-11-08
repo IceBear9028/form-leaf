@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { build } from 'esbuild';
-import { chromium, type Page } from '@playwright/test';
+import { chromium, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { ESLint } from 'eslint';
@@ -47,7 +47,7 @@ await test('grants, session lifetime, composition, pending buffer and drag prese
     await grants.getByText('서버의 권한이 변경됐습니다.', { exact: false }).waitFor();
     assert.equal(await render.getAttribute('aria-checked'), 'false');
     await write.click(); await grants.waitForFunction(() => !window.grantDirty);
-    assert.equal(await render.getAttribute('aria-checked'), 'true');
+    await expect(render).toHaveAttribute('aria-checked', 'true');
     await grants.evaluate(() => window.patchGrants({ render: true }));
     assert.equal(await grants.getByRole('button', { name: '권한 저장', exact: true }).isDisabled(), true);
     await write.click(); await grants.evaluate(() => window.patchGrants({ libraryRead: true }));

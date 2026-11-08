@@ -1,6 +1,6 @@
 # 정적 분석 정책 전체 기획
 
-2026-11-08 · 정책 확정 · 코드 기준 `989a7f6` · 기능별 적용 진행
+2026-11-08 · 정책 확정 · 코드 기준 `989a7f6` · F01–F07 적용·필수 검증 완료
 
 [작업 안내](../README.md) · [구현 설계](../implementation/README.md) · [계획](../plan.md) · [인수인계](../handoff.md)
 
@@ -49,7 +49,7 @@
 - 보존: 저장 성공 확인, 실패 시 초안 유지, editor 수명, IME DOM 소유권, 입력 buffer와 pagination.
 - 제외: 전역 `exactOptionalPropertyTypes`, 선언 파일 전체 검사 강화, 스타일 선호 강제.
 - 제외: 테스트 프레임워크 교체, 문서 schema 변경, 사용자 데이터 migration.
-- 이번 요청 범위: 브랜치를 만들고 docs 작성까지 진행한다.
+- 요청 범위: 작업 브랜치의 docs를 먼저 커밋하고, 기능별 구현·테스트·문서 갱신·커밋까지 순서대로 진행했다.
 - 정책 상세와 예외의 단일 원본은 [policy.md](../implementation/policy.md)다.
 
 ## 4. 대안과 선택

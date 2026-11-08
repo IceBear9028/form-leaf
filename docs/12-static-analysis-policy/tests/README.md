@@ -1,6 +1,6 @@
 # 테스트 계획과 실행 결과
 
-2026-11-08 · 기능별 구현·검증 진행
+2026-11-08 · 전체 기능·최종 통합 검증 완료
 
 [작업 안내](../README.md) · [기능 목록](../features/README.md) · [설계 목록](../implementation/README.md) · [계획](../plan.md) · [인수인계](../handoff.md)
 
@@ -49,7 +49,16 @@
 
 | 대상 | 상태 | 실행일·대상 코드·환경·명령 | 관찰 결과·근거 | 다음 행동 |
 |---|---|---|---|---|
-| G02·G03 | 미실행 | 실행 기록 없음 | 제품 구현 전 | F07 완료 검증 시 수행 |
+| G02 | 통과 | 2026-11-08, `74c05a8` + F07 작업 트리, config audit | TS/TSX·JS 도구 195파일 모두 lint 대상이며 TS 파일은 7개 project 중 하나 이상에 포함. Promise·Hooks·a11y·Refresh severity와 엄격 옵션 일치 | 없음 |
+| G03 | 통과 | 같은 작업 트리, `npm run check`, `npm test`, `npm run build`, `npx playwright test` | check 종료 0·오류 0/경고 69, unit 165개, build, E2E 7 passed/3 skipped | opt-in 외부 CLI·부하·개인 문서 시험은 미실행 |
+
+- 환경: macOS 26.6.2, Node 26.7.0, npm 11.19.0, TypeScript 5.9.3, ESLint 10.14.0, typescript-eslint 8.72.1. React plugin 7.37.5·Hooks 7.1.1·jsx-a11y 6.10.2·Refresh 0.5.7·compat 2.1.1을 사용했다.
+- 제품/브라우저 검증 버전: React 19.3.0, Electron 44.5.1, Playwright 1.64.1, Google Chrome 156.0.8078.80.
+- project 포함 건수: foundation 23·main 38·preload 2·renderer 76·tools 1·test 43·e2e 14. 공통 선언이 중복 포함되므로 합계는 서로 다른 파일 수가 아니다. JS 도구도 lint 목록에 대조했다.
+- `exactOptionalPropertyTypes`는 전역 활성화하지 않았고 `skipLibCheck=true`를 유지했다. 테스트/E2E는 erasableSyntaxOnly, Promise는 ignoreVoid=false, 미사용 disable은 error다.
+- audit 원시 결과: `/tmp/formleaf-f07-config-audit.json`; 실행 스크립트 `/tmp/formleaf-f07-config-audit.mjs`.
+- 세부 제품/명령 로그는 `/tmp/formleaf-f07-{final-check,test,build,e2e}.log`이며 저장소에는 결과 요약과 지속 가능한 회귀 테스트를 남긴다.
+- native IME는 [F06](06-react-behavior.md)의 네이티브 키 입력 결과를 사용한다. 자동 CDP와 실제 입력기를 혼동하지 않는다. 최소 Node 버전과 모든 보조 기술 조합의 별도 검증은 수행하지 않았다.
 
 ## 4. 사전 분석과 문서 검사
 

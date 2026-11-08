@@ -1,3 +1,5 @@
+import a11y from 'eslint-plugin-jsx-a11y';
+import { reactRefresh } from 'eslint-plugin-react-refresh';
 import react from 'eslint-plugin-react';
 import hooks from 'eslint-plugin-react-hooks';
 import { fixupPluginRules } from '@eslint/compat';
@@ -39,6 +41,16 @@ export default [
       ...Object.fromEntries(['rules-of-hooks', 'exhaustive-deps', 'set-state-in-render', 'immutability', 'purity', 'globals', 'static-components'].map(rule => ['react-hooks/' + rule, 'error'])),
       'react-hooks/refs': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
+    },
+  },
+  {
+    files: ['src/renderer/**/*.{ts,tsx}'],
+    plugins: { 'jsx-a11y': fixupPluginRules(a11y), 'react-refresh': reactRefresh.plugin },
+    rules: {
+      ...Object.fromEntries(['alt-text', 'label-has-associated-control', 'aria-props', 'aria-proptypes', 'role-has-required-aria-props'].map(rule => ['jsx-a11y/' + rule, 'error'])),
+      'jsx-a11y/label-has-associated-control': ['error', { labelComponents: ['Label', 'FieldLabel'], controlComponents: ['Input', 'Switch', 'SelectControl'], assert: 'either', depth: 3 }],
+      ...Object.fromEntries(['click-events-have-key-events', 'interactive-supports-focus', 'no-static-element-interactions', 'no-autofocus'].map(rule => ['jsx-a11y/' + rule, 'warn'])),
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
   {

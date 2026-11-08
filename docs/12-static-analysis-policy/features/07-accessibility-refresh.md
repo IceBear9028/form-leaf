@@ -1,6 +1,6 @@
 # F07. 접근성과 Fast Refresh 검사
 
-2026-11-08 · 기획 확정 · 구현 대기 · 코드 기준 `989a7f6`
+2026-11-08 · 구현·필수 검증 완료 · 적용 기준 `74c05a8` + F07 작업 트리
 
 [기능 목록](README.md) · [대응 구현 설계](../implementation/07-accessibility-refresh.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/07-accessibility-refresh.md)
 
@@ -40,3 +40,7 @@
 
 - 영향 파일은 [구현 설계](../implementation/07-accessibility-refresh.md), 테스트 절차·통과 기준·실행 결과는 [테스트 문서](../tests/07-accessibility-refresh.md)가 소유한다.
 - 기능 상태·커밋은 [계획](../plan.md), 결과 요약·재개 지점은 [인수인계](../handoff.md)에 기록한다.
+
+## 적용 결과
+
+접근성 필수 5개 규칙을 error, focus·interaction 4개와 Refresh를 warn으로 적용했다. Label·FieldLabel은 htmlFor 전달을 명시하고 정확한 wrapper 목록으로 label 연결을 검사한다. 실제 DOM 연결·이름 변경 focus·Enter 저장과 최종 회귀를 검증했다. 경고 69개는 합의한 정책에 따라 표시하며 검사 실패로 처리하지 않는다. 상세 결과는 [테스트 기록](../tests/07-accessibility-refresh.md)을 따른다.

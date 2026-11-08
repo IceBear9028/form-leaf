@@ -43,7 +43,7 @@
 | 09 | Preview Markdown 작성 사용성 | 자동 검증 완료·사용자 실제 앱 확인 대기 | [09-preview-markdown-authoring](09-preview-markdown-authoring/README.md) |
 | 10 | Markdown 편집 DOM 단일 소유권 | 제품 통합·자동 검증 완료 | [10-markdown-editor-ownership](10-markdown-editor-ownership/README.md) |
 | 11 | 에이전트 도구 명세 및 MCP 구현 | main 병합·문서 구조 개정, Claude 로그인/타 OS 미검증 | [11-agent-tools-mcp](11-agent-tools-mcp/README.md) |
-| 12 | 정적 분석 정책과 적용 설계 | 정책·문서 완료, 제품 적용 대기 | [12-static-analysis-policy](12-static-analysis-policy/README.md) |
+| 12 | 정적 분석 정책과 적용 설계 | 정책·구현·필수 검증 완료 | [12-static-analysis-policy](12-static-analysis-policy/README.md) |
 
 ## References
 

@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-2026-11-08 · 코드 기준 `989a7f6` · 정책·문서 완료 · F06 구현·검증 완료
+2026-11-08 · 코드 기준 `989a7f6` · 정책·문서 완료 · 전체 구현·필수 검증 완료
 
 [기획](features/README.md) · [설계](implementation/README.md) · [실제 결과](handoff.md)
 
 - 브랜치: `docs/12-static-analysis-policy`.
 - 문서 선행 커밋: `b379b3f`. 사용자 요청에 따라 기능별 구현·검증·문서 갱신·커밋을 진행한다.
-- F01–F06 구현·필수 검증을 완료했다. F06 커밋 후 F07을 진행한다.
+- F01–F07 구현·필수 검증과 최종 G02·G03을 완료했다. F07 완료 커밋을 기록한다.
 
 ## 기능별 의존 순서·상태·커밋
 
@@ -21,8 +21,8 @@
 | F03 [Promise 책임](features/03-promise-ownership.md) | [03-promise-ownership](implementation/03-promise-ownership.md) | [테스트](tests/03-promise-ownership.md) | F02 | 완료 | `3df95bb` |
 | F04 [타입 안전성](features/04-type-safety.md) | [04-type-safety](implementation/04-type-safety.md) | [테스트](tests/04-type-safety.md) | F03 | 완료 | `d61b510` |
 | F05 [테스트 TS 전환](features/05-typescript-tests.md) | [05-typescript-tests](implementation/05-typescript-tests.md) | [테스트](tests/05-typescript-tests.md) | F04 | 완료 | `af4ec23` |
-| F06 [React 동작 보존](features/06-react-behavior.md) | [06-react-behavior](implementation/06-react-behavior.md) | [테스트](tests/06-react-behavior.md) | F05 | 완료 | 커밋 예정 |
-| F07 [접근성·Refresh](features/07-accessibility-refresh.md) | [07-accessibility-refresh](implementation/07-accessibility-refresh.md) | [테스트](tests/07-accessibility-refresh.md) | F06 | 대기 | 없음 |
+| F06 [React 동작 보존](features/06-react-behavior.md) | [06-react-behavior](implementation/06-react-behavior.md) | [테스트](tests/06-react-behavior.md) | F05 | 완료 | `74c05a8` |
+| F07 [접근성·Refresh](features/07-accessibility-refresh.md) | [07-accessibility-refresh](implementation/07-accessibility-refresh.md) | [테스트](tests/07-accessibility-refresh.md) | F06 | 완료 | 커밋 예정 |
 
 - 각 기능 커밋 메시지에 F01–F07 ID를 포함한다.
 - 관련 코드·테스트·문서만 함께 커밋하고 무관한 변경을 보존한다.
@@ -68,3 +68,9 @@
 - 번호별 features/implementation/tests 파일명 일치, 양방향 링크, 기능·정책·AC·plan 추적을 확인한다.
 - 상대 링크·anchor·placeholder·fence·공백·Mermaid를 검사한다.
 - 실제 결과는 [handoff](handoff.md)에 기록한다.
+
+## 최종 확인
+
+- 공통 G02·G03과 기능별 34개 시나리오가 기록된 검증 경계 안에서 통과했다. 결과의 한계는 tests 각 문서가 소유한다.
+- 최종 check·165 unit·build·격리 Electron E2E 7개 통과, opt-in 3개 제외, warning 69개 유지. native IME는 F06에서 별도 통과했다.
+- 기능별 code·feature·implementation·tests 갱신과 커밋 순서를 유지했다. push·PR·merge는 수행하지 않았다.

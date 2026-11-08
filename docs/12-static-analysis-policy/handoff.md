@@ -2,27 +2,42 @@
 
 ## 현재 상태
 
-**문서는 `b379b3f`로 커밋했고 F01–F06 구현·필수 검증을 완료했다. F06 커밋 후 F07을 진행한다.**
+**F01–F07 구현과 필수 검증을 완료했다. 기능별 코드·테스트·문서 커밋은 [plan](plan.md)에 기록한다.**
 
-- 갱신일: 2026-11-08.
-- 현재 HEAD: `af4ec23`. 문서 최초 설계 기준은 `989a7f6`이다.
-- 브랜치: main에서 분기한 `docs/12-static-analysis-policy`.
-- 작업 트리: F06 React 설정·초안 동기화·안정 의존성·회귀 테스트·해당 문서 변경이 있음.
-- 문서 커밋: `b379b3f`. 기능별 완료 커밋은 plan에서 관리한다.
-- 마지막 완료 기능: F06. 전체 TS 검사·lint·unit 163개·build·격리 E2E 7개와 실제 macOS 두벌식 입력 검증 통과.
-- F01–F07 구현과 완료 커밋 기록: [plan](plan.md).
+- 갱신일: 2026-11-08. 브랜치 `docs/12-static-analysis-policy`.
+- 최초 설계 기준은 `989a7f6`, 문서 선행 커밋은 `b379b3f`다. 최종 적용 기준은 `74c05a8` + F07 작업 트리이며 F07 해시는 plan에서 관리한다.
+- 마지막 완료 기능은 F07이다. 구현·검증 결과는 [기능 목록](features/README.md)·[설계 목록](implementation/README.md)·[테스트](tests/README.md)를 따른다.
+- push·PR·merge는 수행하지 않았다. 실제 사용자 데이터·개인 문서·토큰으로 시험하지 않았다.
 
-## 구현 진행
+## 구현 결과와 검증
 
-- F01 결과: [검사 기반 테스트](tests/01-analysis-tooling.md).
-- F02 결과: [환경·레이어 테스트](tests/02-runtime-boundaries.md).
-- F03 결과: [Promise 테스트](tests/03-promise-ownership.md).
-- F04 결과: [타입 안전성 테스트](tests/04-type-safety.md).
-- F05 결과: [TS 테스트 전환](tests/05-typescript-tests.md).
-- ESLint 9 지원 종료 경고를 확인해 10.14.0으로 변경했다. React·접근성 plugin 호환성은 F06·F07에서 검증한다.
-- 현재 검사 범위는 제품·Vite·JS 도구·unit·E2E·Playwright 설정이다. TS 추천 규칙은 F04, 테스트 검사는 F05에서 연결했다.
-- F06 적용/회귀 결과: [React 테스트](tests/06-react-behavior.md). unit 163개·build·lint(0 errors/45 warnings)·Electron E2E 7개 통과. native IME 조합·Space·툴바·대상 전환·저장·재열기도 통과했다. F06 커밋/F07 착수 전이다.
-- 아래 문서 작성 시점 기록과 실제 구현 검증을 구분한다.
+| 기능 | 결과 원본 |
+|---|---|
+| F01 검사 기반·severity | [테스트](tests/01-analysis-tooling.md) |
+| F02 환경·레이어 경계 | [테스트](tests/02-runtime-boundaries.md) |
+| F03 Promise 책임·실패 보존 | [테스트](tests/03-promise-ownership.md) |
+| F04 타입·외부 입력·반환 | [테스트](tests/04-type-safety.md) |
+| F05 테스트 TS 전환 | [테스트](tests/05-typescript-tests.md) |
+| F06 React·초안·IME 수명 | [테스트](tests/06-react-behavior.md) |
+| F07 접근성·Refresh | [테스트](tests/07-accessibility-refresh.md) |
+
+- 최종 G02: 195파일의 lint 적용과 7개 TS project 포함 범위를 대조하고 정책상 옵션·규칙·severity를 확인했다.
+- 최종 G03: check 종료 0·오류 0/경고 69, unit 165개·build·격리 Electron E2E 7개 통과. opt-in 3개는 제외했다.
+- native IME는 80ms 네이티브 키 누름으로 실제 조합·Space·툴바·선택 전환·추가 입력·저장·재열기를 별도 검증했다. 최초 도구 시간 초과·단발 입력만 보고 검증 불가로 판단했던 것을 정정했다.
+- 구조 검토: 7개 feature/implementation/tests 대응·34개 시나리오·AC 추적·완료 상태 일치를 확인했다.
+- 문법 검사: 30개 문서·상대 링크 384개·anchor·placeholder·fence·공백 검사를 통과했다. 기존 Mermaid 9개는 변경하지 않았고 도식과 audit 보존 검사를 통과했다.
+
+## 운영상 한계와 다음 작업
+
+- ESLint 10.14.0을 사용한다. eslint-plugin-react 7.37.5·jsx-a11y 6.10.2는 peer가 9까지여서 공식 compat adapter와 plugin 한정 peer override를 사용했다. 선택 규칙의 실제 실행을 검증했으며 maintainer가 ESLint 10 지원을 선언한 것으로 보지 않는다.
+- 경고 69개는 정책상 유지한다. Hooks refs/effect 수명을 경고 해소만을 위해 재설계하거나 canvas 키 이벤트·혼합 export를 일괄 변경하지 않았다.
+- exactOptionalPropertyTypes의 전역 강화와 skipLibCheck 해제는 범위에 포함하지 않는다.
+- 외부 CLI·부하·개인 문서 opt-in 3개와 최소 Node 버전·보조 기술 전체 조합은 별도 검증하지 않았다.
+- 구현 잔여 작업은 없다. 추가 범위가 정해지면 이 결과와 정책을 기준으로 진행한다.
+
+## 문서 작성 시점의 기록
+
+아래는 `b379b3f` 문서 작성 때의 이력이며 최종 제품 검증과 구분한다.
 
 ## 문서 작성 때 바꾼 것
 
@@ -79,30 +94,3 @@
 - 기존 분석에서도 전체 제품 suite는 실행하지 않았으므로 과거 typecheck·격리 시험을 대신 사용했다고 주장하지 않는다.
 - 임시 원시 자료 위치와 측정 프로필은 [audit](implementation/audit.md)에 기록했다.
 - 원본 스크립트를 다시 확인해 controlflow 옵션이 묶음 측정이었다는 점을 명시했다.
-
-## 남은 작업·주의점
-
-| 항목 | 다음 확인 |
-|---|---|
-| O01 도구 버전 | 임시 ESLint 9 조합을 그대로 채택하지 말고 지원되는 호환 버전 선정 |
-| O02 환경 경계 | 분리된 config의 실제 파일 포함·alias·상대·동적 import 검사 |
-| O03 TS 테스트 실행 | Node module 해석·확장자·erasable 문법·테스트 목록 확인 |
-| O04 React | R01 수정과 R02–R05 동작 보존, 실제 IME 확인 |
-| 진단 해석 | 여러 프로필 합산 금지, 모든 void·ref·effect를 버그로 취급하지 않기 |
-
-- 허용 수준의 결정은 완료됐으며 위 항목은 적용 시 해결할 기술 검증이다.
-- 전역 exactOptionalPropertyTypes 강화와 skipLibCheck 해제는 후속 구현 범위가 아니다.
-- 경고 0개를 강제하거나 lint를 위해 초안·cleanup·오류 책임을 제거하지 않는다.
-
-## 다음 시작점
-
-**F06을 커밋하고 plan에 해시를 기록한 뒤 F07을 진행한다.**
-
-기본 pressKey만 보고 native 검증 불가로 판단했던 것을 정정했다. 80ms 키 누름으로 실제 composition을 확인했으며 상세 근거는 F06 테스트 문서에 기록했다.
-
-1. git 상태와 현재 HEAD가 문서 기준 이후 바뀌었는지 확인한다.
-2. [정책](implementation/policy.md)과 [설계 O01–O04](implementation/README.md)를 읽는다.
-3. 도구 호환성과 실제 검사 범위를 확정하고 기준 결과를 기록한다.
-4. 같은 번호 tests 문서로 검증하고 실제 결과를 기록한 뒤 완료된 단계만 plan에 반영한다.
-
-- 커밋·PR 작업 요청이면 현재 docs diff와 문서 검증 결과부터 확인한다.

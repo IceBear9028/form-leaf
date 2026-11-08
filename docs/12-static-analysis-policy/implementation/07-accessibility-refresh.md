@@ -1,6 +1,6 @@
 # F07. 접근성과 Fast Refresh 검사 구현 설계
 
-2026-11-08 · 설계 확정·구현 대기 · As-Is 코드 `989a7f6`
+2026-11-08 · 구현·필수 검증 완료 · As-Is 코드 `989a7f6`, 적용 기준 `74c05a8`
 
 [기능 기획](../features/07-accessibility-refresh.md) · [설계 요약](README.md) · [정책](policy.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/07-accessibility-refresh.md)
 
@@ -36,3 +36,23 @@
 - F07 완료 후 [plan](../plan.md)의 전체 검사 gate를 실행한다.
 - 실패 시 관련 mapping·UI 변경만 수정하고 오류 규칙 전체를 끄지 않는다.
 - 이 문서의 범위는 규칙 severity와 label/ARIA 속성 대응이며 처리 순서나 상태 전이가 선택 기준이 아니다. 파일별 속성·mapping 표로 설명하고 별도 도식은 생략한다. 실제 focus·편집 수명을 바꾸는 수정이 필요해지면 [F06](06-react-behavior.md)의 수명 도식과 함께 해당 흐름을 설계에 추가한다.
+
+## 착수 시 확인한 적용 방식
+
+- jsx-a11y 6.10.2의 eslint peer는 9까지다. F06과 같은 공식 compat adapter와 이 plugin에 한정한 eslint peer override를 사용한다. 이는 공식 ESLint 10 지원 선언이 아니며 실제 선택 규칙 실행으로 호환성을 검증한다.
+- renderer TSX 범위에 확정한 접근성 규칙과 Refresh warn을 추가한다. Refresh는 설치된 0.5.7의 plugin export를 확인해 연결하며 allowConstantExport=true를 명시한다.
+- Label·FieldLabel은 htmlFor를 명시적으로 전달한다. labelComponents는 Label·FieldLabel, controlComponents는 확인한 Input·Switch·SelectControl만 지정하고 depth=3·assert=either로 검사한다. 소문자 native label 오류는 계속 검사한다. SelectControl은 Base UI SelectTrigger의 labelable button을 반환하며 실제 DOM label.control·labels를 시험한다. 전체 label 규칙을 끄거나 포괄적인 이름 wildcard를 사용하지 않는다.
+- 테스트는 오류/경고 fixture와 실제 DOM label-control 관계, 경고만 있는 CLI 종료 코드, 기존 canvas·이름 수정 진입 회귀를 사용한다. 제품 focus·키보드 handler를 추가하는 변경은 계획하지 않는다.
+
+## 적용 후 확인한 동작
+
+- Label·FieldLabel의 htmlFor 전달을 명시해 두 wrapper 내부의 검사 경계를 드러냈다. children·나머지 props 전달과 실제 DOM 동작은 유지한다.
+- 별도 접근성 disable 없이 labelComponents/controlComponents의 정확한 목록으로 오류를 해결했다. 실제 Label·FieldLabel의 input.labels와 SelectControl의 label.control/button.labels 연결을 확인했다.
+- `test/accessibility-refresh.test.ts`와 실제 컴포넌트 harness가 alt·ARIA·native/custom label 오류, 접근성 경고 4종, Refresh 상수/함수 export, 이름 변경 focus·Enter 단일 실행을 검증한다. `npm run test:accessibility`를 기본 suite에 연결했다.
+- root README에는 최종 `npm run check`와 정책·검증 문서 경로를 추가한다. 최종 파일 목록과 effective config는 공통 G02, 전체 검사 결과는 G03이 소유한다.
+- focus·canvas handler·editor activation은 수정하지 않았다. 기존 F06 실제 native IME와 최종 Electron 회귀 결과를 연결한다.
+
+- 최종 오류는 0개이며 경고 69개를 유지한다. Hooks 45개는 F06의 수명 보존 판단, 접근성 13개는 기존 canvas/직접 편집·focus 계약, Refresh 11개는 혼합 export에 해당한다. 상세 위치·검증 한계는 [F07 테스트](../tests/07-accessibility-refresh.md)에 기록했다.
+- 최종 G02·G03과 이 기능의 필수 검증을 모두 통과했다. 도식이 필요한 새로운 흐름이나 상태 전이는 추가하지 않았다.
+
+- 최종 통합에서 F06 테스트의 dirty 알림과 DOM 반영 사이 대기 경쟁이 드러나 `aria-checked` 조건 대기로 수정했다. 제품 상태나 편집 수명 변경 없이 대상 회귀와 전체 suite를 재검증했다.

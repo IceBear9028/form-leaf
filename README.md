@@ -68,6 +68,9 @@ npm test
 # TypeScript 검사
 npm run typecheck
 
+# 제품·테스트·개발 도구의 TypeScript와 ESLint 통합 검사
+npm run check
+
 # production build
 npm run build
 
@@ -76,6 +79,8 @@ npm run test:e2e:markdown
 ```
 
 Electron E2E는 숨겨진 테스트 창과 임시 user data 디렉터리를 사용하므로 사용자의 실제 문서나 키보드·마우스 포커스를 사용하지 않습니다.
+
+정적 검사 범위·오류와 경고의 허용 기준은 [정적 분석 정책](docs/12-static-analysis-policy/implementation/policy.md), 적용·검증 결과는 [테스트 기록](docs/12-static-analysis-policy/tests/README.md)에 정리합니다. 경고만으로 검사를 실패시키지는 않습니다.
 
 ## 로컬 데이터
 
