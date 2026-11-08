@@ -1,3 +1,4 @@
+import { requiredValue } from "../requiredValue.ts";
 import type {
   Definition,
   PhrasingContent,
@@ -111,13 +112,13 @@ function remapMarkdownPoint(
   let high = lineStarts.length;
   while (low < high) {
     const middle = Math.floor((low + high) / 2);
-    if (lineStarts[middle] <= offset) low = middle + 1;
+    if (requiredValue(lineStarts[middle], "Markdown line start") <= offset) low = middle + 1;
     else high = middle;
   }
   const lineIndex = Math.max(0, low - 1);
   point.offset = offset;
   point.line = lineIndex + 1;
-  point.column = offset - lineStarts[lineIndex] + 1;
+  point.column = offset - requiredValue(lineStarts[lineIndex], "Markdown line start") + 1;
 }
 
 export function parseMarkdownBlocks(source: string): MarkdownBlock[] {
@@ -323,7 +324,7 @@ function textSourceBoundaries(raw: string, value: string): number[] {
   let valueOffset = 0;
 
   while (valueOffset < value.length) {
-    const character = value[valueOffset];
+    const character = value.charAt(valueOffset);
     if (raw[rawOffset] === "\\" && raw[rawOffset + 1] === character) rawOffset += 1;
     if (raw[rawOffset] === character) {
       rawOffset += 1;
@@ -332,7 +333,7 @@ function textSourceBoundaries(raw: string, value: string): number[] {
       continue;
     }
     const entity = raw.slice(rawOffset).match(/^&(amp|lt|gt|quot|apos);/);
-    const decoded = entity ? decodeEntity(entity[1]) : undefined;
+    const decoded = entity ? decodeEntity(entity[1] ?? "") : undefined;
     if (entity && decoded === character) {
       rawOffset += entity[0].length;
       valueOffset += 1;
@@ -398,12 +399,12 @@ function splitTextBreaks(node: MutableMarkdownNode, source: string): void {
         result.push({
           ...child,
           value: child.value.slice(partStart, index),
-          position: sourcePosition(source, boundaries[partStart], boundaries[index]),
+          position: sourcePosition(source, requiredValue(boundaries[partStart], "Markdown source boundary"), requiredValue(boundaries[index], "Markdown source boundary")),
         });
       }
       result.push({
         type: "break",
-        position: sourcePosition(source, boundaries[index], boundaries[index + 1]),
+        position: sourcePosition(source, requiredValue(boundaries[index], "Markdown source boundary"), requiredValue(boundaries[index + 1], "Markdown source boundary")),
       });
       partStart = index + 1;
     }
@@ -413,8 +414,8 @@ function splitTextBreaks(node: MutableMarkdownNode, source: string): void {
         value: child.value.slice(partStart),
         position: sourcePosition(
           source,
-          boundaries[partStart],
-          boundaries[child.value.length],
+          requiredValue(boundaries[partStart], "Markdown source boundary"),
+          requiredValue(boundaries[child.value.length], "Markdown source boundary"),
         ),
       });
     }

@@ -199,6 +199,7 @@ export function ComponentDirectManipulationOverlay({
     if (drag.kind === "position" && !canceled) {
       onChangeRef.current((current) => {
         const parentNode = current.nodes[drag.parentId];
+        if (!parentNode) return current;
         const parentStyle = parentNode.styleId ? current.styles[parentNode.styleId] : undefined;
         let next = current;
         if (!parentStyle?.layout?.position) {

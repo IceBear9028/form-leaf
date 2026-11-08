@@ -35,7 +35,8 @@ export async function readJsonWithBackupSource<T>(
     }
   }
 
-  throw firstError ?? new Error(notFoundMessage);
+  if (firstError instanceof Error) throw firstError;
+  throw new Error(notFoundMessage, { cause: firstError });
 }
 
 export async function writeJsonAtomically<T>(

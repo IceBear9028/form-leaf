@@ -1,3 +1,4 @@
+import { requiredValue } from "../../../../foundation/requiredValue.ts";
 import { runAction } from "@/shared/lib/async-errors";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeftIcon, CheckIcon, FileDownIcon, MinusIcon, PlusIcon, SaveIcon, XIcon } from "lucide-react";
@@ -596,7 +597,7 @@ function ComponentEditorScreen({
   onSave: (document: DocumentData) => void;
 }) {
   const [draft, setDraft] = useState<DocumentData>(() => createComponentDocumentDraft(sourceDocument, componentId));
-  const component = draft.components[componentId];
+  const component = requiredValue(draft.components[componentId], `component ${componentId}`);
   const [selection, setSelection] = useState<DocumentSelection | undefined>(() => selectNode(component.rootNodeId));
   const undoRef = useRef<DocumentData[]>([]);
   const redoRef = useRef<DocumentData[]>([]);

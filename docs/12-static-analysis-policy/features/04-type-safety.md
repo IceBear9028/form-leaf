@@ -1,6 +1,6 @@
 # F04. 타입 안전성과 제어 흐름
 
-2026-11-08 · 기획 확정 · 구현 대기 · 코드 기준 `989a7f6`
+2026-11-08 · 기획 확정 · 구현·검증 완료 · 코드 기준 `989a7f6`
 
 [기능 목록](README.md) · [대응 구현 설계](../implementation/04-type-safety.md) · [계획](../plan.md) · [테스트 계획·결과](../tests/04-type-safety.md)
 
@@ -40,3 +40,7 @@
 
 - 영향 파일은 [구현 설계](../implementation/04-type-safety.md), 테스트 절차·통과 기준·실행 결과는 [테스트 문서](../tests/04-type-safety.md)가 소유한다.
 - 기능 상태·커밋은 [계획](../plan.md), 결과 요약·재개 지점은 [인수인계](../handoff.md)에 기록한다.
+
+## 적용 결과
+
+확정 compiler 옵션과 JS/TS recommendedTypeChecked 규칙을 활성화했다. 정상 부재는 optional 분기로, 필수 node/component/prop/배열 offset은 기존 오류 또는 requiredValue의 실제 검사로 좁혔다. IPC context/reply·cursor·font JSON·screenshot SDK 응답은 unknown에서 schema/guard를 거친다. 미지원 operation의 undefined 반환을 명시하고 저장·migration 오류의 원본/cause를 보존했다. CSS 선언은 전역 css.d.ts가 소유하며 제어 문자 거부 regex 3곳만 사유를 남겨 국소 예외로 유지한다.

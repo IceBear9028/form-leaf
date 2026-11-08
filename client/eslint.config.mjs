@@ -15,6 +15,11 @@ export default [
     },
     plugins: { '@typescript-eslint': tseslint.plugin, boundaries },
     rules: {
+      ...js.configs.recommended.rules,
+      ...Object.assign({}, ...tseslint.configs.recommendedTypeChecked.map(config => config.rules)),
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       'boundaries/imports': 'error',
       '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
       '@typescript-eslint/no-misused-promises': 'error',

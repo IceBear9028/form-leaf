@@ -1,3 +1,4 @@
+import { requiredValue } from "./requiredValue.ts";
 import { cloneValue } from "./runtime.ts";
 import type {
   ComponentDefinition,
@@ -172,7 +173,7 @@ export function createComponentDocumentDraft(
       localStyleId = createUniqueId("style", usedStyleIds, createId);
       localizedStyles.set(sourceStyleId, localStyleId);
       draft.styles[localStyleId] = {
-        ...cloneValue(draft.styles[sourceStyleId]),
+        ...cloneValue(requiredValue(draft.styles[sourceStyleId], `style ${sourceStyleId}`)),
         id: localStyleId,
       };
     }
@@ -210,7 +211,7 @@ export function applyComponentDocumentDraft(
   const nodes = { ...document.nodes };
   currentNodeIds.forEach((nodeId) => delete nodes[nodeId]);
   draftNodeIds.forEach((nodeId) => {
-    nodes[nodeId] = cloneValue(draft.nodes[nodeId]);
+    nodes[nodeId] = cloneValue(requireNode(draft, nodeId));
   });
 
   const styles = { ...document.styles };
@@ -318,7 +319,7 @@ export function duplicateRepeaterItem(
   if (index < 0) throw new Error(`repeater item을 찾을 수 없습니다: ${itemId}`);
   const createId = options?.createId ?? createEntityId;
   const nextItemId = createUniqueId("item", collectRepeaterItemIds(document), createId);
-  const item = { ...cloneValue(node.items[index]), id: nextItemId };
+  const item = { ...cloneValue(requiredValue(node.items[index], `repeater item ${itemId}`)), id: nextItemId };
   const items = [...node.items];
   items.splice(index + 1, 0, item);
   return {
@@ -363,7 +364,7 @@ export function moveRepeaterItem(
   if (index < 0) throw new Error(`repeater item을 찾을 수 없습니다: ${itemId}`);
   if (!Number.isInteger(targetIndex)) throw new Error("이동 위치는 정수여야 합니다.");
   const items = [...node.items];
-  const [item] = items.splice(index, 1);
+  const item = requiredValue(items.splice(index, 1)[0], `repeater item ${itemId}`);
   items.splice(Math.min(Math.max(targetIndex, 0), items.length), 0, item);
   return finalize({
     ...document,

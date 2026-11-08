@@ -1,3 +1,4 @@
+import { requiredValue } from "./requiredValue.ts";
 import { cloneValue } from "./runtime.ts";
 import type {
   ComponentPropDefinition,
@@ -39,14 +40,14 @@ export function readDocumentEditValue(
     const node = document.nodes[target.instanceNodeId];
     if (node?.type !== "component-instance") throw new Error("component instance를 찾을 수 없습니다.");
     const definition = requireActiveProp(document, node.componentId, target.propId);
-    return directValue(Object.hasOwn(node.props, target.propId) ? node.props[target.propId] : definition.defaultValue);
+    return directValue(Object.hasOwn(node.props, target.propId) ? requiredValue(node.props[target.propId], `prop ${target.propId}`) : definition.defaultValue);
   }
   const node = document.nodes[target.repeaterNodeId];
   if (node?.type !== "repeater") throw new Error("repeater를 찾을 수 없습니다.");
   const item = node.items.find((entry) => entry.id === target.itemId);
   if (!item) throw new Error(`repeater item을 찾을 수 없습니다: ${target.itemId}`);
   const definition = requireActiveProp(document, item.componentId, target.propId);
-  return directValue(Object.hasOwn(item.props, target.propId) ? item.props[target.propId] : definition.defaultValue);
+  return directValue(Object.hasOwn(item.props, target.propId) ? requiredValue(item.props[target.propId], `prop ${target.propId}`) : definition.defaultValue);
 }
 
 export function updateDocumentEditValue(
@@ -92,9 +93,10 @@ export function updateDocumentEditValue(
   const itemIndex = node.items.findIndex((item) => item.id === target.itemId);
   if (itemIndex < 0) throw new Error(`repeater item을 찾을 수 없습니다: ${target.itemId}`);
   const items = [...node.items];
+  const item = requiredValue(items[itemIndex], `repeater item ${target.itemId}`);
   items[itemIndex] = {
-    ...items[itemIndex],
-    props: { ...items[itemIndex].props, [target.propId]: cloneDirectEditValue(value) },
+    ...item,
+    props: { ...item.props, [target.propId]: cloneDirectEditValue(value) },
   };
   return touchDocument({
     ...document,

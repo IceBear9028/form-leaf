@@ -328,11 +328,11 @@ function validateStyle(value: unknown, path: string, issue: IssueWriter): value 
           valid = false;
         }
       }
-      if (layout.align !== undefined && !["start", "center", "end", "stretch"].includes(String(layout.align))) {
+      if (layout.align !== undefined && (typeof layout.align !== "string" || !["start", "center", "end", "stretch"].includes(layout.align))) {
         issue("style.layout.align", `${path}.layout.align`, "align 값이 올바르지 않습니다.");
         valid = false;
       }
-      if (layout.justify !== undefined && !["start", "center", "end", "between"].includes(String(layout.justify))) {
+      if (layout.justify !== undefined && (typeof layout.justify !== "string" || !["start", "center", "end", "between"].includes(layout.justify))) {
         issue("style.layout.justify", `${path}.layout.justify`, "justify 값이 올바르지 않습니다.");
         valid = false;
       }

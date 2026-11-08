@@ -57,7 +57,7 @@ export class EditorCoordinator {
         if (request.type === "acquire") this.sender?.({ type: "release", requestId: randomUUID(), documentId: request.documentId, leaseId: requestId });
       }, this.timeout);
       this.pending.set(requestId, { resolve, timer });
-      try { this.sender!({ ...request, requestId } as EditorRequest); }
+      try { this.sender!({ ...request, requestId }); }
       catch { clearTimeout(timer); this.pending.delete(requestId); resolve({ requestId, ok: false, context: null }); }
     });
   }

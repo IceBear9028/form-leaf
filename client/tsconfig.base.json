@@ -21,6 +21,12 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "noEmit": true,
-    "types": []
+    "types": [],
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noUncheckedSideEffectImports": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true
   }
 }

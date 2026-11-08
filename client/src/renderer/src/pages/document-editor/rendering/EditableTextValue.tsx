@@ -7,7 +7,6 @@ import {
 } from "react";
 import type {
   RichTextMark,
-  RichTextValue,
 } from "../../../../../foundation/documentModel.ts";
 import type {
   DirectEditValue,

@@ -125,7 +125,7 @@ export function DocumentComponentNavigator({
 function componentUsage(document: DocumentData, componentId: string): number {
   return [...documentSelectableNodeIds(document)].reduce((count, nodeId) => {
     const node = document.nodes[nodeId];
-    if (node.archivedFrom) return count;
+    if (!node || node.archivedFrom) return count;
     if (node.type === "component-instance" && node.componentId === componentId) return count + 1;
     if (node.type === "repeater" && node.itemComponentId === componentId) return count + 1;
     return count;

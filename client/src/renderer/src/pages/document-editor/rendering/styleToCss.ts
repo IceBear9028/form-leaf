@@ -91,7 +91,7 @@ export function styleToCss(style?: StyleDefinition): CSSProperties | undefined {
       if (decoration.borderEdges?.length) {
         css.borderWidth = 0;
         decoration.borderEdges.forEach((edge) => {
-          const property = `border${edge[0].toUpperCase()}${edge.slice(1)}Width` as keyof CSSProperties;
+          const property = `border${edge.charAt(0).toUpperCase()}${edge.slice(1)}Width` as keyof CSSProperties;
           (css as Record<string, string | number | undefined>)[property] = `${decoration.borderWidthPt}pt`;
         });
       } else {

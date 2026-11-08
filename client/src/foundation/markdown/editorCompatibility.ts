@@ -37,7 +37,7 @@ export function inspectMarkdownEditorCompatibility(source: string, blockIndex?: 
   const unsupportedTypes = new Set<string>();
   const tree = blockIndex === undefined ? parseMarkdownTree(source) : parseMarkdownBlocks(source)[blockIndex]?.node;
   if (!tree) return { editable: source.length === 0, unsupportedTypes: [] };
-  visitMarkdownTree(tree as unknown as MarkdownTreeNode, (node) => {
+  visitMarkdownTree(tree, (node) => {
     if (supportedMarkdownNodeTypes.has(node.type)) return;
     if (node.type === "html" && isMarkdownBreakHtml(node.value)) return;
     unsupportedTypes.add(node.type);
@@ -50,7 +50,7 @@ export function inspectMarkdownEditorCompatibility(source: string, blockIndex?: 
 
 export function prepareMarkdownForEditor(source: string): string {
   const replacements: Array<{ start: number; end: number }> = [];
-  visitMarkdownTree(parseMarkdownTree(source) as unknown as MarkdownTreeNode, (node) => {
+  visitMarkdownTree(parseMarkdownTree(source), (node) => {
     const start = node.position?.start.offset;
     const end = node.position?.end.offset;
     if (

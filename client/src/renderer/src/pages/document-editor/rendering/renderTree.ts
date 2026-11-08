@@ -1,3 +1,4 @@
+import { requiredValue } from "../../../../../foundation/requiredValue.ts";
 import type {
   ComponentPropValue,
   DocumentAsset,
@@ -175,7 +176,7 @@ function resolveNode(
     };
   }
   if (node.type === "component-instance") {
-    const component = document.components[node.componentId];
+    const component = requiredValue(document.components[node.componentId], `component ${node.componentId}`);
     const componentOverrides = buildOverrides(
       component.propDefinitions,
       node.props,
@@ -196,7 +197,7 @@ function resolveNode(
       ),
     };
   }
-  const component = document.components[node.itemComponentId];
+  const component = requiredValue(document.components[node.itemComponentId], `component ${node.itemComponentId}`);
   return {
     ...base,
     type: node.type,
@@ -235,7 +236,7 @@ function buildOverrides(
   definitions.forEach((definition) => {
     if (definition.status !== "active") return;
     overrides.set(definition.binding.nodeId, {
-      value: Object.hasOwn(props, definition.id) ? props[definition.id] : definition.defaultValue,
+      value: Object.hasOwn(props, definition.id) ? requiredValue(props[definition.id], `prop ${definition.id}`) : definition.defaultValue,
       target: target?.(definition.id),
     });
   });

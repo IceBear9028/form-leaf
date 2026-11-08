@@ -23,7 +23,9 @@ export function documentTree(document: DocumentData, includeArchived = false): S
 }
 export function requireDocumentNode(document: DocumentData, id: string, includeArchived = false): DocumentNode {
   if (!documentTree(document, includeArchived).has(id)) failure("INVALID_TARGET", "문서의 편집 가능한 요소가 아닙니다.");
-  return document.nodes[id];
+  const node = document.nodes[id];
+  if (!node) failure("INVALID_TARGET", "문서의 편집 가능한 요소가 아닙니다.");
+  return node;
 }
 export function requireProp(document: DocumentData, componentId: string, propId: string): ComponentPropDefinition {
   const prop = document.components[componentId]?.propDefinitions.find((prop) => prop.id === propId && prop.status === "active");
@@ -68,20 +70,27 @@ export function listEditTargets(document: DocumentData) {
   };
   const visit = (id: string, path: string[]) => {
     const node = document.nodes[id];
+    if (!node) failure("INVALID_TARGET", "문서 요소를 찾을 수 없습니다.");
     const breadcrumb = [...path, `${node.name}${node.visible ? "" : " (숨김)"}`];
     if (node.type === "text" || node.type === "markdown" || node.type === "rich-text") add({ kind: "node", nodeId: id }, breadcrumb);
     if (node.type === "container") node.childIds.forEach((child) => visit(child, breadcrumb));
     if (node.type === "component-instance") {
-      for (const prop of document.components[node.componentId].propDefinitions) {
+      for (const prop of requireTargetComponent(document, node.componentId).propDefinitions) {
         if (prop.status === "active" && ["text", "markdown", "rich-text"].includes(prop.valueType)) add({ kind: "component-prop", instanceNodeId: id, propId: prop.id }, [...breadcrumb, prop.name]);
       }
     }
     if (node.type === "repeater") for (const item of node.items) {
-      for (const prop of document.components[item.componentId].propDefinitions) {
+      for (const prop of requireTargetComponent(document, item.componentId).propDefinitions) {
         if (prop.status === "active" && ["text", "markdown", "rich-text"].includes(prop.valueType)) add({ kind: "repeater-item-prop", repeaterNodeId: id, itemId: item.id, propId: prop.id }, [...breadcrumb, `${node.items.indexOf(item) + 1}${item.visible ? "" : " (숨김)"}`, prop.name]);
       }
     }
   };
   visit(document.rootNodeId, []);
   return items.map(({ nodeId: _nodeId, ...item }) => item);
+}
+
+function requireTargetComponent(document: DocumentData, id: string) {
+  const component = document.components[id];
+  if (!component) failure("INVALID_TARGET", "컴포넌트를 찾을 수 없습니다.");
+  return component;
 }

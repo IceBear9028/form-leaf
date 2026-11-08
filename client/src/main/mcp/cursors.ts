@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { AGENT_LIMITS } from "../../foundation/documentCommandSchemas.ts";
 import { failure } from "../../foundation/documentCommands.ts";
@@ -17,7 +18,7 @@ export class CursorPager {
         const actual = Buffer.from(signature, "base64url");
         const expected = createHmac("sha256", this.secret).update(payload).digest();
         if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw new Error();
-        const parsed = JSON.parse(Buffer.from(payload, "base64url").toString());
+        const parsed = z.object({ fingerprint: z.string(), expiresAt: z.number().finite(), offset: z.number().int() }).parse(JSON.parse(Buffer.from(payload, "base64url").toString()));
         if (parsed.fingerprint !== fingerprint || parsed.expiresAt <= this.now() || !Number.isSafeInteger(parsed.offset) || parsed.offset <= 0 || parsed.offset >= items.length) throw new Error();
         offset = parsed.offset;
       } catch { failure("INVALID_CURSOR", "목록이 변경됐거나 cursor가 만료됐습니다. 처음부터 조회하세요."); }

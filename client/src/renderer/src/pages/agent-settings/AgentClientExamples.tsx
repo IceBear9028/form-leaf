@@ -14,7 +14,7 @@ export function AgentClientExamples({ endpoint, clientType = "other" }: { endpoi
     : type === "claude-code" ? JSON.stringify({ mcpServers: { formleaf: { type: "http", url: endpoint, headers: { Authorization: "Bearer ${FORMLEAF_MCP_TOKEN}" } } } }, null, 2)
     : `URL: ${endpoint}\nAuthorization: Bearer <Formleaf에서 발급받은 토큰>`;
   return <div className="space-y-5">
-    <Select value={type} onValueChange={(value) => { if (value) setType(value as AgentClientType); }} items={Object.entries(agentClients).map(([value, item]) => ({ value, label: item.name }))}>
+    <Select value={type} onValueChange={(value) => { if (value) setType(value); }} items={Object.entries(agentClients).map(([value, item]) => ({ value, label: item.name }))}>
       <SelectTrigger className="w-full" aria-label="연결할 클라이언트"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(agentClients).map(([value, item]) => <SelectItem key={value} value={value}>{item.name}</SelectItem>)}</SelectContent>
     </Select>
     <section className="space-y-2"><h3 className="m-0 text-sm font-medium">1. CLI를 실행할 터미널에 토큰 설정</h3>

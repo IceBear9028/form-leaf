@@ -1,4 +1,4 @@
-import type { ContentBlock, TextContent, TextMark, TextRun } from "./legacyTypes.ts";
+import type { ContentBlock, TextContent, TextRun } from "./legacyTypes.ts";
 
 export function textContentToMarkdown(content: TextContent): string {
   return content.runs.map(serializeRun).join("");

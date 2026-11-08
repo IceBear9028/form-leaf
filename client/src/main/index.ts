@@ -1,3 +1,4 @@
+import { editorContextSchema, editorReplySchema } from "../foundation/documentSessionProtocol.ts";
 import { RenderService } from "./application/renderService.ts";
 import { OutputService } from "./application/outputService.ts";
 import { ArtifactRepository } from "./application/artifactRepository.ts";
@@ -26,11 +27,13 @@ app.setPath("userData", legacyUserDataDirectory);
 const ownsWorkspace = app.requestSingleInstanceLock();
 if (!ownsWorkspace) app.quit();
 const editorCoordinator = new EditorCoordinator();
-ipcMain.on(IPC.editorContext, (event, context) => {
-  if (event.sender === mainWindow?.webContents) editorCoordinator.update(context);
+ipcMain.on(IPC.editorContext, (event, context: unknown) => {
+  const parsed = editorContextSchema.nullable().safeParse(context);
+  if (event.sender === mainWindow?.webContents && parsed.success) editorCoordinator.update(parsed.data);
 });
-ipcMain.on(IPC.editorReply, (event, reply) => {
-  if (event.sender === mainWindow?.webContents) editorCoordinator.reply(reply);
+ipcMain.on(IPC.editorReply, (event, reply: unknown) => {
+  const parsed = editorReplySchema.safeParse(reply);
+  if (event.sender === mainWindow?.webContents && parsed.success) editorCoordinator.reply(parsed.data);
 });
 let mainWindow: BrowserWindow | null = null;
 let closeGuard = false;

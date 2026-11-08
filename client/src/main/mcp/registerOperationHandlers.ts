@@ -1,3 +1,4 @@
+import { hasErrorCode } from "../../foundation/errors.ts";
 import { dialog, ipcMain, shell, type BrowserWindow } from "electron";
 import { open, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
@@ -36,7 +37,7 @@ export function registerOperationHandlers(history: OperationHistory, artifacts: 
       try { await file.writeFile(bytes); await file.sync(); } finally { await file.close(); }
       await history.artifact(credentialId, requestId);
       await rename(temporary, selected.filePath);
-    } finally { if (created) await unlink(temporary).catch((error) => { if (error.code !== "ENOENT") throw error; }); }
+    } finally { if (created) await unlink(temporary).catch((error: unknown) => { if (!hasErrorCode(error, "ENOENT")) throw error; }); }
     return { canceled: false as const, filePath: selected.filePath };
   });
 }

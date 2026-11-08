@@ -47,7 +47,9 @@ export class AgentServer {
       if (!request.headers["content-type"]?.startsWith("application/json")) return reject(415, "JSON required");
       if (Number(request.headers["content-length"] ?? 0) > AGENT_LIMITS.jsonBytes) return reject(413, "Request too large");
       const chunks: Buffer[] = []; let bytes = 0;
-      for await (const chunk of request) {
+      for await (const incoming of request) {
+        const chunk: unknown = incoming;
+        if (!(typeof chunk === "string" || Buffer.isBuffer(chunk))) return reject(400, "Invalid request stream");
         bytes += Buffer.byteLength(chunk);
         if (bytes > AGENT_LIMITS.jsonBytes) return reject(413, "Request too large");
         chunks.push(Buffer.from(chunk));

@@ -71,11 +71,13 @@ export class RenderService implements SnapshotRenderer {
           if (bytes.length > AGENT_LIMITS.pdfBytes) failure("RESULT_TOO_LARGE", "PDF가 출력 크기 한도를 초과합니다.");
           return { bytes, pageCount: layout.pageCount, widthPx: 0, heightPx: 0, warnings: [...warnings] };
         }
-        if (page > layout.pages.length) failure("PAGE_OUT_OF_RANGE", "요청한 페이지가 없습니다.", { pageCount: layout.pageCount });
+        if (page < 1 || page > layout.pages.length) failure("PAGE_OUT_OF_RANGE", "요청한 페이지가 없습니다.", { pageCount: layout.pageCount });
         const bounds = layout.pages[page - 1];
+        if (!bounds) failure("PAGE_OUT_OF_RANGE", "요청한 페이지가 없습니다.", { pageCount: layout.pageCount });
         output.webContents.debugger.attach("1.3");
-        const captured = await Promise.race([output.webContents.debugger.sendCommand("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { ...bounds, scale: Math.min(1, AGENT_LIMITS.previewEdgePx / Math.max(bounds.width, bounds.height)) } }), timeout]);
-        let bitmap = nativeImage.createFromBuffer(Buffer.from(captured.data, "base64"));
+        const captured: unknown = await Promise.race([output.webContents.debugger.sendCommand("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { ...bounds, scale: Math.min(1, AGENT_LIMITS.previewEdgePx / Math.max(bounds.width, bounds.height)) } }), timeout]);
+        const screenshot = z.object({ data: z.string() }).parse(captured);
+        let bitmap = nativeImage.createFromBuffer(Buffer.from(screenshot.data, "base64"));
         let size = bitmap.getSize();
         if (Math.max(size.width, size.height) > AGENT_LIMITS.previewEdgePx) bitmap = bitmap.resize({ width: Math.round(size.width * AGENT_LIMITS.previewEdgePx / Math.max(size.width, size.height)) });
         let bytes = bitmap.toPNG();

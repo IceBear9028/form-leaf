@@ -1,3 +1,4 @@
+import { requiredValue } from "../../foundation/requiredValue.ts";
 import { createEntityId, type DocumentData, type StyleDefinition } from "../../foundation/documentModel.ts";
 import { requireDocumentNode } from "../../foundation/documentCommandTargets.ts";
 import { stylePatchSchema } from "../../foundation/documentCommandSchemas.ts";
@@ -19,7 +20,7 @@ export function applyStyleOperation(document: DocumentData, operation: Operation
     Object.values(value).forEach(checkColors);
   };
   checkColors(operation.patch);
-  const current: StyleDefinition = node.styleId ? document.styles[node.styleId] : { id: "", name: `${node.name} style` };
+  const current: StyleDefinition = node.styleId ? requiredValue(document.styles[node.styleId], `style ${node.styleId}`) : { id: "", name: `${node.name} style` };
   const nextStyle = merge(current, operation.patch) as StyleDefinition;
   if (stableSerialize(nextStyle) === stableSerialize(current)) return { document, nodeIds: [] };
   const shared = node.styleId && Object.values(document.nodes).some((other) => other.id !== node.id && other.styleId === node.styleId);

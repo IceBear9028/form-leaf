@@ -120,7 +120,7 @@ function MarkdownNodeView({
   renderContext: MarkdownRenderContext;
 }): ReactNode {
   if (node.type === "heading") {
-    const HeadingTag = `h${node.depth}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+    const HeadingTag: `h${typeof node.depth}` = `h${node.depth}`;
     return (
       <HeadingTag
         className={`markdown-block markdown-heading markdown-heading--h${node.depth}`}

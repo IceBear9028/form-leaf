@@ -98,6 +98,7 @@ export class OutputService {
   }
 }
 function safeFilename(name: string): string {
+// eslint-disable-next-line no-control-regex -- Reject control characters in untrusted names/URLs.
   const stem = name.trim().replace(/[\\/:*?"<>|\x00-\x1f\x7f]/g, "-").replace(/\.+$/g, "").slice(0, 116);
   return `${stem || "document"}.pdf`;
 }

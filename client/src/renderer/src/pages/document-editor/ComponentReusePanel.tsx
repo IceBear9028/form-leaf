@@ -1,3 +1,4 @@
+import { requiredValue } from "../../../../foundation/requiredValue.ts";
 import { runAction } from "@/shared/lib/async-errors";
 import { useEffect, useMemo, useState } from "react";
 import { ArchiveIcon, BoxesIcon, CopyPlusIcon, DownloadIcon, ListPlusIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react";
@@ -179,7 +180,7 @@ export function ComponentReusePanel({
             <SelectControl
               value={selectedComponentId ?? ""}
               onChange={setComponentId}
-              options={componentIds.map((id) => ({ value: id, label: document.components[id].name || id }))}
+              options={componentIds.map((id) => ({ value: id, label: requiredValue(document.components[id], `component ${id}`).name || id }))}
             />
           </label>
           {component && (
@@ -291,7 +292,7 @@ function ComponentDefinitionEditor({
           size="sm"
           disabled={draftName === component.name}
           onClick={() => onChange((current) => applyComponentDefinitionDraft(current, {
-            ...current.components[component.id],
+            ...requiredValue(current.components[component.id], `component ${component.id}`),
             name: draftName,
           }))}
         >
