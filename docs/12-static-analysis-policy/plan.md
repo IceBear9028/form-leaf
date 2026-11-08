@@ -8,7 +8,7 @@
 
 - 브랜치: `docs/12-static-analysis-policy`.
 - 문서 선행 커밋: `b379b3f`. 사용자 요청에 따라 기능별 구현·검증·문서 갱신·커밋을 진행한다.
-- F01–F07 구현·필수 검증과 최종 G02·G03을 완료했다. F07 완료 커밋을 기록한다.
+- F01–F07 구현·필수 검증과 최종 G02·G03 및 기능별 커밋을 완료했다.
 
 ## 기능별 의존 순서·상태·커밋
 
@@ -22,7 +22,7 @@
 | F04 [타입 안전성](features/04-type-safety.md) | [04-type-safety](implementation/04-type-safety.md) | [테스트](tests/04-type-safety.md) | F03 | 완료 | `d61b510` |
 | F05 [테스트 TS 전환](features/05-typescript-tests.md) | [05-typescript-tests](implementation/05-typescript-tests.md) | [테스트](tests/05-typescript-tests.md) | F04 | 완료 | `af4ec23` |
 | F06 [React 동작 보존](features/06-react-behavior.md) | [06-react-behavior](implementation/06-react-behavior.md) | [테스트](tests/06-react-behavior.md) | F05 | 완료 | `74c05a8` |
-| F07 [접근성·Refresh](features/07-accessibility-refresh.md) | [07-accessibility-refresh](implementation/07-accessibility-refresh.md) | [테스트](tests/07-accessibility-refresh.md) | F06 | 완료 | 커밋 예정 |
+| F07 [접근성·Refresh](features/07-accessibility-refresh.md) | [07-accessibility-refresh](implementation/07-accessibility-refresh.md) | [테스트](tests/07-accessibility-refresh.md) | F06 | 완료 | `41907d8` |
 
 - 각 기능 커밋 메시지에 F01–F07 ID를 포함한다.
 - 관련 코드·테스트·문서만 함께 커밋하고 무관한 변경을 보존한다.
